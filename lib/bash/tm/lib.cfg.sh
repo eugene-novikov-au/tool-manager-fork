@@ -97,7 +97,7 @@ _tm::cfg::__process() {
     declare -A plugin=()
     _tm::util::parse::plugin_id plugin "$plugin_id"
 
-    local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${plugin[qpath]}/.env"
+    local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${plugin[qpath]}/cfg.sh"
     for key in "${missing_keys[@]}"; do
         if [[ "$prompt" == '0' ]] ; then
             if [[ -n "$default_value" ]]; then # just use the default
@@ -183,7 +183,9 @@ _tm::cfg::__add_config_files() {
     array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.env") # plugin provided
     array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.bashrc") # plugin provided .bashrc
     array_config_files+=("$TM_PLUGINS_CFG_DIR/.env") # shared between all the plugins
+    array_config_files+=("$TM_PLUGINS_CFG_DIR/cfg.sh") # shared between all the plugins
     array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/.env") # config for this plugin instance
+    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh") # config for this plugin instance    
 }
 
 # --- Set a configuration value for a plugin ---

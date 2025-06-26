@@ -65,7 +65,7 @@ else
     if [[ -n "$prefix" ]]; then
         plugin_cfg_file_dir="$TM_PLUGINS_CFG_DIR/${prefix}${__TM_SEP_PREFIX_DIR}${plugin_name}"
     fi
-    target_path="${plugin_cfg_file_dir}/.env"
+    target_path="${plugin_cfg_file_dir}/cfg.sh"
 
     # Ensure the directory exists
     if [[ ! -d "$plugin_cfg_file_dir" ]]; then
