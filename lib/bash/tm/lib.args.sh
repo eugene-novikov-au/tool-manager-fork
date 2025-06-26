@@ -444,7 +444,9 @@ _tm::args::parse() {
       while [[ $# -gt 0 ]]; do
           local arg_full="$1"
           local arg="$1"
-          
+          if [[ -z "$arg" ]]; then
+             continue
+          fi
           #if we are just collecting the last args for the remainder key now (no more options)
           if [[ $collect_remaining == 1 ]]; then 
             remaining_args+=("$1")
