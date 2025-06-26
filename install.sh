@@ -17,7 +17,7 @@ _err() {
 log_prefix="[tool-manager install] "
 tm_git_repo="git@github.com:codemucker/tool-manager.git"
 tm_home="$HOME/.tool-manager"
-git_clone=1 # Renamed from needs_git_clone for simplicity here, original intent clear
+git_clone=1
 
 # --- Bash Version Check ---
 if [[ ! "$(echo "${BASH_VERSION:-0}" | grep -e '^[5-9]\..*' )" ]]; then
