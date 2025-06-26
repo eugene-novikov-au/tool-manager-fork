@@ -1,0 +1,30 @@
+#!/usr/bin/env tm-env-bash
+#
+# Show the space info
+#
+
+_tm::source::include .tm.script.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-key "|remainder|short=k|value=NAME|desc=The space key" \
+    --opt-guid "|short=g|value=GUID|desc=The space guid" \
+    --result args \
+    -- "$@"
+
+if [[ -z "${args[key]:-}" ]] && [[ -z "${args[guid]:-}" ]]; then
+    _fail "no key or guid provided"
+fi
+if [[ ! -d "$TM_SPACE_DIR" ]]; then
+    _fail "no spaces"
+fi
+space_guid="${args[guid]:-}"
+space_key="${args[key]:-}"
+if [[ -n "$space_guid" ]]; then
+    space_file="$TM_SPACE_DIR/space.${space_guid}.ini"
+    [[ -f "$space_file" ]] && cat "$space_file" || exit 1
+else
+    find "$TM_SPACE_DIR" -maxdepth 1 -type f -name ".space.*.ini" | xargs grep -le "^key=${space_key}$" | xargs cat
+fi
+

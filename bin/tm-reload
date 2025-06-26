@@ -1,0 +1,38 @@
+#!/usr/bin/env tm-env-bash
+#
+# Reloads the given plugin or the entire Tool Manager environment.
+#
+# Also provides options to just regenerate the plugin scripts
+#
+
+_tm::source::include_once .tm.script.sh .tm.plugin.sh .tm.plugins.sh .tm.common.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-plugins "|remainder|multi|short=p|value=PLUGIN|desc=The plugins to reload. Or all if left blank." \
+    --opt-fix "|flag|desc=(TODO)Fix any issues, like broken links etc" \
+    --opt-scripts "|flag|short=s|desc=Only regenerate the plugin scripts, not reload the entire plugin" \
+    --result args \
+    -- "$@"
+
+[[ "${args[scripts]}" == "1" ]] && scripts=1 || scripts=0 
+
+IFS=' ' read -r -a plugin_names <<< "${args[plugins]:-}"
+if [[ "${#plugin_names[@]}" -gt 0 ]]; then   # reload just the given plugin(s)
+    declare -A plugin_details
+    for plugin_name in "${plugin_names[@]}"; do
+        _tm::util::parse::plugin plugin_details "$plugin_name"
+        if [[ $scripts == 1 ]]; then
+            _tm::plugin::regenerate_wrapper_scripts plugin_details
+        else
+            _tm::plugin::reload plugin_details
+        fi
+    done
+else
+    if [[ $scripts == 1 ]]; then
+        _tm::plugins::regenerate_all_wrapper_scripts
+    else
+        _tm::boot::reload
+    fi
+fi

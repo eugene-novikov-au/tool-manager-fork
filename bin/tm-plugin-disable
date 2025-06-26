@@ -1,0 +1,44 @@
+#!/usr/bin/env tm-env-bash
+#
+# Disables one or more Tool Manager plugins.
+#
+# Usage: tm-plugin-disable [qualified_plugin_name_1] [qualified_plugin_name_2] ...
+#
+# If no plugin names are provided as arguments, the script will interactively
+# prompt for plugin(s) to disable. At the prompt:
+#   - Enter one or more space-separated qualified plugin names.
+#   - Pressing Enter without input will list currently enabled plugins.
+#
+
+_tm::source::include .tm.script.sh .tm.plugin.sh .tm.plugins.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-plugins "|remainder|multi|short=p|long=plugin|value=PLUGIN|desc=The plugin(s) to disable. Of the form : 'prefix:vendor/name'|example=foo:acme/do-it  acme/do-it " \
+    --opt-prefix "|desc=The plugin prefix" \
+    --opt-all "|flag|desc=If to apply to all installed plugins or not" \
+    --result args \
+    -- "$@"
+
+
+if [[ "${args[all]}" == "1" ]]; then
+    rm -fR "$TM_PLUGINS_ENABLED_DIR"
+else
+    prefix="${args[prefix]}"
+    if [[ -n "$prefix" ]]; then
+        prefix+=":"
+    fi
+
+    IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
+    if [[  "${#plugin_names[@]}" -eq 0 ]]; then
+        echo "No plugins provided"
+        exit 1
+    else
+        declare -A plugin
+        for plugin_name in "${plugin_names[@]}"; do
+            _tm::util::parse::plugin plugin "$prefix$plugin_name"
+            _tm::plugin::disable plugin 
+        done
+    fi
+fi

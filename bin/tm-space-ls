@@ -1,0 +1,16 @@
+#!/usr/bin/env tm-env-bash
+#
+# List the space
+#
+
+_tm::source::include .tm.script.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-active "|flag|short=a|desc=Select the active space" \
+    --opt-all "|flag|desc=Select all the spaces" \
+    --result args \
+    -- "$@"
+
+[[ -d "$TM_SPACE_DIR" ]] && find "$TM_SPACE_DIR" -maxdepth 1 -type f -name ".space.*.ini" | xargs grep "key" | sed -e 's/^key=//' || true

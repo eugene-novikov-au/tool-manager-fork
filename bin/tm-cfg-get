@@ -1,0 +1,7 @@
+#!/usr/bin/env tm-env-bash
+#
+# Get a tool-manager configuration option.
+#
+_trap_error
+
+_tm::cfg::get "$@"

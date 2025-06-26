@@ -1,0 +1,353 @@
+#!/usr/bin/env bash
+#
+# Run python, auto installing it and setting up the env as required
+#
+
+set -Eeuo pipefail
+
+source "$TM_BIN/.tm.boot.sh"
+
+runner_args=()
+script_path=""
+script_cmd_args=()
+pip_requirements=""
+requirements=""
+
+# Find the index of the script path.
+# This assumes the script path is the first argument that exists as a file and is executable,
+# and is not the runner itself ($0). This is a common and robust heuristic.
+script_index=-1
+for i in $(seq 1 $#); do # Loop through 1-based argument indices
+    arg="${!i}" # Get the argument value
+    if [[ -f "$arg" && -x "$arg" && "$arg" != "$0" ]]; then
+        script_index="$i"
+        break
+    fi
+done
+
+if [[ "$script_index" -eq -1 ]]; then
+    _fail "Error: Could not determine the script path in tm-env-deno." >&2
+fi
+
+# Capture runner arguments (everything before the script path)
+if [[ $((script_index - 1)) -ge 1 ]]; then
+    for i in $(seq 1 $((script_index - 1))); do
+        runner_args+=("${!i}")
+    done
+fi
+
+# The script path itself
+script_path="${!script_index}"
+#script_path="$(_realpath "$script_path")"
+
+_debug "Script Path: $script_path"
+
+if [[ -z "$script_path" ]]; then
+  _fail "Usage: tm-env-python <script_path> [args...]"
+fi
+
+if [[ ! -f "$script_path" ]]; then
+  _fail "Error: Script not found at '$script_path'"
+fi
+
+# Capture arguments passed to the script on the command line (everything after the script path)
+if [[ $((script_index + 1)) -le $# ]]; then
+    script_cmd_args=("${@:$((script_index + 1))}")
+fi
+
+venv_provider='python' # uv/python/none
+python_version='3.13'
+venv_type='plugin'
+
+_main(){
+  #
+  # We cache the results of the parse, and only regenerate an environment if changes detected. This makes
+  # script invocation much faster
+    # get a hash of the file, only restore if things changed, or the env needs updating
+  local current_checksum=$(stat -c %Y "$script_path" | md5sum | awk '{print $1}') # Hash concatenated mtimes. Probably good enough for now
+
+  local path_hash=$(echo "$script_path" | md5sum | awk '{print $1}') # Consistent cache file name
+  # make the checksum part of the generated path
+  local cache_file="$TM_CACHE_DIR/tm-env-python/script-${path_hash}.cache"
+  local venv_path=''
+  if [[ -f "$cache_file" ]]; then  
+    IFS=":" read -r saved_checksum venv_type venv_provider venv_path< <(cat "$cache_file")
+  fi
+
+  if [[ ! -f "$cache_file" ]] || [[ "$current_checksum" != "${saved_checksum:-}" ]]; then
+    __parse_file
+    __extract_pip_requirements # the encs will install the requirements now, otherwise they are left as is
+
+    if [[ "$venv_type" != "none" ]]; then
+      _debug "pip_requirements=$pip_requirements"
+
+      # list requirements if any
+      if [[ -n "$pip_requirements" ]]; then
+        _debug "Script require directives detected. Requires dependencies:"
+        # Print each requirement before attempting to install all
+        echo "$pip_requirements" | while IFS= read -r req_line; do
+          if [[ -n "$req_line" ]]; then
+              _debug "  - $req_line"
+          fi
+        done
+      fi
+      venv_path="$(__get_venv_dir "$script_path" "$venv_type")"
+    fi
+    mkdir -p "$(dirname "$cache_file")"
+    echo "$current_checksum:$venv_type:$venv_provider:$venv_path" > "$cache_file"
+  fi
+
+  if [[ "$venv_type" == "none" ]]; then
+      # run directly
+      __invoke_direct "${script_cmd_args[@]}"
+  else
+    _debug "Target venv path: $venv_path"
+    # Ensure the parent directory for the venv exists
+    mkdir -p "$(dirname "$venv_path")"
+
+    if [[ "$venv_provider" == 'uv' ]]; then
+      __invoke_via_uv "$venv_path" "${script_cmd_args[@]}"
+    elif [[ "$venv_provider" == "python" ]]; then
+      __invoke_via_python_venv "$venv_path" "${script_cmd_args[@]}"
+    else
+      _fail "unknown venv_provider provider '$venv_provider'"
+    fi
+  fi
+}
+
+__parse_file() {
+  # Stage 1: Extract the header content for require directives
+  AWK_SCRIPT_MODULE_DOCSTRING=$(cat << 'EOF'
+  BEGIN {
+    in_docstring_type = 0 # 0: not in docstring, 1: in """, 2: in '''
+    after_docstring = 0   # Becomes 1 after the main docstring block finishes
+  }
+  {
+    # Shebang (only first line)
+    if (NR == 1 && /^#!\//) { print; next }
+
+    # Inside """ docstring
+    if (in_docstring_type == 1) {
+      print
+      if (/"\""/) {
+        in_docstring_type = 0
+        after_docstring = 1 # Main docstring finished
+      }
+      next
+    }
+
+    # Inside ''' docstring
+    if (in_docstring_type == 2) {
+      print
+      if (/\'\'\'/) {
+        in_docstring_type = 0
+        after_docstring = 1 # Main docstring finished
+      }
+      next
+    }
+
+    # If we are after the main docstring, only allow immediately following blank lines.
+    # Any comment or actual code will stop the header collection.
+    if (after_docstring == 1) {
+      if (/^[ \t]*$/) { print; next } # Blank line immediately after docstrings
+      exit # Anything else (comment or code), stop.
+    }
+
+    # --- Not currently in a multi-line docstring, and not after a docstring yet ---
+
+    # Start of """ docstring
+    if (/^[ \t]*\"\"\"/) {
+      print
+      if (! ($0 ~ /^[ \t]*\"\"\"[^\"]*\"\"\"[ \t]*$/) ) { # If not single-line
+        in_docstring_type = 1
+      } else { # Single-line docstring
+        after_docstring = 1 # Main docstring finished
+      }
+      next
+    }
+
+    # Start of ''' docstring
+    if (/^[ \t]*'''/) {
+      print
+      if (! ($0 ~ /^[ \t]*'''[^']*'''[ \t]*$/) ) { # If not single-line
+        in_docstring_type = 2
+      } else { # Single-line docstring
+        after_docstring = 1 # Main docstring finished
+      }
+      next
+    }
+
+    # Comment lines (these are pre-docstring comments)
+    if (/^[ \t]*#/) { print; next }
+
+    # Blank lines (pre-docstring or between pre-docstring comments)
+    if (/^[ \t]*$/) { print; next }
+
+    # If none of the above matched, this line is considered the first line of actual code.
+    exit # Stop processing, header is complete.
+  }
+  # No END block needed, as $(awk ...) captures all stdout before exit.
+EOF
+  )
+  header_content=$(awk "$AWK_SCRIPT_MODULE_DOCSTRING" "$script_path")
+
+  # Stage 2: Extract "require" lines from the obtained header_content
+  requirements=""
+  if [[ -n "$header_content" ]]; then
+    awk_script_requirements=$(cat << 'EOF'
+  # Match optional leading spaces, optional '#', optional spaces, then "@require", optional spaces, colon, optional spaces
+  /^[[:space:]]*(#[[:space:]]*)?@require[[:space:]]*:[[:space:]]*/ {
+    # Remove the matched part from the beginning of the line (@require: prefix)
+    sub(/^[[:space:]]*(#[[:space:]]*)?@require[[:space:]]*:[[:space:]]*/, "");
+
+    # Remove inline comment ( # comment) from the end of the value
+    sub(/[[:space:]]*#.*/, "");
+
+    # Trim leading/trailing whitespace from the remaining part (the actual value)
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "");
+
+    if ($0 != "") { # Print only if something remains (the cleaned value)
+      print $0
+    }
+  }
+EOF
+  )
+    requirements=$(echo "$header_content" | awk "$awk_script_requirements")
+  fi
+}
+
+__extract_pip_requirements(){
+  # Stage 3: Process require directives
+  pip_requirements=""
+  if [[ -n "$requirements" ]]; then
+    _debug "Script require directives detected:"
+    while IFS= read -r req_line; do
+        if [[ -n "$req_line" ]]; then
+            _debug "  - '$req_line'" # Log the full directive
+            if [[ "$req_line" == "pip:"* ]]; then
+              # Extract the package spec after "pip:"
+              pip_package="${req_line#pip:}"
+              # Add to pip_requirements, ensuring newline separation if not empty
+              if [[ -z "$pip_requirements" ]]; then
+                pip_requirements="$pip_package"
+              else
+                pip_requirements="$pip_requirements"$'\n'"$pip_package"
+              fi
+            elif [[ "$req_line" == "python:"* ]]; then
+              #_debug "    (Note: Python version directive '${req_line#python:}' captured)"
+              python_version="${req_line#python:}"
+            elif [[ "$req_line" == "venv:"* ]]; then
+              venv_type="${req_line#venv:}"
+            else
+              : #_debug "    (Note: Non-pip/non-python directive captured: $req_line)"
+            fi
+        fi
+    done  < <(echo "$requirements")
+  fi
+}
+
+__get_venv_dir(){
+  local script="$1"
+  local venv_type="${2:-}"
+
+  __extract_plugin_name(){
+    local script_path="$1"
+    local dir="$2"
+    _trace "args: $@"
+    
+    local remove_prefix="$dir/"
+    local script_rel_path="${script_path#$remove_prefix}"
+    local plugin_dir_name="${script_rel_path%%/*}"
+    local -A plugin=()
+    _tm::util::parse::plugin_name plugin "$plugin_dir_name"
+    echo -n "$TM_PLUGINS_VENV_DIR/plugin-${plugin['key']}"
+  }
+
+  if [[ "$venv_type" == 'script'  ]]; then
+    echo -n "$TM_PLUGINS_VENV_DIR/script-$(echo -n "$script" | base64 | md5sum | cut -d ' ' -f1)"
+  elif [[ "$script" == "$TM_HOME/"* ]]; then
+    echo -n "$TM_PLUGINS_VENV_DIR/tool-manager"
+  elif [[ -n "$TM_PLUGINS_INSTALL_DIR" && "$script" == "$TM_PLUGINS_INSTALL_DIR/"* ]]; then
+    __extract_plugin_name "$script" "$TM_PLUGINS_INSTALL_DIR"
+  elif [[ -n "$TM_PLUGINS_ENABLED_DIR" && "$script" == "$TM_PLUGINS_ENABLED_DIR/"* ]]; then
+    __extract_plugin_name "$script" "$TM_PLUGINS_ENABLED_DIR"
+  else
+    # per script venv atm, to improve isolation
+    echo -n "$TM_PLUGINS_VENV_DIR/script-$(echo -n "$script" | base64 | md5sum | cut -d ' ' -f1)"
+  fi
+}
+
+__invoke_direct(){
+    _python3 "$script_path" "$@"
+}
+
+__invoke_via_uv(){
+  local venv_path="$1"
+  shift
+  # Create/update the virtual environment using uv
+  _fail_if_not_installed uv 'Please install uv (https://github.com/astral-sh/uv)"'
+
+  _debug "Ensuring venv exists at $venv_path..."
+  if ! uv venv --quiet "$venv_path"; then
+      _fail "Error: Failed to create or validate venv at $venv_path using uv."
+  fi
+  if [[ -n "$pip_requirements" ]]; then
+    _debug "Installing dependencies:"
+    # Install all requirements at once using uv, targeting the venv's Python
+    local python_in_venv="$venv_path/bin/python"
+    if [[ ! -x "$python_in_venv" ]]; then
+      _error "Error: Python executable not found or not executable in venv: $python_in_venv"
+      _warn "Warning: Skipping dependency installation."
+    elif ! echo "$pip_requirements" | uv pip install --quiet --python "$python_in_venv" -r /dev/stdin; then
+      _warn "Warning: Failed to install some/all dependencies into $venv_path using 'uv pip install --python ...'."
+      # Decide if this should be a fatal error. For now, a warning.
+    else
+      _debug "Dependencies installed/updated successfully."
+    fi
+  else
+    _debug "No 'require:' lines found in script header. Skipping dependency installation."
+  fi
+
+  # Stage 5: Invoke script using the venv's Python
+  _debug "Invoking script with venv Python..."
+  # activate env
+  source "$venv_path/bin/activate"
+  # finally run it
+  uv run --no-project "$script_path" "$@"
+}
+
+__invoke_via_python_venv(){
+  local venv_path="$1"
+  _debug "invoking via python venv ($venv_path)"
+  shift
+
+  if [[ ! -f "$venv_path/bin/activate" ]]; then
+    _debug "no venv, creating '$venv_path'"
+    python3 -m venv "$venv_path" 
+    source "$venv_path/bin/activate"
+    # python3 -m pip install --upgrade pip
+    # python3 -m pip --version
+    whereis python
+    _debug "ensuring pip installed"
+    python -m ensurepip --upgrade
+    #python pip install --upgrade pip
+    python -m pip --version
+  else
+    source "$venv_path/bin/activate"
+  fi
+  if [[ -n "$pip_requirements" ]]; then
+    _debug "Installing pip dependencies:"
+    # Install all requirements at once using uv, targeting the venv's Python
+    if ! echo "$pip_requirements" | python -m pip install -r /dev/stdin; then
+      _warn "Warning: Failed to install some/all dependencies into $venv_path using 'python3 -m pip install ...'."
+      # Decide if this should be a fatal error. For now, a warning.
+    else
+      _debug "Dependencies installed/updated successfully."
+    fi
+  fi
+  _debug "invoking python script '$script_path'"
+  python3 "$script_path" "$@"
+}
+
+
+_main "$@"

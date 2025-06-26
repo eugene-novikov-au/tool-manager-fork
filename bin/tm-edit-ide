@@ -1,0 +1,58 @@
+#!/usr/bin/env tm-env-bash
+#
+# Edit the given plugin, or if none-given, edit the tool-manager,
+# using a preferred IDE command.
+# Usage: tm-edit-ide [plugin_basename]
+#
+# The IDE command is determined as follows:
+# 1. Environment variable $TM_IDE_CMD
+# 2. Tool Manager configuration: tm-cfg-get CORE_IDE_CMD
+# 3. Auto-detection: 'code', then 'kate'
+# If no IDE is found, it falls back to tm-edit's default editor resolution.
+#
+
+_tm::source::include .tm.script.sh
+
+plugin_basename="${1:-}" # Optional: the base directory name of the plugin
+
+ide_command=""
+
+# 1. Check environment variable
+if [[ -n "$TM_IDE_CMD" ]]; then
+    ide_command="$TM_IDE_CMD"
+    _debug "Using IDE command from \$TM_IDE_CMD: '$ide_command'"
+fi
+
+# 2. Check Tool Manager configuration (if ide_command still not set)
+if [[ -z "$ide_command" ]]; then
+    # Source .tm.cfg.sh if not already (tm-cfg-get needs it)
+    # ..script.sh should have handled common sourcing, but ensure for direct call potential
+    _include .tm.cfg.sh
+    
+    # Suppress errors from tm-cfg-get if key not set, check return status or output
+    configured_ide_cmd=$(tm-cfg-get --tm CORE_IDE_CMD 2>/dev/null)
+    if [[ -n "$configured_ide_cmd" ]]; then
+        ide_command="$configured_ide_cmd"
+        _debug "Using IDE command from'tm-cfg-get --tm CORE_IDE_CMD': '$ide_command'"
+    fi
+fi
+
+# 3. Auto-detection (if ide_command still not set)
+if [[ -z "$ide_command" ]]; then
+    if command -v code &>/dev/null; then
+        ide_command="code"
+        _debug "Using auto-detected IDE command: 'code'"
+    elif command -v kate &>/dev/null; then
+        ide_command="kate"
+        _debug "Using auto-detected IDE command: 'kate'"
+    fi
+fi
+
+# If an IDE command is resolved, use it. Otherwise, tm-edit will use its own defaults.
+if [[ -n "$ide_command" ]]; then
+    _info "Attempting to use IDE command: '$ide_command'"
+    tm-edit "$plugin_basename" "$ide_command"
+else
+    _info "No specific IDE command resolved, falling back to tm-edit default editor resolution."
+    tm-edit "$plugin_basename" # Let tm-edit handle editor resolution ($EDITOR, vi, nano)
+fi

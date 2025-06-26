@@ -1,0 +1,33 @@
+#!/usr/bin/env tm-env-bash
+#
+# Enables one or more Tool Manager plugins by their qualified name.
+# After enabling, 'tm-reload' is automatically called.
+#
+# Usage: tm-plugin-enable -p [qualified_plugin_name_1] -p [qualified_plugin_name_2] ...
+#
+
+_tm::source::include_once .tm.script.sh .tm.plugin.sh .tm.plugins.sh
+
+_trap_error
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-plugins "|remainder|required|multi|short=p|long=plugin|value=PLUGIN|desc=The plugin(s) to enable." \
+    --opt-prefix "|desc=The prefix to append to all the plugin's script." \
+    --result args \
+    -- "$@"
+
+prefix="${args[prefix]}"
+if [[ -n "$prefix" ]]; then
+    prefix+=":"
+fi
+
+IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
+declare -A plugin
+for plugin_qname in "${plugin_names[@]}"; do
+    _tm::util::parse::plugin plugin "$prefix$plugin_qname"
+    _tm::plugin::enable plugin 
+done
+#_tm::plugins::reload_all_enabled
+

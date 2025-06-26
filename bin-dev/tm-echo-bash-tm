@@ -1,0 +1,5 @@
+#!/usr/bin/env tm-env-bash
+#
+# For testing performance. Run with 'time'
+
+echo "tm-echo-bash-tm: $@"

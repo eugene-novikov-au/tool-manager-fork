@@ -1,0 +1,11 @@
+#!/usr/bin/env tm-env-node
+
+// @require: express
+// @require: lodash
+console.log("Hello, world!");
+const express = require('express');
+const _ = require('lodash');
+
+console.log("Express version:", express.version);
+console.log("Lodash isFunction:", _.isFunction);
+console.log(Deno.args)

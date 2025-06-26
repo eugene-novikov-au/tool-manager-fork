@@ -1,0 +1,26 @@
+#!/usr/bin/env tm-env-bash
+#
+# Print some useful info about tool-manager
+#
+
+_tm::source::include .tm.script.sh
+_tm::source::include .tm.plugins.sh
+
+spacer="    "
+echo "$__TM_NAME config"
+echo "   home-dir: ${TM_HOME}$spacer(TM_HOME)"
+echo "   bin-dir : ${TM_BIN}$spacer(TM_BIN)"
+echo "   var-dir : ${TM_VAR_DIR}$spacer(TM_VAR_DIR)"
+echo "   config:"
+echo "      plugin-name   : ${__TM_NAME}"
+echo "      custom-config : $TM_PLUGINS_CFG_DIR/${__TM_NAME}/.env"
+echo "   logging:"
+echo "      debug-enabled       : $(_is_debug)$spacer(TM_LOG)"
+echo "      trace-enabled       : $(_is_trace)$spacer(TM_LOG)"
+echo "   plugins:"
+echo "      install-dir: ${TM_PLUGINS_INSTALL_DIR}$spacer(TM_PLUGINS_INSTALL_DIR)"
+echo "      enabled-dir: ${TM_PLUGINS_ENABLED_DIR}$spacer(TM_PLUGINS_ENABLED_DIR)"
+echo "      bin-dir    : ${TM_PLUGINS_BIN_DIR}$spacer(TM_PLUGINS_BIN_DIR)"
+echo "      config-dir : ${TM_PLUGINS_CFG_DIR}$spacer(TM_PLUGINS_CFG_DIR)"
+echo "   enabled-plugins:"
+_tm::plugins::find_all_enabled_dirs | xargs -I {} basename {} | sort | sed 's/^/      /' || true

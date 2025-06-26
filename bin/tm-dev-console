@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#
+
+export PATH="$PATH:$TM_HOME/bin-internal:$TM_HOME/bin-dev"
+bash --init-file "$TM_BIN/.tm.boot.sh" -i

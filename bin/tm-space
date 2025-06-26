@@ -1,0 +1,17 @@
+#!/usr/bin/env tm-env-bash
+#
+# Launch a space
+#
+
+_tm::source::include .tm.script.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --help-tip \
+    --opt-key "|remainder|short=k|value=KEY|desc=The space key" \
+    --opt-guid "|short=g|value=GUID|desc=The space guid" \
+    --result args \
+    -- "$@"
+
+_todo "implement me!"

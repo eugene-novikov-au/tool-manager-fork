@@ -1,0 +1,254 @@
+#!/usr/bin/env tm-env-python
+
+# @require:venv:script      # none|script|plugin - tcl doesn't work in a uv env atm
+# @require:python:3.13
+# @require:pip:ttkbootstrap
+
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from tkinter import Menu # Standard Menu, ttkbootstrap doesn't replace it directly
+import tkinter as tk # For tk.Text, tk.WORD, tk.END if not replaced by ttk equivalents
+import subprocess
+import asyncio
+import asyncio.subprocess # Added for PIPE
+import threading
+
+class App(ttk.Window):
+    def __init__(self):
+        super().__init__(themename="litera") # Or any other theme e.g., "superhero", "sandstone"
+        self.loaded_tabs = {} # To track loaded state of plugin tabs
+
+        self.title("Tool-Manager")
+        self.geometry("800x600")
+
+        # --- Menubar ---
+        menubar = Menu(self)
+        self.config(menu=menubar)
+
+        settings_menu = Menu(menubar, tearoff=0)
+        settings_menu.add_command(label="Preferences...", command=self.show_preferences)
+        # Add more settings options here if needed
+        menubar.add_cascade(label="Settings", menu=settings_menu)
+
+        # --- Main Layout ---
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill=BOTH, expand=True) # Use constants from ttkbootstrap
+
+        # --- Navigation Pane (Left) ---
+        # ttkbootstrap themes will style frames. 'style="Nav.TFrame"' might not be needed or could be adapted.
+        # For now, let's use a standard Frame and let the theme handle it.
+        # Add 'bootstyle="secondary"' or similar for different background if needed.
+        nav_pane = ttk.Frame(main_frame, width=200)
+        nav_pane.pack(side=LEFT, fill=Y, padx=5, pady=5) # Use constants
+        nav_pane.pack_propagate(False) # Prevent nav_pane from shrinking to fit content
+
+        ttk.Label(nav_pane, text="Navigation", font=("Arial", 14)).pack(pady=10)
+        # Add navigation buttons/widgets here
+        ttk.Button(nav_pane, text="File Explorer", bootstyle=SECONDARY).pack(fill=X, pady=5) # Use constants
+        ttk.Button(nav_pane, text="Search", bootstyle=SECONDARY).pack(fill=X, pady=5)
+        ttk.Button(nav_pane, text="Plugins", command=self.show_plugins, bootstyle=INFO).pack(fill=X, pady=5)
+        ttk.Button(nav_pane, text="Scripts", command=self.show_scripts, bootstyle=INFO).pack(fill=X, pady=5)
+        ttk.Button(nav_pane, text="Config", command=self.show_config_help, bootstyle=INFO).pack(fill=X, pady=5)
+        ttk.Button(nav_pane, text="Containers", bootstyle=SECONDARY).pack(fill=X, pady=5)
+
+        # --- Editor Pane (Right) ---
+        self.editor_pane = ttk.Frame(main_frame) # Made editor_pane an instance variable
+        self.editor_pane.pack(side=RIGHT, fill=BOTH, expand=True, padx=5, pady=5) # Use constants
+
+        # Initial content for editor_pane (will be replaced by specific views)
+        self.main_label = ttk.Label(self.editor_pane, text="Main Edit Window", font=("Arial", 14))
+        self.main_label.pack(pady=10)
+        
+        # tk.Text is fine, ttkbootstrap has ScrolledText if needed.
+        self.text_area = tk.Text(self.editor_pane, wrap=WORD, undo=True) # Use constants
+        self.text_area.pack(fill=BOTH, expand=True) # Use constants
+        self.text_area.insert(END, "Welcome to the Tool-Manager GUI") # Use constants
+
+        # --- Style Configuration ---
+        # style = ttk.Style(self) # ttkbootstrap handles styling via themes primarily.
+        # style.configure("Nav.TFrame", background="#f0f0f0") # This might be overridden or unnecessary.
+                                                            # Use bootstyle on frames if specific styling is needed.
+
+    def show_preferences(self):
+        # Placeholder for preferences dialog
+        pref_window = ttk.Toplevel(self)
+        pref_window.title("Preferences")
+        pref_window.geometry("300x200")
+        ttk.Label(pref_window, text="Settings/Preferences would go here.").pack(pady=20, padx=20)
+
+    def show_config_help(self):
+        self.show_command_output(['tm-help-cfg'])
+
+    def show_scripts(self):
+        self.show_command_output(['tm-plugin-ls', '--scripts'])
+
+    def show_plugins(self):
+        self.clear_editor_pane()
+
+        self.notebook = ttk.Notebook(self.editor_pane) # Made notebook an instance variable
+        self.notebook.pack(fill=BOTH, expand=True) # Use constants
+        self.loaded_tabs.clear() # Clear previously loaded tab states
+
+        tabs_config = {
+            'All': {'args': ['tm-plugin-ls', '--all', '--format', 'pretty' ]},
+            'Installed': {'args': ['tm-plugin-ls', '--installed', '--format', 'pretty']},
+            'Enabled': {'args': ['tm-plugin-ls', '--enabled', '--format', 'pretty']},
+            'Disabled': {'args': ['tm-plugin-ls', '--disabled', '--format', 'pretty']},
+            'Available': {'args': ['tm-plugin-ls', '--available', '--format', 'pretty']},
+            'Search': {'is_search_tab': True}
+        }
+        
+        for tab_name, config in tabs_config.items():
+            tab_frame = ttk.Frame(self.notebook)
+            self.notebook.add(tab_frame, text=tab_name)
+            
+            text_widget = tk.Text(tab_frame, wrap=WORD, undo=True) # Use constants
+            
+            if config.get('is_search_tab'):
+                search_frame = ttk.Frame(tab_frame)
+                search_frame.pack(fill=X, pady=5, padx=5) # Use constants
+                search_entry = ttk.Entry(search_frame)
+                search_entry.pack(side=LEFT, fill=X, expand=True, padx=(0,5)) # Use constants
+                
+                # Filter out empty strings from args, which can happen if search_entry is empty
+                # filtered_args = [arg for arg in args if arg]
+                # if not filtered_args: # e.g. only tm-plugin-ls was passed and search was empty
+                #     text_widget.delete("1.0", END)
+                #     text_widget.insert(END, "Please enter a search term or select a pre-defined filter.")
+                #     return
+
+
+                # Need to capture search_entry and text_widget correctly in lambda
+                search_button_command = lambda se=search_entry, tw=text_widget: \
+                    self.populate_tab_with_command(tw, ['tm-plugin-ls', '--all', '--match',  "*" + se.get() + "*" ])
+                
+                search_button = ttk.Button(search_frame, text="Search", command=search_button_command, bootstyle=SUCCESS)
+                search_button.pack(side=LEFT) # Use constants
+                text_widget.pack(fill=BOTH, expand=True, padx=5, pady=(0,5)) # Use constants
+                text_widget.insert(END, "Enter search term above and click Search.") # Use constants
+            else:
+                text_widget.pack(fill=BOTH, expand=True, padx=5, pady=5) # Use constants
+                text_widget.insert(END, "Loading...") # Use constants
+
+            # Store references for lazy loading
+            tab_frame.text_widget = text_widget
+            tab_frame.load_args = config.get('args')
+            tab_frame.is_search_tab = config.get('is_search_tab', False)
+
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_plugin_tab_selected)
+        # Manually trigger loading for the initially selected tab (usually the first one)
+        self.after(100, lambda: self.on_plugin_tab_selected(None)) # Use 'after' to ensure notebook is fully initialized
+
+    def on_plugin_tab_selected(self, event):
+        if not hasattr(self, 'notebook'): # Guard against premature calls if UI is being rebuilt
+            return
+
+        try:
+            selected_tab_index = self.notebook.index(self.notebook.select())
+            selected_tab_frame_id = self.notebook.tabs()[selected_tab_index]
+            selected_tab_frame = self.nametowidget(selected_tab_frame_id)
+        except tk.TclError: # Can happen if tabs are being destroyed/recreated. tk.TclError is still valid.
+            return
+
+        tab_id = id(selected_tab_frame)
+
+        if not selected_tab_frame.is_search_tab and tab_id not in self.loaded_tabs:
+            if hasattr(selected_tab_frame, 'load_args') and selected_tab_frame.load_args:
+                self.populate_tab_with_command(selected_tab_frame.text_widget, selected_tab_frame.load_args)
+                self.loaded_tabs[tab_id] = True
+        # For search tab, content is loaded on button click, not tab selection, so no specific action here.
+
+
+    def clear_editor_pane(self):
+        for widget in self.editor_pane.winfo_children():
+            widget.destroy()
+        # Re-assign self.text_area to a new Text widget if it's cleared,
+        # or ensure other methods don't rely on the old self.text_area
+        # For simplicity, we'll just clear. If show_command_output is called later,
+        # it will create a new text_area if needed or we can re-create it here.
+        # For now, let's assume specific views will create their own text areas.
+
+
+    async def _populate_tab_content_async(self, args):
+        # This part runs in the asyncio event loop (potentially in a worker thread)
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                # Ensure the environment is inherited, especially PATH
+                env=None # Inherits environment
+            )
+            stdout, stderr = await proc.communicate()
+
+            if proc.returncode == 0:
+                return stdout.decode(errors='replace') if stdout else ""
+            else:
+                error_message = f"Error executing '{' '.join(args)}' (code: {proc.returncode}):\n"
+                if stdout: # stdout might contain useful info even on error
+                    error_message += f"Stdout:\n{stdout.decode(errors='replace')}\n"
+                if stderr:
+                    error_message += f"Stderr:\n{stderr.decode(errors='replace')}\n"
+                return error_message
+        except FileNotFoundError:
+            return f"Error: Command '{args[0]}' not found.\nPlease ensure it is in your PATH."
+        except Exception as e:
+            return f"An unexpected error occurred for '{' '.join(args)}':\n{str(e)}"
+
+    def _update_text_widget(self, text_widget, content):
+        # This method will be called via self.after to run in the main Tkinter thread
+        current_content = text_widget.get("1.0", END).strip()
+        if current_content.startswith(f'Loading'): # Only clear if it's a loading message
+            text_widget.delete("1.0", END)
+        else: # Append if there's already some output (e.g. from a previous partial load)
+            if not current_content.endswith("\n\n"):
+                 text_widget.insert(END, "\n\n") # Add separator if needed
+        text_widget.insert(END, content)
+        text_widget.see(END) # Scroll to the end
+
+    def populate_tab_with_command(self, text_widget, args):
+        # Initial UI update (loading message) - runs in main thread
+        # Check if it's already loading to prevent multiple "Loading..." messages if rapidly clicked
+        current_text = text_widget.get("1.0", f"1.{len(f'Loading {args}...')}")
+        if not current_text.startswith(f'Loading {args}...'):
+            text_widget.delete("1.0", END)
+            text_widget.insert(END, f'Loading {args}...')
+
+        def task_runner():
+            # This function runs in a new thread
+            async def main_coro():
+                result_content = await self._populate_tab_content_async(args)
+                # Schedule the GUI update back to the main Tkinter thread
+                self.after(0, lambda: self._update_text_widget(text_widget, result_content))
+            
+            try:
+                asyncio.run(main_coro())
+            except RuntimeError as e:
+                error_msg = f"Asyncio runtime error: {e}\nThis might indicate an issue with event loop management."
+                self.after(0, lambda: self._update_text_widget(text_widget, error_msg))
+            except Exception as e_global: # Catch any other unexpected errors in the thread
+                error_msg = f"Unexpected error in async task runner: {e_global}"
+                self.after(0, lambda: self._update_text_widget(text_widget, error_msg))
+
+        # Start the thread
+        thread = threading.Thread(target=task_runner)
+        thread.daemon = True # Ensure thread exits when main program exits
+        thread.start()
+
+    def show_command_output(self, args):
+        # This method now needs to ensure the editor_pane is set up for a single text_area view
+        self.clear_editor_pane()
+        self.main_label = ttk.Label(self.editor_pane, text="Command Output", font=("Arial", 14)) # Or derive title from args
+        self.main_label.pack(pady=10)
+        
+        self.text_area = tk.Text(self.editor_pane, wrap=WORD, undo=True) # Recreate text_area, use constants
+        self.text_area.pack(fill=BOTH, expand=True) # Use constants
+        
+        self.populate_tab_with_command(self.text_area, args)
+
+
+
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()

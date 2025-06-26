@@ -1,0 +1,10 @@
+#!/usr/bin/env tm-env-python
+#
+# For testing performance. Run with 'time'
+#
+# @require:venv:script      # none|script|plugin
+# @require:python:3.13
+# @require:pip:ttkbootstrap
+
+if __name__ == "__main__":
+    print("tm-echo-python")

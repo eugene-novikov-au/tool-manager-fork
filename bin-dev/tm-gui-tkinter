@@ -1,0 +1,198 @@
+#!/usr/bin/env tm-env-python
+
+# @require:venv:script      # none|script|plugin - tcl doesn't work in a uv env atm
+# @require:python:3.13
+# @require:pip:ttkbootstrap
+
+import tkinter as tk
+from tkinter import ttk
+from tkinter import Menu
+import subprocess
+
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.loaded_tabs = {} # To track loaded state of plugin tabs
+
+        self.title("Tool-Manager")
+        self.geometry("800x600")
+
+        # --- Menubar ---
+        menubar = Menu(self)
+        self.config(menu=menubar)
+
+        settings_menu = Menu(menubar, tearoff=0)
+        settings_menu.add_command(label="Preferences...", command=self.show_preferences)
+        # Add more settings options here if needed
+        menubar.add_cascade(label="Settings", menu=settings_menu)
+
+        # --- Main Layout ---
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # --- Navigation Pane (Left) ---
+        nav_pane = ttk.Frame(main_frame, width=200, style="Nav.TFrame")
+        nav_pane.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=5)
+        nav_pane.pack_propagate(False) # Prevent nav_pane from shrinking to fit content
+
+        ttk.Label(nav_pane, text="Navigation", font=("Arial", 14)).pack(pady=10)
+        # Add navigation buttons/widgets here
+        ttk.Button(nav_pane, text="File Explorer").pack(fill=tk.X, pady=5)
+        ttk.Button(nav_pane, text="Search").pack(fill=tk.X, pady=5)
+        ttk.Button(nav_pane, text="Plugins", command=self.show_plugins).pack(fill=tk.X, pady=5)
+        ttk.Button(nav_pane, text="Scripts", command=self.show_scripts).pack(fill=tk.X, pady=5)
+        ttk.Button(nav_pane, text="Config", command=self.show_config_help).pack(fill=tk.X, pady=5)
+        ttk.Button(nav_pane, text="Containers").pack(fill=tk.X, pady=5)
+
+        # --- Editor Pane (Right) ---
+        self.editor_pane = ttk.Frame(main_frame) # Made editor_pane an instance variable
+        self.editor_pane.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Initial content for editor_pane (will be replaced by specific views)
+        self.main_label = ttk.Label(self.editor_pane, text="Main Edit Window", font=("Arial", 14))
+        self.main_label.pack(pady=10)
+        
+        self.text_area = tk.Text(self.editor_pane, wrap=tk.WORD, undo=True)
+        self.text_area.pack(fill=tk.BOTH, expand=True)
+        self.text_area.insert(tk.END, "Welcome to the Tool-Manager GUI")
+
+        # --- Style Configuration ---
+        style = ttk.Style(self)
+        style.configure("Nav.TFrame", background="#f0f0f0") # Light grey for nav pane
+
+    def show_preferences(self):
+        # Placeholder for preferences dialog
+        pref_window = tk.Toplevel(self)
+        pref_window.title("Preferences")
+        pref_window.geometry("300x200")
+        ttk.Label(pref_window, text="Settings/Preferences would go here.").pack(pady=20, padx=20)
+
+    def show_config_help(self):
+        self.show_command_output(['tm-help-cfg'])
+
+    def show_scripts(self):
+        self.show_command_output(['tm-plugin-ls', '--scripts'])
+
+    def show_plugins(self):
+        self.clear_editor_pane()
+
+        self.notebook = ttk.Notebook(self.editor_pane) # Made notebook an instance variable
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        self.loaded_tabs.clear() # Clear previously loaded tab states
+
+        tabs_config = {
+            'All': {'args': ['tm-plugin-ls']},
+            'Installed': {'args': ['tm-plugin-ls', '--installed']},
+            'Enabled': {'args': ['tm-plugin-ls', '--enabled']},
+            'Disabled': {'args': ['tm-plugin-ls', '--disabled']},
+            'Available': {'args': ['tm-plugin-ls', '--available']},
+            'Search': {'is_search_tab': True}
+        }
+        
+        for tab_name, config in tabs_config.items():
+            tab_frame = ttk.Frame(self.notebook)
+            self.notebook.add(tab_frame, text=tab_name)
+            
+            text_widget = tk.Text(tab_frame, wrap=tk.WORD, undo=True)
+            
+            if config.get('is_search_tab'):
+                search_frame = ttk.Frame(tab_frame)
+                search_frame.pack(fill=tk.X, pady=5, padx=5)
+                search_entry = ttk.Entry(search_frame)
+                search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,5))
+                
+                # Filter out empty strings from args, which can happen if search_entry is empty
+                # filtered_args = [arg for arg in args if arg]
+                # if not filtered_args: # e.g. only tm-plugin-ls was passed and search was empty
+                #     text_widget.delete("1.0", tk.END)
+                #     text_widget.insert(tk.END, "Please enter a search term or select a pre-defined filter.")
+                #     return
+
+
+                # Need to capture search_entry and text_widget correctly in lambda
+                search_button_command = lambda se=search_entry, tw=text_widget: \
+                    self.populate_tab_with_command(tw, ['tm-plugin-ls', se.get(), '--plain'])
+                
+                search_button = ttk.Button(search_frame, text="Search", command=search_button_command)
+                search_button.pack(side=tk.LEFT)
+                text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
+                text_widget.insert(tk.END, "Enter search term above and click Search.")
+            else:
+                text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+                text_widget.insert(tk.END, "Loading...")
+
+            # Store references for lazy loading
+            tab_frame.text_widget = text_widget
+            tab_frame.load_args = config.get('args')
+            tab_frame.is_search_tab = config.get('is_search_tab', False)
+
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_plugin_tab_selected)
+        # Manually trigger loading for the initially selected tab (usually the first one)
+        self.after(100, lambda: self.on_plugin_tab_selected(None)) # Use 'after' to ensure notebook is fully initialized
+
+    def on_plugin_tab_selected(self, event):
+        if not hasattr(self, 'notebook'): # Guard against premature calls if UI is being rebuilt
+            return
+
+        try:
+            selected_tab_index = self.notebook.index(self.notebook.select())
+            selected_tab_frame_id = self.notebook.tabs()[selected_tab_index]
+            selected_tab_frame = self.nametowidget(selected_tab_frame_id)
+        except tk.TclError: # Can happen if tabs are being destroyed/recreated
+            return
+
+        tab_id = id(selected_tab_frame)
+
+        if not selected_tab_frame.is_search_tab and tab_id not in self.loaded_tabs:
+            if hasattr(selected_tab_frame, 'load_args') and selected_tab_frame.load_args:
+                self.populate_tab_with_command(selected_tab_frame.text_widget, selected_tab_frame.load_args)
+                self.loaded_tabs[tab_id] = True
+        # For search tab, content is loaded on button click, not tab selection, so no specific action here.
+
+
+    def clear_editor_pane(self):
+        for widget in self.editor_pane.winfo_children():
+            widget.destroy()
+        # Re-assign self.text_area to a new Text widget if it's cleared,
+        # or ensure other methods don't rely on the old self.text_area
+        # For simplicity, we'll just clear. If show_command_output is called later,
+        # it will create a new text_area if needed or we can re-create it here.
+        # For now, let's assume specific views will create their own text areas.
+
+
+    def populate_tab_with_command(self, text_widget, args):
+        text_widget.delete("1.0", tk.END)
+        text_widget.insert(tk.END, f'Loading {args}...')
+        # TODO: async
+        try:
+            result = subprocess.check_output(args, text=True)
+            text_widget.delete("1.0", tk.END)
+            text_widget.insert(tk.END, result)
+        except FileNotFoundError:
+            text_widget.delete("1.0", tk.END)
+            text_widget.insert(tk.END, f"Error: Command for '{' '.join(args)}' not found.\nPlease ensure it is in your PATH.")
+        except subprocess.CalledProcessError as e:
+            text_widget.delete("1.0", tk.END)
+            text_widget.insert(tk.END, f"Error executing '{' '.join(args)}':\n{e.output}")
+        except Exception as e:
+            text_widget.delete("1.0", tk.END)
+            text_widget.insert(tk.END, f"An unexpected error occurred for '{' '.join(args)}':\n{str(e)}")
+
+
+    def show_command_output(self, args):
+        # This method now needs to ensure the editor_pane is set up for a single text_area view
+        self.clear_editor_pane()
+        self.main_label = ttk.Label(self.editor_pane, text="Command Output", font=("Arial", 14)) # Or derive title from args
+        self.main_label.pack(pady=10)
+        
+        self.text_area = tk.Text(self.editor_pane, wrap=tk.WORD, undo=True) # Recreate text_area
+        self.text_area.pack(fill=tk.BOTH, expand=True)
+        
+        self.populate_tab_with_command(self.text_area, args)
+
+
+
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()

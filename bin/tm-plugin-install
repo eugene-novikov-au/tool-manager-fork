@@ -1,0 +1,62 @@
+#!/usr/bin/env tm-env-bash
+#
+# Installs one or more tool-manager plugins.
+#
+# After installation, 'tm-reload' is automatically called.
+#
+# If no plugin specifications are provided as arguments, the script will interactively
+# prompt for plugin(s) to install. At the prompt:
+#   - Enter one or more space-separated plugin specifications.
+#   - Pressing Enter without input will list available plugins from INI files.
+#
+
+_tm::source::include .tm.script.sh .tm.plugins.sh
+
+_trap_error
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-plugins "|remainder|multi|short=p|long=plugin|value=PLUGIN|desc=The plugin(s) to enable.|example='myplugin' 'prefix:myplugin' 'myplugin@v1.2' 'prefix:myplugin@v1.2.3' 'prefix:vendor/myplugin' 'vendor/myplugin' 'prefix:vendo/myplugin@version'"  \
+    --result args \
+    -- "$@"
+
+plugins="${args[plugins]:-}"
+
+_reload=0
+if [[ -n "${plugins}" ]]; then
+    IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
+    declare -A plugin
+    for plugin in "${plugin_names[@]}"; do
+        if _tm::plugins::install "${plugin}"; then
+            _reload=1
+        fi
+    done
+else
+    plugins_to_install=""
+    while true; do
+        _read "Which plugin(s) to install (space-separated, empty to list available)? : " plugins_to_install
+        if [[ -z "$plugins_to_install" ]]; then
+            _info "No input. Listing available plugins:"
+            tm-plugin-ls --available
+            # Loop continues, re-prompting
+        else
+            # User provided input, break from prompt loop
+            break
+        fi
+    done
+
+    # Process the space-separated string of plugin specifications
+    declare qname
+    for qname in $plugins_to_install; do # Relies on word splitting
+        if [[ -n "$qname" ]]; then # Check if the part is not empty
+             if _tm::plugins::install "$qname"; then
+                _reload=1
+             fi
+        fi
+    done
+fi
+
+if [[ $_reload == 1 ]]; then
+    tm-reload
+fi

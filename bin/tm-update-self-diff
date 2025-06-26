@@ -1,0 +1,19 @@
+#!/usr/bin/env tm-env-bash
+
+#
+# Shows a list of filenames that differ between the local Tool Manager
+# core installation (current HEAD) and the remote 'origin/main' branch.
+# It performs a 'git fetch' before diffing.
+#
+# Usage: tm-update-self-diff
+#
+
+_tm::source::include .tm.script.sh
+
+_info "Getting tool-manager update diff in "$TM_HOME""
+cd "$TM_HOME"
+git fetch origin  # fetch changes, but don't merge
+git diff --name-only origin/main # diff your current head to the fetched commit
+
+
+

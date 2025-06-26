@@ -1,0 +1,15 @@
+#!/usr/bin/env tm-env-bash
+#
+# Updates the Tool Manager core installation by running 'git pull --ff-only'
+# in the $TM_HOME directory.
+#
+# Usage: tm-update-self
+#
+
+_tm::source::include .tm.script.sh
+
+_info "Updating tool-manager in "$TM_HOME""
+cd "$TM_HOME"
+git pull --ff-only
+
+

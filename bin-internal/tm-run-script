@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+#
+# Invoked first by the plugin wrapper script
+#
+
+set -Eeuo pipefail
+
+if [[ "${TM_ENABLED:-}" != '1' ]]; then
+  >&2 echo "ERROR: tool-manager is disabled (TM_ENABLED=${TM_ENABLED:-})"
+  exit 1
+fi
+
+_trap_error(){
+  local exit_code=$?
+  >&2 echo "UNCAUGHT ERROR!: Script '$0' failed at line ${LINENO} with exit code $exit_code "
+  local i=0
+  local line file func
+  while read -r line func file < <(caller $i); do
+      echo "${file}:${line} ${func}()"
+    ((i++))
+  done
+  exit $exit_code # Exit with the same error code
+}
+
+trap '_trap_error' ERR
+
+#
+# NOTE: we want this script as fast as possible, so that we don't add any overhead to user scripts
+# that don't need any of the tool-manager functionality. Most of the processing has been
+# done in the plugin wrapper script generation 
+#
+
+#_trace "invoke args $@"
+wrapper_script="$1"
+plugin_id="$2"
+plugin_dir="$3"
+real_script="$4"
+shift 4 # the remaining is the user args
+
+export TM_PLUGIN_HOME="$plugin_dir"
+export TM_PLUGIN_ID="$plugin_id"
+# ensure plugin's can call their own scripts, without the prefix. The plugin env variables (TM_PLUGIN_..) should still work
+# to pass the config around.
+# The 'bin-internal' are utility scripts for the plugin itself, which are not exposed to the user. This allows
+# for a clutter free bash auto complete, while giving plugins accesss to more tools
+export PATH="$TM_PLUGIN_HOME/bin-internal:$TM_PLUGIN_HOME/bin:$PATH"
+
+# pass the log settings along
+if [[ -n "${TM_LOG:-}" ]]; then
+  export TM_LOG
+fi
+
+# we might be in a nested script which has already loaded things, in which case, lets skip the extra work   
+if ! command -v _tm_load >/dev/null; then 
+  #
+  # Exported helper script to help auto lazy load the tool-manager. This will make all the various log and include functions available
+  #
+  _tm_load(){
+    if ! command -v _tm::boot::init &>/dev/null; then
+        source "$TM_BIN/.tm.boot.sh"
+    fi 
+  }
+  export -f _tm_load
+fi
+
+# TODO: load the plugin config, if configured to do so. This allows pure bash scripts, without a dependency on the tool-manager. The config will be 
+# available via the env variables
+
+# execute as is, we don't run in bash interactive mode by default, as users might just want simple, unadultered bash scripts. It's their choice as to 
+# what they want to include. We make it easy, as all they have to do is call one of the above exported functions, and the tool manager is loaded.
+# If users wan the full experience, they can run theirscripts using shebang: '#!/usr/bin/env tm-env-bash'
+"$real_script" "$@"

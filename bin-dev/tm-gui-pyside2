@@ -1,0 +1,312 @@
+#!/usr/bin/env tm-env-python
+
+# @require:venv:script      # none|script|plugin - tcl doesn't work in a uv env atm
+# @require:python:3.13
+# @require:pip:PySide2
+
+import sys
+import subprocess
+from PySide2 import QtWidgets, QtCore, QtGui
+
+class App(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.loaded_tabs = {} # To track loaded state of plugin tabs
+
+        self.setWindowTitle("Tool-Manager")
+        self.setGeometry(100, 100, 800, 600) # x, y, width, height
+
+        # --- Menubar ---
+        menubar = self.menuBar() # QMainWindow has a built-in menubar
+
+        settings_menu = menubar.addMenu("Settings")
+        preferences_action = QtWidgets.QAction("Preferences...", self)
+        preferences_action.triggered.connect(self.show_preferences)
+        settings_menu.addAction(preferences_action)
+        # Add more settings options here if needed
+
+        # --- Main Layout ---
+        # Central widget to hold the main layout
+        central_widget = QtWidgets.QWidget(self)
+        self.setCentralWidget(central_widget)
+        
+        # Main horizontal layout for the central widget
+        main_layout = QtWidgets.QHBoxLayout(central_widget)
+
+        # --- Navigation Pane (Left) ---
+        nav_pane = QtWidgets.QFrame(self)
+        nav_pane.setFixedWidth(200)
+        nav_pane.setStyleSheet("background-color: #f0f0f0;") # Apply style directly
+        
+        nav_layout = QtWidgets.QVBoxLayout(nav_pane) # Layout for the nav_pane
+        nav_layout.setContentsMargins(5, 5, 5, 5) # Equivalent to padx, pady
+        nav_layout.setSpacing(5) # Equivalent to pady between buttons
+
+        nav_label = QtWidgets.QLabel("Navigation", nav_pane)
+        font = nav_label.font()
+        font.setPointSize(14) # Approximate ("Arial", 14)
+        font.setFamily("Arial")
+        nav_label.setFont(font)
+        nav_label.setAlignment(QtCore.Qt.AlignCenter) # Center text
+        nav_layout.addWidget(nav_label)
+        
+        # Add navigation buttons/widgets here
+        btn_file_explorer = QtWidgets.QPushButton("File Explorer", nav_pane)
+        nav_layout.addWidget(btn_file_explorer)
+        btn_search = QtWidgets.QPushButton("Search", nav_pane)
+        nav_layout.addWidget(btn_search)
+        btn_plugins = QtWidgets.QPushButton("Plugins", nav_pane)
+        btn_plugins.clicked.connect(self.show_plugins)
+        nav_layout.addWidget(btn_plugins)
+        btn_scripts = QtWidgets.QPushButton("Scripts", nav_pane)
+        btn_scripts.clicked.connect(self.show_scripts)
+        nav_layout.addWidget(btn_scripts)
+        btn_config = QtWidgets.QPushButton("Config", nav_pane)
+        btn_config.clicked.connect(self.show_config_help)
+        nav_layout.addWidget(btn_config)
+        btn_containers = QtWidgets.QPushButton("Containers", nav_pane)
+        nav_layout.addWidget(btn_containers)
+        
+        nav_layout.addStretch() # Add stretch to push buttons to the top
+
+        main_layout.addWidget(nav_pane)
+
+
+        # --- Editor Pane (Right) ---
+        self.editor_pane = QtWidgets.QFrame(self) # QFrame can act as a container
+        editor_layout = QtWidgets.QVBoxLayout(self.editor_pane) # Layout for the editor_pane
+        editor_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Initial content for editor_pane (will be replaced by specific views)
+        self.main_label = QtWidgets.QLabel("Main Edit Window", self.editor_pane)
+        font_main_label = self.main_label.font()
+        font_main_label.setPointSize(14)
+        font_main_label.setFamily("Arial")
+        self.main_label.setFont(font_main_label)
+        editor_layout.addWidget(self.main_label)
+        
+        self.text_area = QtWidgets.QTextEdit(self.editor_pane)
+        self.text_area.setWordWrapMode(QtGui.QTextOption.WordWrap)
+        self.text_area.setUndoRedoEnabled(True)
+        self.text_area.setPlainText("Welcome to the Tool-Manager GUI")
+        editor_layout.addWidget(self.text_area, 1) # The '1' makes it expand
+
+        main_layout.addWidget(self.editor_pane, 1) # The '1' makes editor_pane expand
+
+        # Style configuration is handled directly or via QSS
+
+    def show_preferences(self):
+        # Placeholder for preferences dialog
+        # pref_window = tk.Toplevel(self)
+        # pref_window.title("Preferences")
+        # pref_window.geometry("300x200")
+        # ttk.Label(pref_window, text="Settings/Preferences would go here.").pack(pady=20, padx=20)
+        pref_dialog = QtWidgets.QDialog(self)
+        pref_dialog.setWindowTitle("Preferences")
+        pref_dialog.setGeometry(150, 150, 300, 200)
+        layout = QtWidgets.QVBoxLayout(pref_dialog)
+        label = QtWidgets.QLabel("Settings/Preferences would go here.", pref_dialog)
+        layout.addWidget(label)
+        layout.setContentsMargins(20,20,20,20)
+        pref_dialog.setLayout(layout)
+        pref_dialog.exec_() # Show as a modal dialog
+
+
+    def show_config_help(self):
+        self.show_command_output(['tm-help-cfg'])
+
+    def show_scripts(self):
+        self.show_command_output(['tm-plugin-ls', '--scripts'])
+
+    def show_plugins(self):
+        self.clear_editor_pane()
+
+        # self.notebook = ttk.Notebook(self.editor_pane) # Made notebook an instance variable
+        # self.notebook.pack(fill=tk.BOTH, expand=True)
+        self.notebook = QtWidgets.QTabWidget(self.editor_pane)
+        self.editor_pane.layout().addWidget(self.notebook, 1) # Add to editor_pane's layout and make it expand
+
+        self.loaded_tabs.clear() # Clear previously loaded tab states
+
+        tabs_config = {
+            'All': {'args': ['tm-plugin-ls']},
+            'Installed': {'args': ['tm-plugin-ls', '--installed']},
+            'Enabled': {'args': ['tm-plugin-ls', '--enabled']},
+            'Disabled': {'args': ['tm-plugin-ls', '--disabled']},
+            'Available': {'args': ['tm-plugin-ls', '--available']},
+            'Search': {'is_search_tab': True}
+        }
+        
+        for tab_name, config in tabs_config.items():
+            # tab_frame = ttk.Frame(self.notebook)
+            # self.notebook.add(tab_frame, text=tab_name)
+            tab_widget = QtWidgets.QWidget() # Each tab needs a container widget
+            self.notebook.addTab(tab_widget, tab_name)
+            tab_layout = QtWidgets.QVBoxLayout(tab_widget) # Layout for the content of the tab
+            tab_layout.setContentsMargins(5,5,5,5)
+            
+            # text_widget = tk.Text(tab_frame, wrap=tk.WORD, undo=True)
+            text_widget = QtWidgets.QTextEdit(tab_widget)
+            text_widget.setWordWrapMode(QtGui.QTextOption.WordWrap)
+            text_widget.setUndoRedoEnabled(True)
+
+            if config.get('is_search_tab'):
+                # search_frame = ttk.Frame(tab_frame)
+                # search_frame.pack(fill=tk.X, pady=5, padx=5)
+                search_frame = QtWidgets.QWidget(tab_widget) # Container for search input and button
+                search_layout = QtWidgets.QHBoxLayout(search_frame)
+                search_layout.setContentsMargins(0,0,0,0) # No extra margins for this internal layout
+                
+                # search_entry = ttk.Entry(search_frame)
+                # search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0,5))
+                search_entry = QtWidgets.QLineEdit(search_frame)
+                search_layout.addWidget(search_entry, 1) # Expandable
+                                
+                # Need to capture search_entry and text_widget correctly in lambda
+                # search_button_command = lambda se=search_entry, tw=text_widget: \
+                #     self.populate_tab_with_command(tw, ['tm-plugin-ls', se.get(), '--plain'])
+                
+                # search_button = ttk.Button(search_frame, text="Search", command=search_button_command)
+                # search_button.pack(side=tk.LEFT)
+                search_button = QtWidgets.QPushButton("Search", search_frame)
+                # Correct lambda for PySide: use text() method for QLineEdit
+                search_button.clicked.connect(lambda checked=False, se=search_entry, tw=text_widget: \
+                    self.populate_tab_with_command(tw, ['tm-plugin-ls', se.text(), '--plain']))
+
+                search_layout.addWidget(search_button)
+                tab_layout.addWidget(search_frame) # Add search frame to tab layout
+                
+                # text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=(0,5))
+                # text_widget.insert(tk.END, "Enter search term above and click Search.")
+                text_widget.setPlainText("Enter search term above and click Search.")
+                tab_layout.addWidget(text_widget, 1) # Add text_widget to tab layout, make it expand
+            else:
+                # text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+                # text_widget.insert(tk.END, "Loading...")
+                text_widget.setPlainText("Loading...")
+                tab_layout.addWidget(text_widget, 1) # Add text_widget to tab layout, make it expand
+
+            # Store references for lazy loading
+            # tab_frame.text_widget = text_widget
+            # tab_frame.load_args = config.get('args')
+            # tab_frame.is_search_tab = config.get('is_search_tab', False)
+            # Store these on the tab_widget itself (the QWidget for the tab)
+            tab_widget.text_widget = text_widget
+            tab_widget.load_args = config.get('args')
+            tab_widget.is_search_tab = config.get('is_search_tab', False)
+
+
+        # self.notebook.bind("<<NotebookTabChanged>>", self.on_plugin_tab_selected)
+        self.notebook.currentChanged.connect(self.on_plugin_tab_selected)
+        # Manually trigger loading for the initially selected tab (usually the first one)
+        # self.after(100, lambda: self.on_plugin_tab_selected(None)) # Use 'after' to ensure notebook is fully initialized
+        QtCore.QTimer.singleShot(100, lambda: self.on_plugin_tab_selected(self.notebook.currentIndex()))
+
+
+    def on_plugin_tab_selected(self, index): # index is passed by currentChanged signal
+        if not hasattr(self, 'notebook') or not self.notebook:
+            return
+
+        try:
+            # selected_tab_index = self.notebook.index(self.notebook.select())
+            # selected_tab_frame_id = self.notebook.tabs()[selected_tab_index]
+            # selected_tab_frame = self.nametowidget(selected_tab_frame_id)
+            selected_tab_widget = self.notebook.widget(index) # Get the QWidget for the current tab
+            if not selected_tab_widget: # Should not happen if index is valid
+                return
+        # except tk.TclError: # Can happen if tabs are being destroyed/recreated
+        except RuntimeError: # More likely Qt error if widget is gone
+            return
+
+        # tab_id = id(selected_tab_frame)
+        tab_id = id(selected_tab_widget)
+
+
+        if not selected_tab_widget.is_search_tab and tab_id not in self.loaded_tabs:
+            if hasattr(selected_tab_widget, 'load_args') and selected_tab_widget.load_args:
+                self.populate_tab_with_command(selected_tab_widget.text_widget, selected_tab_widget.load_args)
+                self.loaded_tabs[tab_id] = True
+        # For search tab, content is loaded on button click, not tab selection, so no specific action here.
+
+
+    def clear_editor_pane(self):
+        # for widget in self.editor_pane.winfo_children():
+        #     widget.destroy()
+        # In Qt, we remove widgets from the layout and delete them
+        if self.editor_pane.layout() is not None:
+            while self.editor_pane.layout().count():
+                item = self.editor_pane.layout().takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater() # Safe way to delete widgets
+        # If self.editor_pane itself needs to be cleared of direct children not in a layout (unlikely here)
+        # for child in self.editor_pane.findChildren(QtWidgets.QWidget):
+        #     child.deleteLater()
+        # Re-create layout if it was removed or to ensure it's clean
+        if self.editor_pane.layout() is None:
+             new_layout = QtWidgets.QVBoxLayout(self.editor_pane)
+             self.editor_pane.setLayout(new_layout)
+        # Ensure main_label and text_area are recreated or handled by calling methods
+
+
+    def populate_tab_with_command(self, text_widget, args):
+        # text_widget.delete("1.0", tk.END)
+        # text_widget.insert(tk.END, f'Loading {args}...')
+        text_widget.setPlainText(f'Loading {args}...')
+        # TODO: async - QProcess or QThread would be the Qt way
+        try:
+            result = subprocess.check_output(args, text=True, stderr=subprocess.STDOUT)
+            # text_widget.delete("1.0", tk.END)
+            # text_widget.insert(tk.END, result)
+            text_widget.setPlainText(result)
+        except FileNotFoundError:
+            # text_widget.delete("1.0", tk.END)
+            # text_widget.insert(tk.END, f"Error: Command for '{' '.join(args)}' not found.\nPlease ensure it is in your PATH.")
+            text_widget.setPlainText(f"Error: Command for '{' '.join(args)}' not found.\nPlease ensure it is in your PATH.")
+        except subprocess.CalledProcessError as e:
+            # text_widget.delete("1.0", tk.END)
+            # text_widget.insert(tk.END, f"Error executing '{' '.join(args)}':\n{e.output}")
+            output = e.output if e.output else "No output from command."
+            text_widget.setPlainText(f"Error executing '{' '.join(args)}':\n{output}")
+        except Exception as e:
+            # text_widget.delete("1.0", tk.END)
+            # text_widget.insert(tk.END, f"An unexpected error occurred for '{' '.join(args)}':\n{str(e)}")
+            text_widget.setPlainText(f"An unexpected error occurred for '{' '.join(args)}':\n{str(e)}")
+
+
+    def show_command_output(self, args):
+        self.clear_editor_pane() # Clears layout and widgets
+        
+        # Ensure editor_pane has a layout after clearing
+        if self.editor_pane.layout() is None:
+            new_layout = QtWidgets.QVBoxLayout(self.editor_pane)
+            self.editor_pane.setLayout(new_layout)
+
+        # self.main_label = ttk.Label(self.editor_pane, text="Command Output", font=("Arial", 14)) # Or derive title from args
+        # self.main_label.pack(pady=10)
+        self.main_label = QtWidgets.QLabel("Command Output", self.editor_pane)
+        font_main_label = self.main_label.font()
+        font_main_label.setPointSize(14)
+        font_main_label.setFamily("Arial")
+        self.main_label.setFont(font_main_label)
+        self.editor_pane.layout().addWidget(self.main_label) # Add to the (potentially new) layout
+        
+        # self.text_area = tk.Text(self.editor_pane, wrap=tk.WORD, undo=True) # Recreate text_area
+        # self.text_area.pack(fill=tk.BOTH, expand=True)
+        self.text_area = QtWidgets.QTextEdit(self.editor_pane)
+        self.text_area.setWordWrapMode(QtGui.QTextOption.WordWrap)
+        self.text_area.setUndoRedoEnabled(True)
+        self.editor_pane.layout().addWidget(self.text_area, 1) # Add to layout and make it expand
+        
+        self.populate_tab_with_command(self.text_area, args)
+
+
+
+
+if __name__ == "__main__":
+    # app = App()
+    # app.mainloop()
+    app = QtWidgets.QApplication(sys.argv)
+    main_window = App()
+    main_window.show()
+    sys.exit(app.exec_())

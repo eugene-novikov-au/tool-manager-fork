@@ -1,0 +1,143 @@
+#!/usr/bin/env tm-env-bash
+#
+# Creates a new Tool Manager plugin skeleton.
+# Prompts for plugin name, Git repository URL, and description if not
+# provided as arguments.
+#
+# Usage: tm-plugin-create [plugin_name] [plugin_repo_url]
+#   (Description will always be prompted for interactively if name/repo are given)
+#
+# Generated structure includes:
+#   - README.md
+#   - .bashrc (exports <PLUGIN_NAME_AS_VARS>_HOME, <PLUGIN_NAME_AS_VARS>_BIN)
+#   - plugin-enable (template)
+#   - plugin-disable (template)
+#   - bin/.common.sh (sources $TM_LIB_BASH/tm/lib.util.sh)
+#   - bin/<plugin_name> (example script)
+#   - Initializes a Git repository.
+#
+
+_tm::source::include .tm.script.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --help-tip \
+    --opt-name "|remainder|multi|short=n|value=NAME|desc=The plugin name" \
+    --opt-prefix "|short=p|desc=The prefix to append to all the plugin's script" \
+    --opt-repo "|short=r|desc=The git repo to save the plugin to" \
+    --opt-desc "|short=d|desc=The plugin description" \
+    --result args \
+    -- "$@"
+
+_tm::plugin::__new(){
+    local plugin_name="${1:-}"
+    local plugin_repo="${2:-}"
+    local plugin_prefix="${3:-}"
+    local plugin_desc="${4:-}"
+
+    while [[ -z "$plugin_name" ]]; do
+        _read "Name of new plugin (e.g., my-plugin, must match lowercase, numbers, and -): " plugin_name
+        if [[ -n "$plugin_name" && ! "$plugin_name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+            _error "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number."
+            plugin_name="" # Clear to re-prompt
+        elif [[ -n "$plugin_name" && -d "$TM_PLUGINS_INSTALL_DIR/$plugin_name" ]]; then
+            _error "Plugin directory '$TM_PLUGINS_INSTALL_DIR/$plugin_name' already exists. Choose a different name."
+            plugin_name="" # Clear to re-prompt
+        fi
+    done
+    while [[ -z "$plugin_repo" ]]; do
+        _read "Git repo URL (e.g., git@github.com:user/repo.git): " plugin_repo
+        # Basic validation for common git URL patterns (optional, can be expanded)
+        if [[ -n "$plugin_repo" && ! ( "$plugin_repo" =~ ^git@.+\..+:.*\/.*\.git$ || "$plugin_repo" =~ ^https?:\/\/.+\..+\/.*\/.* ) ]]; then
+            _warn "Warning: Git repo URL might not be in a common format. Proceeding anyway."
+        fi
+    done
+    while [[ -z "$plugin_desc" ]]; do
+        _read "Brief description of what this plugin provides: " plugin_desc
+    done
+    plugin_dir="$TM_PLUGINS_INSTALL_DIR/$plugin_name"
+    _info "creating new plugin '$plugin_name' in '$plugin_dir'"
+
+    if [[ -d "$plugin_dir" ]]; then
+        _fail "'dir '$plugin_dir' already exists. Aborting"
+    fi
+
+    local home_var="$(echo "${plugin_name^^}_HOME" | sed 's/-/_/g')"
+    local home_bin_var="$(echo "${plugin_name^^}_BIN" | sed 's/-/_/g')"
+
+    local example_script_name="${plugin_name}-helloworld"
+    if [[ -n "$plugin_prefix" ]]; then
+        example_script_name="${plugin_prefix}-helloworld"
+    fi
+
+
+    mkdir -p "$plugin_dir/bin"
+    # -- <PLUGIN>/README.md --
+    cat << EOF > "$plugin_dir/README.md"
+# $plugin_name
+
+A plugin for the 'tool-manager' (tm)
+
+This plugin provides $plugin_desc
+EOF
+    # -- <PLUGIN>/.bashrc --
+    cat << EOF > "$plugin_dir/.bashrc"
+export $home_var="\$(cd "\$(dirname "\${BASH_SOURCE[0]}" )" && pwd)"
+export $home_bin_var="\$$home_var/bin"
+EOF
+    # -- <PLUGIN>/plugin-enable --
+    cat << EOF > "$plugin_dir/plugin-enable"
+# implement this if your plugin needs to run a script on enable. Otherwise delete it
+EOF
+    chmod a+x "$plugin_dir/plugin-enable"
+    # -- <PLUGIN>/plugin-disable --
+    cat << EOF > "$plugin_dir/plugin-disable"
+# implement this if your plugin needs to run a script on disable. Otherwise delete it
+EOF
+    chmod a+x "$plugin_dir/plugin-disable"
+    # -- <PLUGIN>/bin/.common.sh --
+    cat << EOF > "$plugin_dir/bin/.common.sh"
+#
+# Common $plugin_name functions and variableshistory
+#
+# source some common libs
+_include @tm/lib.log.sh  # logging functions
+_include @tm/lib.util.sh # common helper functions
+_include @tm/lib.args.sh # arg parsing
+
+EOF
+    # -- <PLUGIN>/bin/<script>.sh --
+    # TODO: use prefix if set
+    cat << EOF > "$plugin_dir/bin/$example_script_name"
+#!/usr/bin/env bash
+
+#
+# Create a new tool-manager plugin (prompted)
+#
+
+_include @tm/lib.script.sh # a tool-manager provided lib which sets up some scripts defaults (set -Eeuo pipefail, imports lib.logs.sh lib.util.sh lib.args.sh) 
+_include .common.sh # source a relative file
+
+# my_value="\$(tm-cfg-get --this --key SOME_KEY --default "some/default/value" --prompt)"
+_todo "hello world! from my $plugin_name script"
+EOF
+    chmod a+x "$plugin_dir/bin/$example_script_name"
+    _pushd "$plugin_dir"
+        pwd
+        git init --initial-branch main
+        if [[ -n "$plugin_repo" ]]; then
+            git remote add origin "$plugin_repo"
+        fi
+        git add .
+        git commit -m "Plugin '$$plugin_name' skeleton created"
+        tree -aI '.git' || true
+        git log
+        _info "to enable this plugin run 'tm-plugin-enable $plugin_name'"
+        _info "to edit this plugin run 'tm-edit $plugin_name' or 'tm-edit-ide $plugin_name'"
+        _info "to edit this plugin's config, run 'tm-cfg-edit $plugin_name'"        
+        _info "You will need to tun 'tm-reload' to pick up changes (or when adding new script files)"
+    _popd
+}
+
+_tm::plugin::__new "${args[name]:-}" "${args[repo]:-}" "${args[prefix]:-}" "${args[desc]:-}"

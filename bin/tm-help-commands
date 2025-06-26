@@ -1,0 +1,179 @@
+#!/usr/bin/env tm-env-bash
+#
+# View home commands and help in console or web browser
+#
+# Purpose:
+#   Generates HTML documentation from script comments and serves via local web server
+#
+# Usage:
+#   tm-help-commands [--gui [port]]
+#
+# Arguments:
+#   --gui - Start web server and open browser
+#   port    - Optional port number for web server
+#
+# Output:
+#   Starts local web server and opens default browser to view documentation
+#
+
+_tm::source::include .tm.script.sh
+_tm::source::include .tm.plugins.sh
+
+# Main execution
+#
+# Purpose:
+#   Handle command line arguments and dispatch to appropriate function
+#
+# Arguments:
+#   $1 - Optional: '--gu'i to start web server or command filter
+#   $2 - Optional port number when using --gui
+#
+# Usage:
+#   tm-help-commands [--gui [port]]
+#   tm-help-commands [command-prefix-filter]
+#   tm-help-commands [command-prefix]
+__tm_help() {
+  _info "generating help..."
+  _trace "args:$@"
+  if [[ "${1:-}" == "--gui" ]]; then
+    __tm_help_serve "${2:-8000}" "${3:-}"
+  else
+    __tm_help_console "${1:-}"
+  fi
+}
+
+# Process all found scripts and display their help
+__tm_help_console() {
+  local cmd_filter="${1:-}"
+  local files="$(_tm::plugins::find_all_scripts "$cmd_filter")"
+
+  echo "$files" | while IFS= read -r file; do
+    if [[ -n "$file" ]]; then # Ensure file is not empty if $files was empty
+      _tm::args::print_help_from_file_comment "$file"
+    fi
+  done
+}
+
+__tm_help_serve() {
+  # Create temp directory if it doesn't exist
+  local temp_dir="$(mktemp -d)"
+  local temp_file="${temp_dir}/index.html"
+  
+  # Generate HTML to temp file
+  __tm_help_generate_help_page > "$temp_file"
+  _info "created help page at '$temp_file'"
+  
+  # Find an available port
+  local port_output
+  port_output=$(_python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()' 2>/dev/null)
+  if [[ -z "$port_output" ]]; then
+      _fail "Could not determine a free port. Python 3 might be missing or the port-finding script failed."
+  fi
+  local port="$port_output"
+  
+  echo "Serving help at http://localhost:$port"
+  echo "Press Ctrl+C to stop"
+  
+  # Start Python HTTP server in background
+  python3 -m http.server "$port" --directory "$temp_dir" --bind 127.0.0.1 &> /dev/null & 
+  local server_pid=$!
+  
+  # Open browser
+  xdg-open "http://localhost:$port" >/dev/null 2>&1
+  
+  # Wait for server to exit
+  wait $server_pid
+}
+
+# Generate HTML help page with search filter
+#
+# Purpose:
+#   Create an HTML page documenting all commands with a search filter
+#   Groups commands by their prefix (text before first '-') and hides empty sections
+#
+# Arguments:
+#   $1 - Directory containing commands to document
+#
+# Usage:
+#   __tm_help_generate_help_page "/path/to/commands"
+#
+# Output:
+#   HTML page printed to stdout
+__tm_help_generate_help_page() {
+  # Start HTML document
+
+  cat << EOF
+<!DOCTYPE html>
+<html><head><title>Command Help</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    .command { margin-bottom: 1em; margin-left: 20px; cursor: pointer; }
+    .name { font-weight: bold; }
+    .help { margin-left: 1em; color: #444; white-space: pre-wrap; display: none; }
+    #filter { padding: 0.5em; width: 300px; margin-bottom: 1em; }
+    .expand-all { margin-left: 1em; }
+  </style>
+  <script>
+    function toggleHelp(event) {
+      const helpDiv = event.currentTarget.querySelector('.help');
+      helpDiv.style.display = helpDiv.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleAllHelp(checkbox) {
+      const helpDivs = document.querySelectorAll('.help');
+      helpDivs.forEach(div => {
+        div.style.display = checkbox.checked ? 'block' : 'none';
+      });
+    }
+    
+    function filterCommands() {
+      const filter = document.getElementById('filter').value.toLowerCase();
+      document.querySelectorAll('.command').forEach(cmd => {
+        const name = cmd.querySelector('.name').textContent.toLowerCase();
+        cmd.style.display = name.includes(filter) ? 'block' : 'none';
+      });
+    }
+  </script>
+  </head>
+    <body>
+      <h1>Command Help</h1>
+      <input type='text' id='filter' placeholder='Search commands...' oninput='filterCommands()'>
+      <label class='expand-all'>
+        <input type='checkbox' onchange='toggleAllHelp(this)'> Expand All
+      </label>
+EOF
+  # Find all files and generate HTML
+
+  # Group commands by their prefix (text before first '-')
+  declare -A sections
+  declare -A section_has_matches
+
+  while read -r file; do
+    local cmd_name=$(basename "$file")
+    section=${cmd_name%%-*}
+    sections["$section"]+="<div class='command' onclick='toggleHelp(event)'>
+      <div class='name'>$cmd_name</div>
+      <div class='help'>$(awk '
+        /^#!/{next}
+        /^#/ {printf "%s\n", substr($0, 3)}
+        /^[^#]/ && NR > 1 {exit}
+      ' "$file" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+      </div></div>"
+    section_has_matches["$section"]=1
+  done < <(_tm::plugins::find_all_scripts)
+
+
+  # Output sections in alphabetical order
+  for section in $(printf '%s\n' "${!sections[@]}" | sort); do
+    if [[ -n "${section_has_matches[$section]:-}" ]]; then
+      echo "<h2>$section</h2>"
+      echo "${sections[$section]}"
+    fi
+  done
+
+  echo "</body></html>"
+}
+
+__tm_help "$@"
+
+

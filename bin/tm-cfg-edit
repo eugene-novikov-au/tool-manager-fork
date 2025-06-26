@@ -1,0 +1,81 @@
+#!/usr/bin/env tm-env-bash
+#
+# Opens an editor for a specific plugin's configuration file
+# (usually $TM_PLUGINS_CFG_DIR/<prefix_path>/<plugin_name>/.env)
+# or, if no plugin is specified, opens the entire plugin configuration
+# directory ($TM_PLUGINS_CFG_DIR).
+#
+# Usage: tm-plugin-cfg-edit [qualified_plugin_name]
+#
+# The editor command is resolved as follows:
+# 1. $TM_CFG_EDITOR environment variable
+# 2. $EDITOR environment variable
+# 3. 'vi' command
+# 4. 'nano' command
+#
+set -Eeuo pipefail
+
+_tm::source::include .tm.script.sh .tm.plugin.sh .tm.cfg.sh
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-this "|flag|group=plugin|desc=When set, auto detect plugin from 'TM_PLUGIN_ID' env variable. This is set via the plugin wrapper scripts" \
+    --opt-tm "|short=t|long=tm|flag|group=plugin|desc=When set, use tool manager" \
+    --opt-plugin "|remainder|greedy|group=plugin|long=plugin|short=p|value=QUAILIFIED-PLUGIN-NAME|desc=The plugin to edit the config for|example='my-ns:some-plugin','tm-install'" \
+    --opt-editor "|short=e|long=editor|desc=The editor to use" \
+    --result args \
+    -- "$@"
+
+editor_to_use="$(_tm::cfg::get_cfg_editor ${args[editor]})"
+qualified_name="${args[plugin]}"
+
+#_info "using editor: $editor_to_use"
+
+declare -A plugin=()
+
+if [[ -z "$qualified_name" ]] && [[ -n "${args[tm]}" ]]; then
+    _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
+elif [[ -z "$qualified_name" ]] && [[ -n "${args[this]}" ]]; then
+    if [[ -z "${TM_PLUGIN_ID:-}" ]]; then
+        _fail "Set flag '--this', but no env variable 'TM_PLUGIN_ID' has been set. Ensure you are calling this via the wrapper scripts"
+    fi
+    _tm::util::parse::plugin_id plugin "$TM_PLUGIN_ID"
+else
+    _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
+fi
+
+if [[ -z "$qualified_name" ]]; then
+    qualified_name="$__TM_NAME"
+fi
+
+if [[ "${plugin[name]}" == "$__TM_NAME" ]]; then
+    # Edit the root plugin configuration directory
+    target_path="$TM_PLUGINS_CFG_DIR"
+    _info "Opening editor '$editor_to_use' for plugin configuration directory: $target_path"
+    # For a directory, it's common to just open it, or a specific file if the editor supports it well.
+    # Most terminal editors will list files or open a file browser. GUI editors handle dirs well.
+    "$editor_to_use" "$target_path"
+else
+    # Edit a specific plugin's config file
+    plugin_name="${plugin[name]}"
+    prefix="${plugin[prefix]}"
+
+    plugin_cfg_file_dir="$TM_PLUGINS_CFG_DIR/$plugin_name"
+    if [[ -n "$prefix" ]]; then
+        plugin_cfg_file_dir="$TM_PLUGINS_CFG_DIR/${prefix}${__TM_SEP_PREFIX_DIR}${plugin_name}"
+    fi
+    target_path="${plugin_cfg_file_dir}/.env"
+
+    # Ensure the directory exists
+    if [[ ! -d "$plugin_cfg_file_dir" ]]; then
+        _info "Plugin configuration directory '$plugin_cfg_file_dir' does not exist. Creating it."
+        mkdir -p "$plugin_cfg_file_dir" || _fail "Could not create directory '$plugin_cfg_file_dir'."
+    fi
+    
+    # Touch the file to ensure it exists before opening, helpful for some editors
+    touch "$target_path" || _warn "Could not touch file '$target_path', editor might create it."
+
+    _info "Opening editor '$editor_to_use' for plugin configuration file: $target_path"
+    "$editor_to_use" "$target_path"
+fi
