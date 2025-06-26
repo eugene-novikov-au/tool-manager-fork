@@ -31,7 +31,7 @@ declare -A args
 # Using --opts-* to capture the command and its arguments after '--'
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
-    --opt-available "|flag=|group=filter|short=a|long=available|desc=Iterate over all available plugins (from INI 'dir' field)." \
+    --opt-available "|flag=|group=filter|short=a|long=available|desc=Iterate over all available plugins" \
     --opt-enabled "|flag=|group=filter|short=e|long=enabled|desc=Iterate over enabled plugins." \
     --opt-installed "|flag=|group=filter|short=i|long=installed|desc=Iterate over installed plugins (default)." \
     --opt-commands "|remainder|greedy|short=c|required|long=command|value=COMMAND|desc=The command (with args) to run.|example='git status --short', 'git add .'" \
@@ -55,7 +55,7 @@ plugin_list_cmd="_tm::plugins::find_all_installed_plugin_ids" # Default
 filter_description="installed"
 
 if [[ -n "${args[available]:-}" ]]; then
-    plugin_list_cmd="_tm::plugins::__get_all_available_plugin_ids" # Uses the new function
+    plugin_list_cmd="_tm::plugins::__get_all_available_plugin_ids" 
     filter_description="available (from INI 'dir' field, relative to $TM_PLUGINS_INSTALL_DIR)"
 elif [[ -n "${args[enabled]:-}" ]]; then
     plugin_list_cmd="_tm::plugins::find_all_enabled_plugin_ids"
@@ -66,9 +66,7 @@ elif [[ -n "${args[installed]:-}" ]]; then
     filter_description="installed"
 fi
 
-# Get the list of plugin directories
-# For _tm::plugins::__get_all_available_dirs, these are dir names relative to $TM_PLUGINS_INSTALL_DIR
-# For find_all_enabled_dirs/installed, these are absolute paths (symlinks or actual dirs)
+
 declare -a plugin_ids_to_process
 mapfile -t plugin_ids_to_process < <($plugin_list_cmd)
 
@@ -92,7 +90,7 @@ _invoke(){
     fi
 }
 
-declar -A plugin
+declare -A plugin
 for plugin_id in "${plugin_ids_to_process[@]}"; do
     _tm::util::parse::plugin_id plugin "$plugin_id"
 
