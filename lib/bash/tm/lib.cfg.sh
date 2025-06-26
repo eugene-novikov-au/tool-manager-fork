@@ -52,6 +52,7 @@ _tm::cfg::__process() {
         --opt-default   "|short=d|    |value=DEFAULT-VALUE|desc=The default value if not set" \
         --opt-keys      "|short=k|remainder|long=key|value=KEY|desc=The key of the value to get|multi" \
         --opt-all       "|       |flag|desc=Get all the keys and values|" \
+        --opt-note      "|       |    |desc=A note about this key. Only used when setting values |" \
         --result args \
         -- "$@"
 
@@ -72,7 +73,8 @@ _tm::cfg::__process() {
     local missing_keys=()
     local value
     local default_value="${args[default]}"
-
+    local note="${args[note]}"
+    
     IFS=' ' read -ra keys <<< "${args[keys]}"
     _trace "checking keys: '${keys[@]}'"
     for key in "${keys[@]}"; do
@@ -117,7 +119,7 @@ _tm::cfg::__process() {
         else
             _fail "No cfg with key '$key' set for plugin '${plugin[name]}', and no default supplied. Not in interactive shell so can't prompt"
         fi
-        _tm::cfg::__prompt_for_key "${plugin[name]}" "${plugin[qpath]}" "$plugin_custom_cfg_file" "$key" "$default_value" 
+        _tm::cfg::__prompt_for_key "${plugin[name]}" "${plugin[qpath]}" "$plugin_custom_cfg_file" "$key" "$default_value" "$note" 
         # ensure the new key is rad by the caller
        
         if [[ $is_get == 1 ]]; then
@@ -134,6 +136,7 @@ _tm::cfg::__prompt_for_key() {
     local cfg_file="$3"
     local cfg_key="$4"
     local default_value="$5"
+    local note="${6:-}"
     
     # Prompt to stderr to avoid contaminating stdout [8]
     _tm::log::println "Environment variable '$cfg_key' not set for plugin '$plugin_name'" 
@@ -142,6 +145,9 @@ _tm::cfg::__prompt_for_key() {
     #_info "env=$(env | sort)"
     local key_value=""
     while [[ -z "$key_value" ]]; do
+        if [[ -n "$note" ]]; then
+          _tm::log::println "$note"
+        fi
         >&2 echo -n "  Value for $cfg_key: "
         # We force a tty so it down't affect other read calls when nested
         if [[ -z "$default_value" ]]; then
@@ -152,7 +158,7 @@ _tm::cfg::__prompt_for_key() {
     done
 
     # write the config to disk
-    _tm::cfg::__set_key_value_in_file "$cfg_file" "$cfg_key" "$key_value"
+    _tm::cfg::__set_key_value_in_file "$cfg_file" "$cfg_key" "$key_value" "$note"
 
     _debug "updated: $cfg_file"
 }
@@ -288,6 +294,7 @@ _tm::cfg::__set_key_value_in_file(){
     local file="$1"
     local cfg_key="$2"
     local value="$3"
+    local note="${4:-}"
 
     if [[ -f "$file" ]]; then # Check against the passed-in file argument
         if grep -q "^${cfg_key}=" "$file"; then # Ensure key is anchored and properly quoted in grep
@@ -298,12 +305,17 @@ _tm::cfg::__set_key_value_in_file(){
             sed -i "/^${cfg_key}=/c ${replacement}" "$file" 2>/dev/null
         else
             # no existing key, append the new assignment at the end
+            if [[ -n "$note" ]]; then
+              echo "# $note" >> "$file"
+            fi
             printf '%s="%s"\n' "$cfg_key" "$value" >> "$file"
         fi
     else
         # file does not exist, create it and append
         mkdir -p "$(dirname "$file")" # Ensure directory exists
-        # touch "$file" # Not strictly necessary as echo >> will create it
+        if [[ -n "$note" ]]; then
+          echo "# $note" >> "$file"
+        fi
         printf '%s="%s"\n' "$cfg_key" "$value" >> "$file"
     fi
 }
