@@ -13,6 +13,12 @@ See the various 'tm-' commands. E.g. 'tm-help-gui'
 curl -s "https://raw.githubusercontent.com/codemucker/tool-manager/refs/heads/main/install.sh" | bash
 ```
 
+or for a given version
+
+```bash
+curl -s  https://raw.githubusercontent.com/codemucker/tool-manager/refs/tags/0.0.1/install.sh | bash
+```
+
 alternatively, clone this repo to '$HOME/.tool-manager' (or wherever you like) , and add the following to your "$HOME/.bashrc"
 
 ```bash
