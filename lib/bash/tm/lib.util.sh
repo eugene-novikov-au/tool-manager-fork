@@ -252,9 +252,9 @@ _fail_if_not_installed(){
 #   $1 - The name of the plugin (expects it to be in $TM_PLUGINS_INSTALL_DIR).
 _require_plugin() {
   _debug "require plugin:$1"
-  local -A plugin
-  _tm::util::parse:plugin plugin "$1"
-  _tm::plugin::load plugin
+  local -A require_plugin
+  _tm::util::parse:plugin require_plugin "$1"
+  _tm::plugin::load require_plugin
 }
 
 
@@ -517,4 +517,35 @@ _tm::utill::parse::__set_plugin_derived_vars(){
   result_derived[key]="$key"
   result_derived[id]="tm:plugin:$vendor:$name:$version:$prefix"
 
+}
+
+
+#
+# Add the passed in path to the PATH if it's not already added
+#
+# $@.. - [PATH]s to add
+#
+_tm::util::add_to_path() {  
+  if [[ -z "${1:-}" ]]; then
+    # no paths to add, skip all
+    return
+  fi
+  _debug "adding paths $@"
+  # TODO: handle differnt seperator in different OS's?
+  IFS=':' read -ra current_paths <<< "$PATH"
+  local path_exists
+  for new_path in "$@"; do
+    path_exists=false
+    local path
+    for path in "${current_paths[@]}"; do
+      if [[ "$path" == "$new_path" ]]; then
+        path_exists=true
+        break
+      fi
+    done
+    if [[ "$path_exists" == false ]]; then
+      PATH="$new_path:$PATH"
+    fi
+  done
+  export PATH
 }

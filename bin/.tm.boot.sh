@@ -22,6 +22,7 @@ source "$TM_LIB_BASH/tm/lib.log.sh"
 # then the '_tm::source' functions are available
 source "$TM_LIB_BASH/tm/lib.source.sh"
 
+_source_once "$TM_LIB_BASH/tm/lib.util.sh"
 #
 # This script bootstraps the entire tools process. Expected to be run once in a bash login script.
 # Key responsibilities:
@@ -168,40 +169,10 @@ _tm::boot::init() {
             "$TM_PLUGINS_PID_DIR"
   
     # the tool-manager bins dirs. 
-  _tm::boot::add_to_path "$TM_BIN" "$TM_PLUGINS_BIN_DIR" "$TM_BIN_DEFAULTS" 
+  _tm::util::add_to_path "$TM_BIN" "$TM_PLUGINS_BIN_DIR" "$TM_BIN_DEFAULTS" 
   
   _debug "TM initialized. TM_HOME: $TM_HOME, Plugin install dir: $TM_PLUGINS_INSTALL_DIR"
   _tm::log::pop
-}
-
-#
-# Add the passed in path to the PATH if it's not already added
-#
-# $@.. - [PATH]s to add
-#
-_tm::boot::add_to_path() {  
-  if [[ -z "${1:-}" ]]; then
-    # no paths to add, skip all
-    return
-  fi
-  _debug "adding paths $@"
-  # TODO: handle differnt seperator in different OS's?
-  IFS=':' read -ra current_paths <<< "$PATH"
-  local path_exists
-  for new_path in "$@"; do
-    path_exists=false
-    local path
-    for path in "${current_paths[@]}"; do
-      if [[ "$path" == "$new_path" ]]; then
-        path_exists=true
-        break
-      fi
-    done
-    if [[ "$path_exists" == false ]]; then
-      PATH="$new_path:$PATH"
-    fi
-  done
-  export PATH
 }
 
 _tm::trap::error(){

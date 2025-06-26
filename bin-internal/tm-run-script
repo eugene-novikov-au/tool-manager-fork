@@ -11,19 +11,19 @@ if [[ "${TM_ENABLED:-}" != '1' ]]; then
   exit 1
 fi
 
-_trap_error(){
-  local exit_code=$?
-  >&2 echo "UNCAUGHT ERROR!: Script '$0' failed at line ${LINENO} with exit code $exit_code "
-  local i=0
-  local line file func
-  while read -r line func file < <(caller $i); do
-      echo "${file}:${line} ${func}()"
-    ((i++))
-  done
-  exit $exit_code # Exit with the same error code
-}
+# _trap_error(){
+#   local exit_code=$?
+#   >&2 echo "UNCAUGHT ERROR!: Script '$0' failed at line ${LINENO} with exit code $exit_code "
+#   local i=0
+#   local line file func
+#   while read -r line func file < <(caller $i); do
+#       echo "${file}:${line} ${func}()"
+#     ((i++))
+#   done
+#   exit $exit_code # Exit with the same error code
+# }
 
-trap '_trap_error' ERR
+#trap '_trap_error' ERR
 
 #
 # NOTE: we want this script as fast as possible, so that we don't add any overhead to user scripts
