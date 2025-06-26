@@ -461,7 +461,7 @@ _tm::plugins::install_from_registry(){
       return
     fi
   done
-  _fail "Could not install plugin '$plugin_name' (from input '$qualified_name'). Searched in: '$TM_PLUGINS_INI_FILES'"
+  _fail "Could not install plugin '$plugin_name' (from input '$qualified_name')s"
 }
 
 #
