@@ -306,10 +306,15 @@ _tm::plugins::uninstall() {
 
   local qname="${plugin_to_disable[qname]}"
   local plugin_dir="${plugin_to_disable[install_dir]}"
-
+  if [[ -d "${plugin_dir}/.git" ]]; then
+    _info "plugin git status:"
+    _pushd "$plugin_dir"
+      git status || true
+    _popd
+  fi
   local yn=''
   while [[ -z "$yn" ]]; do
-    _read "Really disable plugin ${qname} in ${plugin_dir}? [yn]" yn
+    _read "Really uninstall plugin ${qname} in ${plugin_dir}? [yn]" yn
     case "$yn" in 
       y|Y|yes)
         _tm::plugin::disable plugin_to_disable
@@ -465,16 +470,16 @@ _tm::plugins::install_from_registry(){
 # $3 - commit
 
 _tm::plugins::__clone_and_install(){
-  local -n plugin="$1"
+  local -n plugin_to_clone="$1"
   local repo="$2"
   local commit="${3:-main}"
 
-  local plugin_name="${plugin[name]}"
-  local prefix="${plugin[prefix]}"
-  local vendor="${plugin[vendor]}"
-  local version="${plugin[version]:-main}"
-  local qname="${plugin[qname]}"
-  local plugin_dir="${plugin[install_dir]}"
+  local plugin_name="${plugin_to_clone[name]}"
+  local prefix="${plugin_to_clone[prefix]}"
+  local vendor="${plugin_to_clone[vendor]}"
+  local version="${plugin_to_clone[version]:-main}"
+  local qname="${plugin_to_clone[qname]}"
+  local plugin_dir="${plugin_to_clone[install_dir]}"
   local vendor_and_name="${vendor}/${plugin_name}"
 
   if [[ -d "$plugin_dir" ]]; then
