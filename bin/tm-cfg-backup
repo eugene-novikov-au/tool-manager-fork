@@ -1,4 +1,8 @@
 #!/usr/bin/env tm-env-bash
+
+# Purpose: Backs up the configuration files to a remote git repository.
+# Args: None
+# Example: tm-cfg-backup
 #
 # Save the backup to a git repo
 #
@@ -14,15 +18,23 @@ fi
 _pushd "$config_dir"
 if [[ ! -f "$config_dir/../.gitignore" ]]; then
     echo "$(basename "$config_dir" )/" > "$config_dir/../.gitignore"
+else
+    if ! grep -q "$(basename "$config_dir")/" "$config_dir/../.gitignore"; then
+        echo "$(basename "$config_dir")/" >> "$config_dir/../.gitignore"
+    fi
 fi
 if [[ ! -d ".git" ]]; then
     backup_repo="$(tm-cfg-get --tm TM_CFG_BACKUP_REPO)"
     if [[ -z "$backup_repo" ]]; then
         _fail "backup repo is not set"
     fi
+    # Validate the backup repo URL
+    if ! [[ "$backup_repo" =~ ^(https?://|git@) ]]; then
+        _fail "Invalid backup repo URL: $backup_repo"
+    fi
     git init --bare
     git remote add origin "$backup_repo"
 fi
 git add .
 git commit -m "Save config"
-git push
+git push || _fail "Failed to push to backup repo"
