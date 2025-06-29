@@ -280,24 +280,39 @@ _tm::util::print_array(){
 }
 
 #
-# Parse a plugin name or id
+# _tm::util::parse::plugin
 #
-# $1 - the name of the associative array to put the results in
-# $2 - the plugin name or id
+# Parses a plugin identifier string (either a qualified name or a full ID) into an
+# associative array containing its components (vendor, name, version, prefix, etc.).
+# This function acts as a dispatcher, calling either `_tm::util::parse::plugin_id`
+# or `_tm::util::parse::plugin_name` based on the format of the input string.
+#
+# Args:
+#   $1 - result_array_name: The name of the associative array to populate with parsed plugin details.
+#   $2 - plugin_identifier: The string to parse. This can be:
+#                           - A full plugin ID (e.g., "tm:plugin:<vendor>:<name>:<version>:<prefix>")
+#                           - A qualified plugin name (e.g., "prefix:bar", "vendor/bar@123", "prefix__bar")
+#
+# Populates the `result_array_name` with the following keys:
+#   - `vendor`: The plugin's vendor.
+#   - `name`: The plugin's base name.
+#   - `version`: The plugin's version.
+#   - `prefix`: The plugin's prefix.
+#   - `qname`: The qualified name (e.g., "prefix:vendor/name@version").
+#   - `qpath`: The qualified file system path segment (e.g., "vendor/name__prefix").
+#   - `key`: A unique key for caching.
+#   - `id`: The full plugin ID string.
+#   - `install_dir`: The absolute path to the plugin's installation directory.
+#   - `enabled_dir`: The absolute path to the plugin's enabled symlink directory.
+#   - `cfg_spec`: Path to the plugin's configuration specification file.
+#   - `cfg_dir`: Path to the plugin's configuration directory.
+#   - `cfg_sh`: Path to the plugin's shell configuration file.
+#   - `tm`: Boolean, true if this is the tool-manager plugin itself.
 #
 # Usage:
-#   local -A plugin
-#  _tm::util::parse::plugin plugin "tm::plugin:<vendor>:<name>:<version>:<prefix>"
-#  _tm::util::parse::plugin plugin "prefix:bar"
-#  _tm::util::parse::plugin plugin "prefix:vendor/bar@123"
-#  _tm::util::parse::plugin plugin "prefix__bar"
-# TODO:
-#  _tm::util::parse::plugin plugin "vendor/name"
-#  _tm::util::parse::plugin plugin "vendor/name@version"
-#  _tm::util::parse::plugin plugin "vendor/name__prefix"
-#  _tm::util::parse::plugin plugin "vendor/name@version__prefix"
-#
-# Where 'plugin' is the associative array
+#   declare -A my_plugin_info
+#   _tm::util::parse::plugin my_plugin_info "myvendor/myplugin@1.0.0__myprefix"
+#   _tm::util::parse::plugin my_plugin_info "tm:plugin:myvendor:myplugin:1.0.0:myprefix"
 #
 _tm::util::parse::plugin(){
   _finest "_tm::util::parse::plugin : $2"
@@ -331,36 +346,52 @@ _tm::util::parse::plugin_name(){
   name=''
   version=''
   vendor=''
-
-  if [[ "$parse_name" == *"$__TM_SEP_PREFIX_NAME"*  ]]; then
+  # Determine the separator used in the plugin name to correctly parse it.
+  # The order of checks is important: first check for the primary prefix-name separator,
+  # then the directory-based separator.
+  if [[ "$parse_name" == *"$__TM_SEP_PREFIX_NAME"* ]]; then
     IFS="$__TM_SEP_PREFIX_NAME" read -r prefix name <<< "$parse_name"
-  else
+  elif [[ "$parse_name" == *"$__TM_SEP_PREFIX_DIR"* ]]; then
     IFS="$__TM_SEP_PREFIX_DIR" read -r prefix name <<< "$parse_name"
-    # HACK: it seems if using a '__' delim, the plugin name is prefixed with '_'
+    # If the directory separator was used, and the name starts with an underscore,
+    # remove that underscore. This handles a specific naming convention.
     if [[ "$name" == '_'* ]]; then
       name="${name##_}"
     fi
+  else
+    # If no prefix separator is found, the entire string is considered the name,
+    # and there is no prefix.
+    name="$parse_name"
+    prefix=""
   fi
 
-  if [[ -z "$name" ]]; then #only one value provided, no prefix
+  # If after parsing, the 'name' is empty, it means the original 'prefix' was
+  # actually the name, and there was no prefix.
+  if [[ -z "$name" ]]; then
     name="$prefix"
     prefix=""
   fi
 
-  if [[ "$name" == *'/'*  ]]; then #vendor provided (slash)
-      IFS="/" read -r vendor name <<< "$name"
-    if [[ -z "$name" ]]; then #only one value provided, no prefix
+  # Check for vendor information (indicated by a slash '/').
+  # If found, split into vendor and name.
+  if [[ "$name" == *'/'* ]]; then
+    IFS="/" read -r vendor name <<< "$name"
+    # If 'name' is empty after splitting, it means the 'vendor' was the actual name.
+    if [[ -z "$name" ]]; then
       name="$vendor"
       vendor=""
     fi
   fi
 
-  if [[ "$name" == *'@'*  ]]; then #vendor provided
-      IFS="@" read -r name version <<< "$name"
-      if [[ -z "$name" ]]; then #only one value provided, no prefix
-        name="$version"
-        vendor=""
-      fi
+  # Check for version information (indicated by an '@' symbol).
+  # If found, split into name and version.
+  if [[ "$name" == *'@'* ]]; then
+    IFS="@" read -r name version <<< "$name"
+    # If 'name' is empty after splitting, it means the 'version' was the actual name.
+    if [[ -z "$name" ]]; then
+      name="$version"
+      version="" # Reset version as it was actually the name
+    fi
   fi
 
   result_name[vendor]="$vendor"
@@ -382,6 +413,17 @@ _tm::util::parse::plugin_name(){
 #
 # $1 - the name of the associative array to put the results in
 # $2 - the plugin id
+#
+# Usage:
+#  _tm::util::parse::plugin_id parts "tm:plugin:<vendor>:<name>:<version>:<prefix>"
+#
+# Parses a plugin id string into an associative array
+#
+# $1 - the name of the associative array to put the results in
+# $2 - the plugin id
+#
+# Behavior:
+#   Parses a plugin id string into an associative array.
 #
 # Usage:
 #  _tm::util::parse::plugin_id parts "tm:plugin:<vendor>:<name>:<version>:<prefix>"
@@ -475,28 +517,28 @@ _tm::utill::parse::__set_plugin_derived_vars(){
   result_derived[qname]="$qname"
 
   # qpath (qualified file system path)
-  
+  local qpath
   if [[ "${name}" == "$__TM_NAME" ]] && [[ -z "${vendor:-}" ]]; then
     result_derived[tm]=true
     result_derived[qname]="$__TM_NAME"
-    result_derived[qpath]="$__TM_NAME"
     result_derived[key]="$__TM_NAME"
     result_derived[enabled_dir]="$TM_HOME"
-    result_derived[install_dir]="$TM_HOME"     
+    result_derived[install_dir]="$TM_HOME"  
+    qpath="$__TM_NAME"
   else
     result_derived[tm]=false
-    local qpath="${vendor:-${__TM_NO_VENDOR}}/${name}"
+    qpath="${vendor:-${__TM_NO_VENDOR}}/${name}"
     if [[ -n "${prefix}" ]]; then
       qpath+="__${prefix}"
     fi
     local qpath_flat="${vendor:-${__TM_NO_VENDOR}}__${name}"
     if [[ -n "${prefix}" ]]; then
       qpath_flat+="__${prefix}"
-    fi
-    result_derived[qpath]="$qpath"
+    fi    
     result_derived[enabled_dir]="$TM_PLUGINS_ENABLED_DIR/${qpath_flat}"
     result_derived[install_dir]="$TM_PLUGINS_INSTALL_DIR/${vendor:-${__TM_NO_VENDOR}}/${name}"
   fi
+  result_derived[qpath]="$qpath"
 
     # a key which can be used for caching things
   local key=""
@@ -516,7 +558,9 @@ _tm::utill::parse::__set_plugin_derived_vars(){
   fi
   result_derived[key]="$key"
   result_derived[id]="tm:plugin:$vendor:$name:$version:$prefix"
-
+  result_derived[cfg_spec]="${result_derived[install_dir]}/plugin.cfg.yaml"
+  result_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
+  result_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh"
 }
 
 

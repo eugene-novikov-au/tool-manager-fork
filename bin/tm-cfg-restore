@@ -1,4 +1,9 @@
 #!/usr/bin/env tm-env-bash
+
+# Purpose: Restores the TM configuration from a backup git repository.
+# Args:
+#   None
+# Example: tm-cfg-restore
 #
 # Save the backup to a git repo
 #
@@ -11,17 +16,24 @@ if [[ -d "$config_dir" ]]; then
 fi
 
 if [[ ! -f "$config_dir/.gitignore" ]]; then
-    echo "$(basename "$config_dir" )/" > "$config_dir/.gitignore"
+    echo "$(basename "$config_dir")/" > "$config_dir/.gitignore"
+else
+    if ! grep -q "$(basename "$config_dir")/" "$config_dir/.gitignore"; then
+        echo "$(basename "$config_dir")/" >> "$config_dir/.gitignore"
+    fi
 fi
 if [ "$(ls -A "$config_dir")" ]; then
     _warn "'$config_dir' already contains files, updating repo"
     _pushd "$config_dir"
-    git pull --ff-only
+    git pull --ff-only || _fail "Failed to pull changes from the backup repository."
 else
     backup_repo="$(tm-cfg-get --tm TM_CFG_BACKUP_REPO)"
     if [[ -z "$backup_repo" ]]; then
         _fail "backup repo is not set"
     fi
+    if ! [[ "$backup_repo" =~ ^(https?://|git@) ]]; then
+        _fail "Invalid backup repo URL. Must start with http://, https://, or git@"
+    fi
     rmdir "$config_dir"
-    git clone"$backup_repo"
+    git clone "$backup_repo" || _fail "Failed to clone the backup repository."
 fi

@@ -12,9 +12,23 @@ import subprocess
 import asyncio
 import asyncio.subprocess # Added for PIPE
 import threading
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class App(ttk.Window):
+    """
+    The main application class for the Tool-Manager GUI.
+
+    This class initializes the main window, sets up the menubar,
+    navigation pane, and editor pane, and manages the display of
+    various tool-manager functionalities.
+    """
     def __init__(self):
+        """
+        Initializes the App window and its components.
+        """
         super().__init__(themename="litera") # Or any other theme e.g., "superhero", "sandstone"
         self.loaded_tabs = {} # To track loaded state of plugin tabs
 
@@ -70,6 +84,9 @@ class App(ttk.Window):
                                                             # Use bootstyle on frames if specific styling is needed.
 
     def show_preferences(self):
+        """
+        Displays a placeholder preferences dialog.
+        """
         # Placeholder for preferences dialog
         pref_window = ttk.Toplevel(self)
         pref_window.title("Preferences")
@@ -77,12 +94,22 @@ class App(ttk.Window):
         ttk.Label(pref_window, text="Settings/Preferences would go here.").pack(pady=20, padx=20)
 
     def show_config_help(self):
+        """
+        Displays the output of the 'tm-help-cfg' command in the editor pane.
+        """
         self.show_command_output(['tm-help-cfg'])
 
     def show_scripts(self):
+        """
+        Displays a list of available scripts using 'tm-plugin-ls --scripts'.
+        """
         self.show_command_output(['tm-plugin-ls', '--scripts'])
 
     def show_plugins(self):
+        """
+        Clears the editor pane and displays a notebook interface for managing plugins.
+        Includes tabs for 'All', 'Installed', 'Enabled', 'Disabled', 'Available', and 'Search' plugins.
+        """
         self.clear_editor_pane()
 
         self.notebook = ttk.Notebook(self.editor_pane) # Made notebook an instance variable
@@ -140,6 +167,11 @@ class App(ttk.Window):
         self.after(100, lambda: self.on_plugin_tab_selected(None)) # Use 'after' to ensure notebook is fully initialized
 
     def on_plugin_tab_selected(self, event):
+        """
+        Handles the event when a plugin tab is selected in the notebook.
+        Loads content for the selected tab if it hasn't been loaded already,
+        unless it's the search tab.
+        """
         if not hasattr(self, 'notebook'): # Guard against premature calls if UI is being rebuilt
             return
 
@@ -160,6 +192,9 @@ class App(ttk.Window):
 
 
     def clear_editor_pane(self):
+        """
+        Clears all widgets from the editor pane.
+        """
         for widget in self.editor_pane.winfo_children():
             widget.destroy()
         # Re-assign self.text_area to a new Text widget if it's cleared,
@@ -170,6 +205,16 @@ class App(ttk.Window):
 
 
     async def _populate_tab_content_async(self, args):
+        """
+        Asynchronously executes a shell command and captures its stdout and stderr.
+        This method runs in the asyncio event loop.
+
+        Args:
+            args (list): A list of strings representing the command and its arguments.
+
+        Returns:
+            str: The decoded stdout if the command succeeds, or an error message otherwise.
+        """
         # This part runs in the asyncio event loop (potentially in a worker thread)
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -189,13 +234,26 @@ class App(ttk.Window):
                     error_message += f"Stdout:\n{stdout.decode(errors='replace')}\n"
                 if stderr:
                     error_message += f"Stderr:\n{stderr.decode(errors='replace')}\n"
+                logging.error(error_message) # Log the error
                 return error_message
         except FileNotFoundError:
-            return f"Error: Command '{args[0]}' not found.\nPlease ensure it is in your PATH."
+            error_message = f"Error: Command '{args[0]}' not found.\nPlease ensure it is in your PATH."
+            logging.error(error_message) # Log the error
+            return error_message
         except Exception as e:
-            return f"An unexpected error occurred for '{' '.join(args)}':\n{str(e)}"
+            error_message = f"An unexpected error occurred for '{' '.join(args)}':\n{str(e)}"
+            logging.error(error_message) # Log the error
+            return error_message
 
     def _update_text_widget(self, text_widget, content):
+        """
+        Updates the content of a given Tkinter Text widget.
+        This method is scheduled to run in the main Tkinter thread.
+
+        Args:
+            text_widget (tk.Text): The Text widget to update.
+            content (str): The new content to insert into the widget.
+        """
         # This method will be called via self.after to run in the main Tkinter thread
         current_content = text_widget.get("1.0", END).strip()
         if current_content.startswith(f'Loading'): # Only clear if it's a loading message
@@ -207,6 +265,14 @@ class App(ttk.Window):
         text_widget.see(END) # Scroll to the end
 
     def populate_tab_with_command(self, text_widget, args):
+        """
+        Populates a given text widget by executing a shell command in a separate thread
+        and updating the UI asynchronously.
+
+        Args:
+            text_widget (tk.Text): The Text widget to populate.
+            args (list): A list of strings representing the command and its arguments.
+        """
         # Initial UI update (loading message) - runs in main thread
         # Check if it's already loading to prevent multiple "Loading..." messages if rapidly clicked
         current_text = text_widget.get("1.0", f"1.{len(f'Loading {args}...')}")
@@ -225,9 +291,11 @@ class App(ttk.Window):
                 asyncio.run(main_coro())
             except RuntimeError as e:
                 error_msg = f"Asyncio runtime error: {e}\nThis might indicate an issue with event loop management."
+                logging.error(error_msg) # Log the error
                 self.after(0, lambda: self._update_text_widget(text_widget, error_msg))
             except Exception as e_global: # Catch any other unexpected errors in the thread
                 error_msg = f"Unexpected error in async task runner: {e_global}"
+                logging.error(error_msg) # Log the error
                 self.after(0, lambda: self._update_text_widget(text_widget, error_msg))
 
         # Start the thread
@@ -236,6 +304,12 @@ class App(ttk.Window):
         thread.start()
 
     def show_command_output(self, args):
+        """
+        Displays the output of a given shell command in the main editor pane.
+
+        Args:
+            args (list): A list of strings representing the command and its arguments.
+        """
         # This method now needs to ensure the editor_pane is set up for a single text_area view
         self.clear_editor_pane()
         self.main_label = ttk.Label(self.editor_pane, text="Command Output", font=("Arial", 14)) # Or derive title from args

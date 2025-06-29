@@ -51,6 +51,12 @@ declare -A _plugins_seen_by_qname=()
 
 # --- filter ----
 
+# Checks if a plugin matches the specified `--match` argument.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
+# Returns:
+#   0 if the plugin matches or no match argument is provided, 1 otherwise.
 if [[ -n "${args[match]}" ]]; then
     declare match="${args[match]}"
     _match(){
@@ -79,13 +85,16 @@ _main() {
 
     local format="${args[format]:-}"
     # Formatter determination
-    _actual_formatter="__callback_format_describe_plugin" # Default
+    _actual_formatter="__callback_format_pretty" # Default
 
-    if [[ "$format" == "tsv" ]] ; then _actual_formatter="__callback_format_tsv"; fi
-    if [[ "$format" == "csv" ]] ; then _actual_formatter="__callback_format_csv"; fi
-    if [[ "$format" == "json" ]] ; then _actual_formatter="__callback_format_json"; fi
-    if [[ "$format" == "plain" ]] ; then _actual_formatter="__callback_format_plain"; fi
-    if [[ "$format" == "pretty" ]] ; then _actual_formatter="__callback_format_pretty"; fi
+    case "$format" in
+        tsv) _actual_formatter="__callback_format_tsv" ;;
+        csv) _actual_formatter="__callback_format_csv" ;;
+        json) _actual_formatter="__callback_format_json" ;;
+        plain) _actual_formatter="__callback_format_plain" ;;
+        pretty) _actual_formatter="__callback_format_pretty" ;;
+    esac
+
     if [[ -n "${args[name]:-}" ]]; then _actual_formatter="__callback_format_name"; fi
     if [[ -n "${args[dir]:-}" ]]; then _actual_formatter="__callback_format_dir"; fi
     if [[ -n "${args[id]:-}" ]]; then _actual_formatter="__callback_format_id"; fi
@@ -128,6 +137,10 @@ _main() {
 #
 # $1: plugin associative array
 #
+# Formats plugin details for pretty, human-readable output.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
 __callback_format_pretty() {
     local -n plug_details="$1"
 
@@ -173,11 +186,19 @@ __callback_format_pretty() {
     fi
 }
 
+# Formats plugin details to output only the plugin name.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
 __callback_format_name() {
     local -n plug_details="$1"
     echo "${plug_details[qname]}"
 }
 
+# Formats plugin details to output only the installation directory path.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
 __callback_format_dir() {
     local -n plug_details="$1"
     echo "${plug_details[install_dir]}"
@@ -188,14 +209,26 @@ __callback_format_id() {
     echo "${plug_details[id]}"
 }
 
+# Formats plugin details into a plain, tab-separated format.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
 __callback_format_plain() {
     _format_with "$1" 'plain'
 }
 
+# Formats plugin details into a Tab Separated Value (TSV) format.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
 __callback_format_tsv() {
     _format_with "$1" 'tsv'
 }
 
+# Formats plugin details into a Comma Separated Value (CSV) format.
+#
+# Arguments:
+#   $1: A nameref to an associative array containing plugin details.
 __callback_format_csv() {
     _format_with "$1" 'csv'
 }
@@ -293,6 +326,10 @@ __callback_format_scripts() {
 
 
 # Callback for --available filter (iterates INI entries)
+# Lists all plugins defined in INI configuration files.
+#
+# This function iterates through all available plugin INI entries and applies
+# the currently selected formatter to each plugin that matches the active filter.
 _list_available_plugins(){
     local __filtered_callback
     __filtered_callback(){
@@ -313,6 +350,10 @@ _list_available_plugins(){
 }
 
 # Processor for --disabled filter
+# Lists all currently disabled plugins.
+#
+# This function retrieves a list of disabled plugin IDs and then processes
+# each plugin using the `__list_plugins` helper function.
 _list_disabled_plugins() {
     local -A plugin
     local -a disabled_plugin_ids
@@ -322,6 +363,10 @@ _list_disabled_plugins() {
 }
 
 # Processor for --installed filter
+# Lists all currently installed plugins.
+#
+# This function retrieves a list of installed plugin IDs and then processes
+# each plugin using the `__list_plugins` helper function.
 _list_installed_plugins() {
     local -A plugin
     local -a installed_plugin_ids
@@ -331,6 +376,10 @@ _list_installed_plugins() {
 }
 
 # Processor for --enabled filter
+# Lists all currently enabled plugins.
+#
+# This function retrieves a list of enabled plugin IDs and then processes
+# each plugin using the `__list_plugins` helper function.
 _list_enabled_plugins() {
     local -A plugin
     local -a enabled_plugin_ids

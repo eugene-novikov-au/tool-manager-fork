@@ -23,7 +23,13 @@ _parse_args \
 
 
 if [[ "${args[all]}" == "1" ]]; then
-    rm -fR "$TM_PLUGINS_ENABLED_DIR"
+    _info "Disabling all plugins by removing '$TM_PLUGINS_ENABLED_DIR'"
+    if rm -fR "$TM_PLUGINS_ENABLED_DIR"; then
+        _info "Successfully removed all enabled plugins."
+    else
+        _error "Failed to remove all enabled plugins in '$TM_PLUGINS_ENABLED_DIR'."
+        exit 1
+    fi
 else
     prefix="${args[prefix]}"
     if [[ -n "$prefix" ]]; then
@@ -38,7 +44,7 @@ else
         declare -A plugin
         for plugin_name in "${plugin_names[@]}"; do
             _tm::util::parse::plugin plugin "$prefix$plugin_name"
-            _tm::plugin::disable plugin 
+            _tm::plugin::disable plugin
         done
     fi
 fi

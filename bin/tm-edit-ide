@@ -18,6 +18,8 @@ ide_command="${2:-}" # Optional: the base directory name of the plugin
 
 
 if [[ -z "$ide_command" ]]; then
+    # Load the IDE command from the Tool Manager configuration.
+    # If not set, it defaults to "code".
     _cfg_load --tm --key TM_IDE_CMD --default "code"
     ide_command="$TM_IDE_CMD"
 fi

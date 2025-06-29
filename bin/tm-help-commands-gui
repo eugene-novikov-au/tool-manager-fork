@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# Convenience script to launch the Tool Manager command help in GUI mode.
+# Purpose: Convenience script to launch the Tool Manager command help in GUI mode.
 # Equivalent to 'tm-help-commands --gui'.
 #
-
+# Usage: tm-help-commands-gui
+#
 tm-help-commands --gui

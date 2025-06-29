@@ -82,9 +82,17 @@ first_command_word=$(echo "$full_command_string" | awk '{print $1}')
 #
 # Invoke a given command either waiting, or in a background job
 #
+# _invoke()
+# Description: Invokes a given command, either waiting for it to complete or running it in the background.
+# Arguments:
+#   $@: The command and its arguments to execute.
+# Usage:
+#   _invoke "git status"
+#   _invoke "ls -l" &
 _invoke(){
     if [[ "${args[parallel]:-}" == "1" ]]; then
-        eval "$@" &
+        # Using a subshell to ensure `set -e` doesn't kill the parent script
+        ( eval "$@" ) &
     else
         eval "$@"
     fi
@@ -99,33 +107,48 @@ for plugin_id in "${plugin_ids_to_process[@]}"; do
         _warn "Directory '$actual_plugin_dir' (derived from '$plugin_id') does not exist. Skipping."
         continue
     fi
-    _pushd "$actual_plugin_dir"
-        if [[ -d .git ]]; then
-            _log $level "In $actual_plugin_dir (Branch: '$(git branch --show-current 2>/dev/null || echo "N/A")' Repo: $(git remote -v | awk '/\(push\)$/{print $2; exit}')) ==>"
-            
-            is_git_command=0
-            for gc in "${git_commands_array[@]}"; do
-                if [[ "$first_command_word" == "$gc" ]]; then
-                    is_git_command=1
-                    break
-                fi
-            done
-
-            if [[ "$is_git_command" -eq 1 ]]; then
-                _log $level "running: git $full_command_string"
-                _invoke "git $full_command_string" || _warn "Command 'git $full_command_string' failed in $actual_plugin_dir"
-            else
-                _log $level "running: '$full_command_string'"
-                _invoke "$full_command_string" || _warn "Command '$full_command_string' failed in $actual_plugin_dir"
+    if ! _pushd "$actual_plugin_dir"; then
+        _warn "Failed to change directory to '$actual_plugin_dir'. Skipping."
+        continue
+    fi
+    if [[ -d .git ]]; then
+        _log $level "In $actual_plugin_dir (Branch: '$(git branch --show-current 2>/dev/null || echo "N/A")' Repo: $(git remote -v | awk '/\(push\)$/{print $2; exit}')) ==>"
+        
+        is_git_command=0
+        for gc in "${git_commands_array[@]}"; do
+            if [[ "$first_command_word" == "$gc" ]]; then
+                is_git_command=1
+                break
             fi
+        done
+
+        if [[ "$is_git_command" -eq 1 ]]; then
+            _log $level "running: git $full_command_string"
+            _invoke "git $full_command_string" || _warn "Command 'git $full_command_string' failed in $actual_plugin_dir"
         else
-            _debug "Skipping '$actual_plugin_dir' as it is not a Git repository."
+            _log $level "running: '$full_command_string'"
+            _invoke "$full_command_string" || _warn "Command '$full_command_string' failed in $actual_plugin_dir"
         fi
+    else
+        _debug "Skipping '$actual_plugin_dir' as it is not a Git repository."
+    fi
     _popd
 done
 
 if [[ "${args[parallel]:-}" == "1" ]]; then
-    _info "waiting for parallel commands to complete..."
-    wait
-    _info "..done"
+    _info "Waiting for parallel commands to complete and checking exit codes..."
+    local all_succeeded=true
+    for job_id in $(jobs -p); do
+        wait "$job_id"
+        if [[ $? -ne 0 ]]; then
+            all_succeeded=false
+            _warn "A parallel command (PID: $job_id) failed."
+        fi
+    done
+    if "$all_succeeded"; then
+        _info "All parallel commands completed successfully."
+    else
+        _warn "Some parallel commands failed."
+        exit 1 # Indicate failure if any parallel command failed
+    fi
 fi

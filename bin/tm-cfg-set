@@ -1,5 +1,18 @@
 #!/usr/bin/env tm-env-bash
 #
+# Purpose: Set a configuration option for the core Tool Manager.
+# Args:
+#   <config_key>: The configuration key to set.
+#   [value]: The value to set for the configuration key. If not provided in an interactive shell, the script will prompt for it.
+# Options:
+#   --this: Auto-detect plugin name.
+#   --tm: Use tool manager configuration.
+#   --plugin <plugin_name>: The plugin to set the config for.
+#   --key <config_key>: The key to set.
+#   --value <value>: The value to set.
+# Example: tm-cfg-set --key my_key --value my_value
+# Example: tm-cfg-set --plugin my_plugin --key my_key --value my_value
+#
 # Set a configuration option for the core Tool Manager.
 # Usage: tm-cfg-set <config_key> [value]
 # If 'value' is not provided and the shell is interactive, prompts for the value.
@@ -37,3 +50,6 @@ fi
 value="${args['*']}"
 
 _tm::cfg::set_value "${plugin[qname]}" "${args[key]}" "${args[value]}"
+if [[ "$?" -ne "0" ]]; then
+  _fail "Failed to set configuration value for key '${args[key]}' in plugin '${plugin[qname]}'."
+fi

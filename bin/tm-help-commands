@@ -16,8 +16,7 @@
 #   Starts local web server and opens default browser to view documentation
 #
 
-_tm::source::include .tm.script.sh
-_tm::source::include .tm.plugins.sh
+_tm::source::include .tm.script.sh .tm.plugins.sh
 
 # Main execution
 #
@@ -33,6 +32,14 @@ _tm::source::include .tm.plugins.sh
 #   tm-help-commands [command-prefix-filter]
 #   tm-help-commands [command-prefix]
 __tm_help() {
+  # Purpose:
+  #   Handles command line arguments and dispatches to appropriate function.
+  # Arguments:
+  #   $1 - Optional: '--gui' to start web server or command filter.
+  #   $2 - Optional port number when using --gui.
+  # Usage:
+  #   tm-help-commands [--gui [port]]
+  #   tm-help-commands [command-prefix-filter]
   _info "generating help..."
   _trace "args:$@"
   if [[ "${1:-}" == "--gui" ]]; then
@@ -42,8 +49,13 @@ __tm_help() {
   fi
 }
 
-# Process all found scripts and display their help
 __tm_help_console() {
+  # Purpose:
+  #   Processes all found scripts and displays their help in the console.
+  # Arguments:
+  #   $1 - Optional: Command prefix filter.
+  # Usage:
+  #   __tm_help_console [command-prefix-filter]
   local cmd_filter="${1:-}"
   local files="$(_tm::plugins::find_all_scripts "$cmd_filter")"
 
@@ -55,6 +67,13 @@ __tm_help_console() {
 }
 
 __tm_help_serve() {
+  # Purpose:
+  #   Starts a local web server to serve the generated HTML help page and opens it in a browser.
+  # Arguments:
+  #   $1 - Port number for the web server (default: 8000).
+  #   $2 - Unused, kept for consistency with __tm_help signature.
+  # Usage:
+  #   __tm_help_serve [port]
   # Create temp directory if it doesn't exist
   local temp_dir="$(mktemp -d)"
   local temp_file="${temp_dir}/index.html"
@@ -74,8 +93,9 @@ __tm_help_serve() {
   echo "Serving help at http://localhost:$port"
   echo "Press Ctrl+C to stop"
   
-  # Start Python HTTP server in background
-  python3 -m http.server "$port" --directory "$temp_dir" --bind 127.0.0.1 &> /dev/null & 
+  # Start Python HTTP server in background.
+  # WARNING: This simple HTTP server is for local hosting only.
+  python3 -m http.server "$port" --directory "$temp_dir" --bind 127.0.0.1 &> /dev/null &
   local server_pid=$!
   
   # Open browser
@@ -85,33 +105,38 @@ __tm_help_serve() {
   wait $server_pid
 }
 
-# Generate HTML help page with search filter
-#
-# Purpose:
-#   Create an HTML page documenting all commands with a search filter
-#   Groups commands by their prefix (text before first '-') and hides empty sections
-#
-# Arguments:
-#   $1 - Directory containing commands to document
-#
-# Usage:
-#   __tm_help_generate_help_page "/path/to/commands"
-#
-# Output:
-#   HTML page printed to stdout
 __tm_help_generate_help_page() {
+  # Purpose:
+  #   Generates an HTML help page documenting all commands with a search filter.
+  #   Groups commands by their prefix (text before first '-') and hides empty sections.
+  # Arguments:
+  #   None. This function now dynamically finds all scripts.
+  # Usage:
+  #   __tm_help_generate_help_page
+  # Output:
+  #   HTML page printed to stdout.
   # Start HTML document
 
+  # Using a simple heredoc for HTML generation. For more complex templates,
+  # a dedicated templating engine (like mustache or handlebars) would be
+  # beneficial, but for this scope, direct HTML embedding is sufficient.
   cat << EOF
 <!DOCTYPE html>
-<html><head><title>Command Help</title>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Help</title>
   <style>
-    body { font-family: sans-serif; margin: 2em; }
-    .command { margin-bottom: 1em; margin-left: 20px; cursor: pointer; }
-    .name { font-weight: bold; }
-    .help { margin-left: 1em; color: #444; white-space: pre-wrap; display: none; }
-    #filter { padding: 0.5em; width: 300px; margin-bottom: 1em; }
-    .expand-all { margin-left: 1em; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 2em; background-color: #f4f7f6; color: #333; }
+    h1 { color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 0.5em; }
+    h2 { color: #007bff; margin-top: 1.5em; }
+    .command { background-color: #ffffff; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 1em; padding: 1em; cursor: pointer; transition: all 0.2s ease-in-out; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .command:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .name { font-weight: bold; color: #0056b3; font-size: 1.1em; }
+    .help { margin-top: 0.8em; margin-left: 1em; color: #555; white-space: pre-wrap; display: none; background-color: #e9ecef; padding: 1em; border-radius: 4px; border-left: 3px solid #007bff; }
+    #filter { padding: 0.8em; width: 300px; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+    .expand-all { margin-left: 1em; font-size: 0.9em; color: #666; }
   </style>
   <script>
     function toggleHelp(event) {
@@ -134,13 +159,13 @@ __tm_help_generate_help_page() {
       });
     }
   </script>
-  </head>
-    <body>
-      <h1>Command Help</h1>
-      <input type='text' id='filter' placeholder='Search commands...' oninput='filterCommands()'>
-      <label class='expand-all'>
-        <input type='checkbox' onchange='toggleAllHelp(this)'> Expand All
-      </label>
+</head>
+<body>
+  <h1>Command Help</h1>
+  <input type='text' id='filter' placeholder='Search commands...' oninput='filterCommands()'>
+  <label class='expand-all'>
+    <input type='checkbox' onchange='toggleAllHelp(this)'> Expand All
+  </label>
 EOF
   # Find all files and generate HTML
 

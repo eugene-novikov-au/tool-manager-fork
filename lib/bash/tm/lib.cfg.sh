@@ -16,6 +16,16 @@ _cfg_get() {
     _tm::cfg::get "$@"
 }
 
+# Loads configuration values into the current shell environment.
+# This function is a wrapper around `_tm::cfg::load`.
+#
+# Args:
+#   $@: Arguments passed directly to `_tm::cfg::load`.
+#
+# Usage:
+#   _cfg_load --tm --key MY_CONFIG_KEY
+#   _cfg_load --plugin my-plugin --key PLUGIN_SETTING
+#
 _cfg_load() {
     _tm::cfg::load "$@"
 }
@@ -177,21 +187,8 @@ _tm::cfg::get_config_files() {
     _tm::util::parse::plugin_name parts "$qualified_name"
     
     local files=()
-    _tm::cfg::__add_config_files files "${parts[name]}" "${parts[qpath]}"
+    _tm::cfg::_tm::cfg::__add_config_files_to files "${parts[name]}" "${parts[qpath]}"
     echo "${files[@]}"
-}
-
-_tm::cfg::__add_config_files() {
-    local -n array_config_files="$1"
-    local plugin_name="$2"
-    local qpath="$3"
-
-    array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.env") # plugin provided
-    array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.bashrc") # plugin provided .bashrc
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/.env") # shared between all the plugins
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/cfg.sh") # shared between all the plugins
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/.env") # config for this plugin instance
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh") # config for this plugin instance    
 }
 
 # --- Set a configuration value for a plugin ---
@@ -332,70 +329,99 @@ _tm::cfg::__load_cfg(){
     local plugin_id="$1"
     local -A plugin=()
     _tm::util::parse::plugin_id plugin "$plugin_id"
-    # bashrc to load
-    #local cfg_bashrc="$TM_CACHE_DIR/merged-config/${plugin[qpath]}.env"
+     
+    local qpath="${plugin[key]}"
+    local plugin_config_yaml="${plugin[install_dir]}/plugin.config.yaml"
+    
     local env_files=() # config files bashrc is generated from
-    _tm::cfg::__add_config_files env_files "${plugin[name]}" "${plugin[qpath]}"
-    #_debug "loading $cfg_bashrc from ${env_files[@]}"
-    _tm::cfg::__source_cfg "${plugin[key]}" "${env_files[@]}"
+    _tm::cfg::_tm::cfg::__add_config_files_to env_files "${plugin[name]}" "${plugin[qpath]}"
+    
+    local hash="$(_tm::cfg::__generate_hash_for "${env_files[@]}" "${plugin_config_yaml}" )"
+
+    local base_config_dir="$TM_CACHE_DIR/merged-config"
+    
+    while [[ true ]]; do
+
+      # make the hash part of the generated path so it's easy to check if things have changed
+      local merged_bashrc_file="$base_config_dir/${qpath}.cfg.sh.${hash}"
+      _debug "using merged config '$merged_bashrc_file'"
+      if [[  -f "$merged_bashrc_file" ]]; then #we're done, just load the config
+
+        _debug "sourcing '$merged_bashrc_file' into current shell"
+        source "$merged_bashrc_file"
+        return
+      fi
+      # we needs generation
+      local -a previous_bashrcs=() # collect old config
+      mapfile -t previous_bashrcs < <(find "$base_config_dir" -type f \( -name "${qpath}.cfg.sh.*" -prune -o -print \))
+
+      _tm::cfg::env::__generate_cfg_bashrc "$merged_bashrc_file" "${env_files[@]}"
+      # remove the old merged config files
+      for file in "${previous_bashrcs[@]}"; do
+      _trace "removing previous merged config:'$file'"
+        rm -f "$file" || _warn "Couldn't delete old merged config '$file', ignoring"
+      done
+
+      source "$merged_bashrc_file"
+
+      #TODO: prompt if new keys needed? check all variable available, and if not, prompt user, then regenerate?
+      if _tm::cfg::__ensure_config_has_required_values "${plugin_config_yaml}" "$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh" "${merged_bashrc_file}"; then
+        return
+      fi
+    done
+
+}
+
+_tm::cfg::_tm::cfg::__add_config_files_to() {
+    local -n array_config_files="$1"
+    local plugin_name="$2"
+    local qpath="$3"
+
+    #array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.env") # plugin provided
+    array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/plugin.config.sh") # plugin provided
+    array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.bashrc") # plugin provided .bashrc
+    #array_config_files+=("$TM_PLUGINS_CFG_DIR/.env") # shared between all the plugins
+    array_config_files+=("$TM_PLUGINS_CFG_DIR/cfg.sh") # shared between all the plugins
+    #array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/.env") # config for this plugin instance
+    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh") # config for this plugin instance    
+}
+
+_tm::cfg::__ensure_config_has_required_values(){
+  local plugin_yaml="$1"
+  local config_to_edit="$2"
+  local config_to_source="$3"
+  # todo: check config is valid, els eprompt for user to fix it
+  return 0
 }
 
 #
-# This function reads/generates the output bashrc file and then sources it.
-# It determines whether a regeneration is needed based on changes in input .env files.
+# Generate a hash unique for the given config files. If they change, so should the hash. It is not
+# cryptogrpahically secure, and it shold only be used for simple change detection
 #
-# Usage: _tm::cfg::__source_cfg <output_bashrc_file> <env_file1> [<env_file2> ...]
-# Example: _tm::cfg::__source_cfg my_app_env.sh .env.defaults .env.common .env.local
-_tm::cfg::__source_cfg() {
-  # Check if at least two arguments (output_bashrc_file + at least one env file) are provided
-  if (( $# < 2 )); then
-    _fail "Usage: _tm::cfg::__source_cfg plugin_key <env_file1> [<env_file2> ...]"
-  fi
-  local qpath="$1"
-
-  #local output_bashrc_file="$1"
-  shift # Remove the output_bashrc_file from the arguments list
-  local env_files=("$@") # All remaining arguments are the .env files
-
-  # Calculate a combined checksum of all input .env files
-  local current_checksum=""
-  for f in "${env_files[@]}"; do
+_tm::cfg::__generate_hash_for(){
+  local files=("$@") # All the passed in files
+  local hash=""
+  for f in "${files[@]}"; do
     if [[ -f "$f" ]]; then
-      current_checksum+=$(stat -c %Y "$f") # Using modification time for quick check
+      hash+=$(stat -c %Y "$f") # Using modification time for quick check
+      hash+="$f" # include path
     else
-      current_checksum+="NF" # Mark as Not Found if file is missing
+      hash+="NF" # Mark as Not Found if file is missing
     fi
   done
-  current_checksum=$(echo "$current_checksum" | md5sum | awk '{print $1}') # Hash concatenated mtimes
-  # make the checksum part of the generated path
-  local base_config_dir="$TM_CACHE_DIR/merged-config"
-  local output_bashrc_file="$base_config_dir/${qpath}.cfg.sh.${current_checksum}"
-  _debug "using merged config '$output_bashrc_file'"
-  if [[  -f "$output_bashrc_file" ]]; then
-    _debug "sourcing '$output_bashrc_file' into current shell"
-    source "$output_bashrc_file"
-    return
-  fi
-  # we needs generation
-  local -a previous_bashrcs=() # collect old config
-  mapfile -t previous_bashrcs < <(find "$base_config_dir" -type f \( -name "${qpath}.cfg.sh.*" -prune -o -print \))
-
-  _tm::cfg::env::__generate_cfg_bashrc "$output_bashrc_file" "${env_files[@]}"
-  source "$output_bashrc_file"
-
-  # remove the old merged config files
-  for file in "${previous_bashrcs[@]}"; do
-  _trace "removing previous merged config:'$file'"
-    rm -f "$file" || _warn "Couldn't delete old merged config '$file', ignoring"
-  done
+  echo "$hash" | md5sum | awk '{print $1}' # Hash concatenated mtimes
 }
-
 #
 # This function encapsulates the logic for parsing .env files and generating
 # the output bashrc file. It does *not* perform checksum checks itself.
 # It expects the output file path as $1 and the list of env files as "$@" (shifted).
 #
 # Usage: _cfg::env::generate_core <output_file> <env_file1> [<env_file2> ...]
+#
+# Generates a bashrc file from a list of .env files.
+#
+# @param output_file The path to the output bashrc file.
+# @param env_files The list of .env files to read.
 _tm::cfg::env::__generate_cfg_bashrc() {
   local output_file="$1"
   shift # Remove output_file from arguments
@@ -417,49 +443,49 @@ _tm::cfg::env::__generate_cfg_bashrc() {
     local key
     local value
     for env_file in "${env_files[@]}"; do
-      if [[ -f "$env_file" ]]; then
-        _debug "reading: $env_file"
-        if [[ "$env_file" == *".bashrc" ]]; then
-            # then just source it
-            echo "source '$env_file'"
-        else
-            # Read the file line by line, filtering out comments and empty lines efficiently
-            while IFS= read -r line; do
-              # Skip lines that are empty or comments
-              [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-
-              # Split the line at the first '=' into key and value
-              key="${line%%=*}"
-              value="${line#*=}"
-
-              # remove the 'EXPORT' statement if any
-              key="${key##EXPORT*}"
-
-              # Trim leading/trailing whitespace from the key using Bash parameter expansion
-              key="${key##*( )}"
-              key="${key%%*( )}"
-
-              # Remove outer quotes (single or double) from the value using sed
-              value=$(echo "$value" | sed -E "s/^(['\"])(.*)\1$/\2/")
-
-              # # Perform variable expansion (e.g., $HOME, ${VAR_FROM_PREVIOUS_FILE}) using envsubst.
-              # local expanded_value
-              # expanded_value=$(envsubst <<< "$value")
-
-
-              # Store the key in our associative array to track which variables we set.
-              if [[ -z "${map[$key]:-}" ]]; then
-                  # Key is not yet in the associative array, so add it and the key to the ordered list
-                  map[$key]="$value"
-                  keys+=("$key")
-              else
-                  # Key already exists, update the value if needed (or handle as desired)
-                  map[$key]="$value"
-              fi
-            done < <(grep -vE '^\s*#|^\s*$' "$env_file")
-        fi
-      else
+      if [[ ! -f "$env_file" ]]; then
         _debug "config file not found: $env_file (skipping)"
+        continue
+      fi
+      _debug "reading: $env_file"
+      if [[ "$env_file" == *".bashrc" ]] || [[ "$env_file" == *".sh" ]]; then
+          # then just source it
+          echo "source '$env_file'"
+      else
+          # Read the file line by line, filtering out comments and empty lines efficiently
+          while IFS= read -r line; do
+            # Skip lines that are empty or comments
+            [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+            # Split the line at the first '=' into key and value
+            key="${line%%=*}"
+            value="${line#*=}"
+
+            # remove the 'EXPORT' statement if any
+            key="${key##EXPORT*}"
+
+            # Trim leading/trailing whitespace from the key using Bash parameter expansion
+            key="${key##*( )}"
+            key="${key%%*( )}"
+
+            # Remove outer quotes (single or double) from the value using sed
+            value=$(echo "$value" | sed -E "s/^(['\"])(.*)\1$/\2/")
+
+            # # Perform variable expansion (e.g., $HOME, ${VAR_FROM_PREVIOUS_FILE}) using envsubst.
+            # local expanded_value
+            # expanded_value=$(envsubst <<< "$value")
+
+
+            # Store the key in our associative array to track which variables we set.
+            if [[ -z "${map[$key]:-}" ]]; then
+                # Key is not yet in the associative array, so add it and the key to the ordered list
+                map[$key]="$value"
+                keys+=("$key")
+            else
+                # Key already exists, update the value if needed (or handle as desired)
+                map[$key]="$value"
+            fi
+          done < <(grep -vE '^\s*#|^\s*$' "$env_file")
       fi
     done
 
@@ -471,7 +497,7 @@ _tm::cfg::env::__generate_cfg_bashrc() {
       printf "export %q=\"%q\"\n" "$key" "${value}"
     done
 
-  ) > "$output_file" # Redirect all stdout from the subshell to the bashrc file
+  ) > "${output_file}" # Redirect all stdout from the subshell to the bashrc file
   
   _debug "successfully generated '$output_file'"
   return 0

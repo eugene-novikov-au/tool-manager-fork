@@ -1,6 +1,18 @@
 #!/usr/bin/env tm-env-bash
 #
-# Get a tool-manager configuration option.
+# Purpose: Get a tool-manager configuration option.
+# Args:
+#   $1 - The configuration option to retrieve.
+# Example: tm-cfg-get TM_EDITOR
+#
+# _trap_error
+# Traps errors and exits with a non-zero exit code.
+#
+# Behavior:
+#   - Sets a trap to catch errors and exit.
+#
+# Usage:
+#   _trap_error
 #
 _trap_error
 

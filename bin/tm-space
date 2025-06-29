@@ -1,7 +1,12 @@
 #!/usr/bin/env tm-env-bash
-#
-# Launch a space
-#
+
+# Purpose: Launch a space, either by key or GUID.
+# Args:
+#   -k, --key KEY: The space key.
+#   -g, --guid GUID: The space GUID.
+# Example:
+#   ./tm-space -k my-space-key
+#   ./tm-space -g 1234-5678-90ab-cdef
 
 _tm::source::include .tm.script.sh
 
@@ -14,4 +19,11 @@ _parse_args \
     --result args \
     -- "$@"
 
-_todo "implement me!"
+if [[ -n "${args[KEY]}" ]]; then
+  _tm::space::launch --key "${args[KEY]}"
+elif [[ -n "${args[GUID]}" ]]; then
+  _tm::space::launch --guid "${args[GUID]}"
+else
+  _error "Either --key or --guid must be provided."
+  exit 1
+fi

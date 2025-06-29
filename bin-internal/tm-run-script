@@ -35,11 +35,14 @@ fi
 wrapper_script="$1"
 plugin_id="$2"
 plugin_dir="$3"
-real_script="$4"
+plugin_cfg_dir="$4"
+real_script="$5"
 shift 4 # the remaining is the user args
 
 export TM_PLUGIN_HOME="$plugin_dir"
 export TM_PLUGIN_ID="$plugin_id"
+export TM_PLUGIN_CFG_DIR="$plugin_cfg_dir"
+
 # ensure plugin's can call their own scripts, without the prefix. The plugin env variables (TM_PLUGIN_..) should still work
 # to pass the config around.
 # The 'bin-internal' are utility scripts for the plugin itself, which are not exposed to the user. This allows

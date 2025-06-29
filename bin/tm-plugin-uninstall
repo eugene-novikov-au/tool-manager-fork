@@ -34,11 +34,15 @@ if [[ -n "${plugins}" ]]; then
     done
 else
     plugins_to_remove=""
+    _info "Interactive plugin uninstallation mode."
+    _info "Enter one or more space-separated plugin names to uninstall."
+    _info "Press Enter without input to list currently installed plugins."
     while true; do
-        _read "Which plugin(s) to remove (space-separated, empty to list available)? : " plugins_to_remove
+        _read "Which plugin(s) to remove? : " plugins_to_remove
         if [[ -z "$plugins_to_remove" ]]; then
-            _info "No input. Listing available plugins:"
+            _info "No input. Listing installed plugins:"
             tm-plugin-ls --installed --name
+            _info "Please enter plugin(s) to remove, or Ctrl+C to exit."
             # Loop continues, re-prompting
         else
             # User provided input, break from prompt loop

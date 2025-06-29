@@ -12,9 +12,20 @@
 
 
 #
-# Reload the given plugin if it is enabled, else a no-op
+# _tm::plugin::reload
 #
-# $1 - the plugin associative array
+# Reloads a specific Tool Manager plugin if it is currently enabled.
+# This involves disabling the plugin, re-enabling it, and regenerating its wrapper scripts.
+# If the plugin is not enabled, it logs a warning and performs no operation.
+#
+# Args:
+#   $1 - plugin_reload: The name of an associative array containing plugin details.
+#                       Expected keys: 'qname' (qualified name), 'enabled_dir'.
+#
+# Usage:
+#   declare -A my_plugin
+#   _tm::util::parse::plugin my_plugin "myplugin"
+#   _tm::plugin::reload my_plugin
 #
 _tm::plugin::reload(){
   local -n plugin_reload="$1"
@@ -198,9 +209,33 @@ _tm::plugin::__find_scripts_in() {
 }
 
 #
-# Enable a plugin
+# _tm::plugin::enable
 #
-# $1 - the plugin associative array
+# Enables a Tool Manager plugin by creating a symlink from its install directory to the enabled directory.
+# This function also handles the execution of optional 'plugin-requires' and 'plugin-enable' scripts
+# located within the plugin's directory.
+#
+# Args:
+#   $1 - plugin_enable: The name of an associative array containing plugin details.
+#                       Expected keys: 'qname' (qualified name), 'install_dir', 'enabled_dir', 'tm' (boolean).
+#
+# Behavior:
+#   - Skips enabling if the plugin is the tool-manager itself (always enabled).
+#   - Checks if the plugin directory exists. If not, it logs an error and fails.
+#   - If the plugin is already enabled (symlink exists), it logs an informational message and returns.
+#   - Creates the necessary directory structure for the symlink if it doesn't exist.
+#   - Creates a symbolic link from the plugin's install directory to the enabled directory.
+#   - Calls `_tm::plugin::__generate_wrapper_scripts` to create wrapper scripts for the plugin's commands.
+#   - If a 'plugin-requires' script exists, it prompts the user to run it. If the user agrees,
+#     the script is executed. Errors are warned but do not prevent enablement.
+#   - If a 'plugin-enable' script exists, it is executed. If this script fails, the symlink is removed.
+#   - Logs informational messages about the enablement process.
+#   - Calls `_tm::plugin::load` to load the plugin's environment.
+#
+# Usage:
+#   declare -A my_plugin
+#   _tm::util::parse::plugin my_plugin "myvendor/myplugin"
+#   _tm::plugin::enable my_plugin
 #
 _tm::plugin::enable() {
   local -n plugin_enable="$1"
@@ -264,9 +299,26 @@ _tm::plugin::enable() {
 }
 
 #
-# Disable the given plugin
-# 
-# $1 - the plugin associative array
+#
+# Disables a Tool Manager plugin by removing its symlink from the enabled directory.
+# If a 'plugin-disable' script exists within the plugin, it will be executed before removal.
+#
+# Args:
+#   $1 - plugin_arr: The name of an associative array containing plugin details.
+#                    Expected keys: 'qname' (qualified name), 'prefix', 'install_dir', 'enabled_dir'.
+#
+# Behavior:
+#   - Checks if the plugin is currently enabled (i.e., its symlink exists).
+#   - If enabled, it attempts to run the plugin's 'plugin-disable' script (if present and executable).
+#   - Removes the symlink from $TM_PLUGINS_ENABLED_DIR.
+#   - Reloads all enabled plugins to reflect the change.
+#   - Logs informational messages about the process.
+#   - If the plugin is already disabled, it logs an informational message.
+#
+# Usage:
+#   declare -A my_plugin
+#   _tm::util::parse::plugin my_plugin "myvendor/myplugin"
+#   _tm::plugin::disable my_plugin
 #
 _tm::plugin::disable() {
   local -n plugin_arr="$1"
@@ -285,9 +337,13 @@ _tm::plugin::disable() {
         chmod a+x "$disable_script" || true
         ("$disable_script") || _warn "Error running disable script: '$disable_script'"
       fi
-      _info "Removing symlink '$plugin_enabled_link"
-      rm -f "$plugin_enabled_link"
-      _info "Plugin '$qname' is disabled. Link '$plugin_enabled_link' to '${plugin_dir}' removed"
+      _info "Removing symlink '$plugin_enabled_link'"
+      if rm -f "$plugin_enabled_link"; then
+        _info "Plugin '$qname' is disabled. Link '$plugin_enabled_link' to '${plugin_dir}' removed"
+      else
+        _error "Failed to remove symlink '$plugin_enabled_link'."
+        return 1
+      fi
 
       _tm::plugins::reload_all_enabled
   else
@@ -345,6 +401,7 @@ _tm::plugin::__generate_wrapper_scripts() {
   local plugin_id="${plugin_generate[id]}"
 
   local plugin_bin_dir="${plugin_dir}/bin"
+  local plugin_cfg_dir="${TM_PLUGINS_CFG_DIR}/${qname}"
 
   _debug "Generating wrapper invoke scripts for plugin '$qname', prefix '"$prefix"' in $TM_PLUGINS_BIN_DIR to ${plugin_bin_dir}"
 
@@ -378,7 +435,7 @@ _tm::plugin::__generate_wrapper_scripts() {
       
       cat << EOF > "$wrapper_script"
 #!/usr/bin/env bash
-$TM_HOME/bin-internal/tm-run-script '$wrapper_script' '$plugin_id' '$plugin_dir' '$file' "\$@"
+$TM_HOME/bin-internal/tm-run-script '$wrapper_script' '$plugin_id' '$plugin_dir' '$plugin_cfg_dir' '$file' "\$@"
 EOF
       chmod a+x "$wrapper_script"
     #fi

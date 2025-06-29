@@ -30,6 +30,8 @@ if [[ -n "${plugins}" ]]; then
     for plugin in "${plugin_names[@]}"; do
         if _tm::plugins::install "${plugin}"; then
             _reload=1
+        else
+            _error "Failed to install plugin: '${plugin}'"
         fi
     done
 else
@@ -37,7 +39,8 @@ else
     while true; do
         _read "Which plugin(s) to install (space-separated, empty to list available)? : " plugins_to_install
         if [[ -z "$plugins_to_install" ]]; then
-            _info "No input. Listing available plugins:"
+            _info "No input. Listing available plugins. To install, provide a plugin name or a Git repository URL."
+            _info "Examples: 'myplugin', 'myorg/myplugin', 'git@github.com:myorg/myplugin.git'"
             tm-plugin-ls --available
             # Loop continues, re-prompting
         else
@@ -52,6 +55,8 @@ else
         if [[ -n "$qname" ]]; then # Check if the part is not empty
              if _tm::plugins::install "$qname"; then
                 _reload=1
+             else
+                _error "Failed to install plugin: '${qname}'"
              fi
         fi
     done

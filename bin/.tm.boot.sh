@@ -51,9 +51,19 @@ _tm::boot::refresh() {
     _info "...$__TM_NAME reloaded"
 }
 #
-# Reload a given plugin, or reload all
+# _tm::boot::reload
 #
-#  $1 -(optional) name of the plugin
+# Reloads the Tool Manager environment, optionally for a specific plugin.
+# This function clears the cache, re-initializes the environment,
+# regenerates plugin wrapper scripts, and reloads all enabled plugins.
+#
+# Args:
+#   $1 (optional) - plugin_name: The name of a specific plugin to reload.
+#                                If not provided, the entire Tool Manager is reloaded.
+#
+# Usage:
+#   _tm::boot::reload
+#   _tm::boot::reload "myplugin"
 #
 _tm::boot::reload() {
   local plugin_name="${1:-}"

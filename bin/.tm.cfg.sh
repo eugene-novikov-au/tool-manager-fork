@@ -22,9 +22,18 @@ _tm::cfg::get_cfg_editor(){
 }
 
 _tm::cfg::get_editor(){
-  [[ -n "${1:-}" ]] && local default="$1" || true
-  #local editor_cmd="${1:-}"
-  local editor="$(_tm::cfg::get --tm --key TM_DIR_EDITOR --default ${default:-${EDITOR:-code}})"
+  # Gets the configured editor, defaulting to TM_DIR_EDITOR, EDITOR, or 'code'.
+  # Usage: _tm::cfg::get_editor [default_editor]
+  #   default_editor: Optional. The editor to use if TM_DIR_EDITOR and EDITOR are not set.
+  #
+  # Behavior:
+  #   Gets the configured editor, defaulting to TM_DIR_EDITOR, EDITOR, or 'code'.
+  #
+  # Returns: The name of the editor to use.
+    [[ -n "${1:-}" ]] && local default="$1" || true
+    #local editor_cmd="${1:-}"
+    # Gets the configuration editor
+    local editor="$(_tm::cfg::get --tm --key TM_DIR_EDITOR --default ${default:-${EDITOR:-code}})"
   if [[ "$editor" == "" ]]; then
         editor="${default:-code}"
   fi
@@ -42,4 +51,80 @@ _tm::cfg::get_editor(){
   _fail_if_not_installed "$editor" "No suitable editor found. Please set your \$TM_DIR_EDITOR environment variable or specify an editor command. Provided default '${1:-}'"
 
   echo -n "$editor" 
+}
+
+# Ensure envsubst is available, or provide a warning
+if ! command -v envsubst &> /dev/null; then
+    _warn "Warning: 'envsubst' not found. Environment variables will not be expanded."
+    _warn "         Please install it (e.g., sudo apt-get install gettext-tools)."
+    _warn "         Falling back to literal values."
+    # If envsubst is not available, we'll just print the raw values.
+    # You might want to exit or handle this differently based on your needs.
+    ENV_SUBST_CMD="cat" # Use cat as a fallback to just pass through the raw string
+else
+    ENV_SUBST_CMD="envsubst"
+fi
+
+_tm::cfg2::plugin_init(){
+  local cfg_file="$1"
+  local expanded_default_val expanded_note_val
+  yq '.keys | to_entries[] | [.key, .value.default, .value.note, .value.required, .value.type] | @tsv' "$cfg_file" -r | \
+  while IFS=$'\t' read -r key_name raw_default_val raw_note_val raw_required_val raw_type_val; do
+    # Apply envsubst to the values that might contain environment variables
+    expanded_default_val=$(echo "$raw_default_val" | $ENV_SUBST_CMD)
+    expanded_note_val=$(echo "$raw_note_val" | $ENV_SUBST_CMD)
+
+    if _is_trace; then
+      _trace "--- Key: $key_name ---"
+      _trace "  Raw Default:      $raw_default_val"
+      _trace "  Expanded Default: $expanded_default_val"
+      _trace "  Raw Note:         $raw_note_val"
+      _trace "  Expanded Note:    $expanded_note_val"
+      _trace "  Required:         $raw_required_val"
+      _trace "  Type:             $raw_type_val"
+      _trace ""
+    fi
+    _env_cfg_key --this --key "$key_name" --default "$expanded_default_val" --note "$expanded_note_val"
+  done
+
+}
+
+#
+# $1 - the plugin id or name
+#
+_tm::cfg2::plugin_generate_sh_cfg_file(){
+  local -A plugin_details
+  _tm::util::parse::plugin plugin_details "$1"
+
+  # TODO: only if changed?
+  _tm::cfg2::__generate_sh_from_plugin_yaml "${plugin_details[cfg_spec]}" "${plugin_details[cfg_sh]}"
+}
+
+_tm::cfg2::__generate_sh_from_plugin_yaml(){
+  local cfg_file="$1"
+  local target_file="$2"
+
+  local expanded_default_val expanded_note_val
+  yq '.keys | to_entries[] | [.key, .value.default, .value.note, .value.required, .value.type] | @tsv' "$cfg_file" -r | \
+  mkdir -p "$(dirname "$target_file")"
+  echo "" > "$target_file"
+  while IFS=$'\t' read -r key_name raw_default_val raw_note_val raw_required_val raw_type_val; do
+    # Apply envsubst to the values that might contain environment variables
+    expanded_default_val=$(echo "$raw_default_val" | $ENV_SUBST_CMD)
+    expanded_note_val=$(echo "$raw_note_val" | $ENV_SUBST_CMD)
+
+    if _is_trace; then
+      _trace "--- Key: $key_name ---"
+      _trace "  Raw Default:      $raw_default_val"
+      _trace "  Expanded Default: $expanded_default_val"
+      _trace "  Raw Note:         $raw_note_val"
+      _trace "  Expanded Note:    $expanded_note_val"
+      _trace "  Required:         $raw_required_val"
+      _trace "  Type:             $raw_type_val"
+      _trace ""
+    fi
+
+    echo "_env_cfg_key --this --key '$key_name' --default '$expanded_default_val' --note '$expanded_note_val'" >> "${target_file}"
+  done
+
 }

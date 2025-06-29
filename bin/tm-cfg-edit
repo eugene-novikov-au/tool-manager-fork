@@ -27,7 +27,29 @@ _parse_args \
     --result args \
     -- "$@"
 
-editor_to_use="$(_tm::cfg::get_cfg_editor ${args[editor]})"
+# Gets the editor to use for editing the configuration file.
+editor_to_use=""
+if [[ -n "${args[editor]}" ]]; then
+  editor_to_use="${args[editor]}"
+else
+  case "$TM_CFG_EDITOR:$EDITOR" in
+    (:*)
+      if command -v vi &>/dev/null; then
+        editor_to_use="vi"
+      elif command -v nano &>/dev/null; then
+        editor_to_use="nano"
+      else
+        _fail "No editor found. Please set \$TM_CFG_EDITOR or \$EDITOR"
+      fi
+      ;;
+    (*:*)
+      editor_to_use="$TM_CFG_EDITOR"
+      ;;
+    (*)
+      editor_to_use="$EDITOR"
+      ;;
+  esac
+fi
 qualified_name="${args[plugin]}"
 
 #_info "using editor: $editor_to_use"
@@ -35,13 +57,16 @@ qualified_name="${args[plugin]}"
 declare -A plugin=()
 
 if [[ -z "$qualified_name" ]] && [[ -n "${args[tm]}" ]]; then
+    # Parses the plugin ID from the given string and populates the plugin array.
     _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 elif [[ -z "$qualified_name" ]] && [[ -n "${args[this]}" ]]; then
     if [[ -z "${TM_PLUGIN_ID:-}" ]]; then
         _fail "Set flag '--this', but no env variable 'TM_PLUGIN_ID' has been set. Ensure you are calling this via the wrapper scripts"
     fi
+    # Parses the plugin ID from the given string and populates the plugin array.
     _tm::util::parse::plugin_id plugin "$TM_PLUGIN_ID"
 else
+    # Parses the plugin ID from the given string and populates the plugin array.
     _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 fi
 
@@ -70,7 +95,12 @@ else
     # Ensure the directory exists
     if [[ ! -d "$plugin_cfg_file_dir" ]]; then
         _info "Plugin configuration directory '$plugin_cfg_file_dir' does not exist. Creating it."
-        mkdir -p "$plugin_cfg_file_dir" || _fail "Could not create directory '$plugin_cfg_file_dir'."
+        if ! mkdir -p "$plugin_cfg_file_dir"; then
+        	_error "Could not create directory '$plugin_cfg_file_dir'."
+        fi
+    fi
+    if [[ ! -d "$plugin_cfg_file_dir" ]]; then
+        _fail "Failed to create directory '$plugin_cfg_file_dir'."
     fi
     
     # Touch the file to ensure it exists before opening, helpful for some editors

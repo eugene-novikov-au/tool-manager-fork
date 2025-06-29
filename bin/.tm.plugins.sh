@@ -15,8 +15,13 @@ _tm::source::include @tm/lib.file.ini.sh
 _tm::source::once "$TM_BIN/.tm.plugin.sh"
 
 #
-# Regenerate all the plugin scripts
+# _tm::plugins::regenerate_all_wrapper_scripts
 #
+# Regenerates all wrapper scripts for currently enabled plugins.
+# This involves removing existing wrappers and then creating new ones for each enabled plugin.
+#
+# Usage:
+#   _tm::plugins::regenerate_all_wrapper_scripts
 #
 _tm::plugins::regenerate_all_wrapper_scripts(){
   _info "Regenerating plugin wrapper scripts..."
@@ -297,6 +302,23 @@ _tm::plugins::find_ini_files() {
     fi
 }
 
+# _tm::plugins::uninstall
+#
+# Uninstalls a Tool Manager plugin. This involves disabling the plugin
+# and then removing its installation directory.
+#
+# Arguments:
+#   $1 - plugin_identifier: The identifier of the plugin to uninstall.
+#                           This should be a qualified plugin name (e.g., "myplugin", "myns:myplugin").
+#
+# Returns:
+#   0 if the plugin was successfully uninstalled or the user chose not to proceed.
+#   1 if the uninstallation failed.
+#
+# Usage:
+#   _tm::plugins::uninstall "myplugin"
+#   _tm::plugins::uninstall "myns:myplugin"
+#
 _tm::plugins::uninstall() {
   local plugin="$1"
 
@@ -315,42 +337,64 @@ _tm::plugins::uninstall() {
   local yn=''
   while [[ -z "$yn" ]]; do
     _read "Really uninstall plugin ${qname} in ${plugin_dir}? [yn]" yn
-    case "$yn" in 
+    case "$yn" in
       y|Y|yes)
-        _tm::plugin::disable plugin_to_disable
-        rm -fR "$plugin_dir"
-        return
+        if _tm::plugin::disable plugin_to_disable; then
+            _info "Plugin '${qname}' disabled successfully."
+        else
+            _warn "Failed to disable plugin '${qname}'. Proceeding with directory removal."
+        fi
+        if rm -fR "$plugin_dir"; then
+            _info "Plugin directory '${plugin_dir}' removed successfully."
+            return 0
+        else
+            _error "Failed to remove plugin directory '${plugin_dir}'."
+            return 1
+        fi
         ;;
       n|N|no)
-        _info "not removing"
-        return 1
+        _info "Not removing plugin '${qname}'."
+        return 0
         ;;
     esac
   done
 }
 
-# Installs a plugin based on its definition in the INI files.
+# _tm::plugins::install
+#
+# Installs a Tool Manager plugin. This function acts as a dispatcher, determining
+# whether to install from a Git repository directly or from the configured plugin registry
+# based on the format of the provided plugin identifier.
+#
 # Args:
-#   $1 - qualified_name: The full plugin identifier, which can include
-#        a prefix and/or a version separated by '@'.
-#        e.g., "myplugin", "myns:myplugin", "myplugin@v1.2", "myns:myplugin@v1.2"
+#   $1 - plugin_identifier: The identifier of the plugin to install. This can be:
+#                           - A Git repository URL (e.g., "git@github.com:user/repo.git", "https://github.com/user/repo")
+#                           - A qualified plugin name (e.g., "myplugin", "myns:myplugin", "myplugin@v1.2")
+#
 # Behavior:
-#   - Parses prefix from qualified_name.
-#   - Parses core plugin name and version from the remainder of qualified_name.
-#   - Searches for the plugin_name in INI files.
-#   - Clones the plugin if not already installed, using the specified version
-#     (or INI 'commit', or repo default if 'commit' is also empty).
-#   - If installed, checks if it's enabled as per qualified_name
-#     (currently uses `tm-plugin-enable` which handles "already enabled" state;
-#      a dedicated `tm-plugin-is-enabled` would be cleaner for the check if available).
-#   - Attempts to enable the plugin using the original qualified_name.
+#   - If `plugin_identifier` starts with "git@", "https://github.com/", "http://github.com/", or "github.com/",
+#     it delegates to `_tm::plugins::install_from_git`.
+#   - Otherwise, it delegates to `_tm::plugins::install_from_registry`.
+#   - Both delegated functions handle the actual installation, including cloning the repository
+#     (if not already installed) and enabling the plugin.
+#   - Prompts the user for confirmation before proceeding with the installation.
+#
+# Returns:
+#   0 if the plugin was successfully installed or was already installed and enabled.
+#   1 if the installation failed or the user chose not to proceed.
+#   Exits the script via `_fail` if a critical error occurs during the installation process.
+#
+# Usage:
+#   _tm::plugins::install "myplugin"
+#   _tm::plugins::install "git@github.com:myorg/myplugin.git"
+#
 _tm::plugins::install() {
-  local plugin="$1"
-  _info "Installing '$plugin'"
-  if [[ "$plugin" == "git@"* ]] || [[ "$plugin" == "https://github.com/"* ]] || [[ "$plugin" == "http://github.com/"* ]] || [[ "$plugin" == "github.com/"*  ]]; then
-    _tm::plugins::install_from_git "$plugin"
+  local plugin_identifier="$1"
+  _info "Attempting to install plugin: '$plugin_identifier'"
+  if [[ "$plugin_identifier" == "git@"* ]] || [[ "$plugin_identifier" == "https://github.com/"* ]] || [[ "$plugin_identifier" == "http://github.com/"* ]] || [[ "$plugin_identifier" == "github.com/"*  ]]; then
+    _tm::plugins::install_from_git "$plugin_identifier"
   else
-    _tm::plugins::install_from_registry "$plugin"
+    _tm::plugins::install_from_registry "$plugin_identifier"
   fi
 }
 

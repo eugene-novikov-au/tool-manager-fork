@@ -29,7 +29,9 @@ if [[ -z "$plugin_basename" ]] && [[ -n "${args[tm]}" ]] then
 fi
 if [[ "$plugin_basename" == "$__TM_NAME" ]] then
     _info "Opening editor in Tool Manager home: $TM_HOME"
-    cd "$TM_HOME" || _fail "Could not cd to $TM_HOME"
+    if ! cd "$TM_HOME"; then
+      _fail "Could not cd to $TM_HOME"
+    fi
     _info "using editor: $editor_cmd"
     "$editor_cmd" . # Open current directory
 else
@@ -38,7 +40,9 @@ else
         _fail "Plugin directory '$plugin_dir' not found for plugin_basename '$plugin_basename'."
     else
         _info "Opening editor in plugin directory: $plugin_dir"
-        cd "$plugin_dir" || _fail "Could not cd to $plugin_dir"
+        if ! cd "$plugin_dir"; then
+          _fail "Could not cd to $plugin_dir"
+        fi
         if [[ "$editor_cmd" == 'bash' ]]; then
             "$editor_cmd"
         else
