@@ -72,11 +72,14 @@ _tm::source::__include_once(){
     elif [[ "$file" == "@tm/"* ]]; then
       base_dir="$TM_LIB_BASH"
       file="${file:1}"
+      if [[ "$file" != *".sh" ]]; then
+        file+=".sh"
+      fi
     elif [[ "$file" == "lib."* ]]; then # deprecated!
       _warn "deprecated import '$file', use 'tm/$file' instead"
       base_dir="$TM_LIB_BASH/tm"
     else
-      if [[ -z "${script_dir}" ]]; then
+      if [[ -z "${script_dir}" ]]; then # lazy calc once for this include
         # get the cached script dir
         script_dir="${__tm_source_to_dir["$calling_script"]:-}"
         if [[ -z "$script_dir" ]]; then # calc and cache the scripts dir
@@ -104,11 +107,14 @@ _tm::source::__include(){
     elif [[ "$file" == "@tm/"* ]]; then
       base_dir="$TM_LIB_BASH"
       file="${file:1}"
+      if [[ "$file" != *".sh" ]]; then
+        file+=".sh"
+      fi
     elif [[ "$file" == "lib."* ]]; then # deprecated!
       _warn "deprecated import '$file', use 'tm/$file' instead"
       base_dir="$TM_LIB_BASH/tm"
     else
-      if [[ -z "${script_dir}" ]]; then
+      if [[ -z "${script_dir}" ]]; then # lazy calc once for this include
         # get the cached script dir
         script_dir="${__tm_source_to_dir["$calling_script"]:-}"
         if [[ -z "$script_dir" ]]; then # calc and cache the scripts dir

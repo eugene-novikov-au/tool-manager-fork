@@ -491,9 +491,9 @@ _tm::args::parse() {
                 fi
                 # set arg value. Check if a single value option, or a multiple value option
                 if [[ "${multi_by_key["$key"]:-}" == "1" ]]; then # append if set
-                  local value_sep="${multi_sep_by_key["$key"]:-}"
+                  local value_sep="${multi_sep_by_key["$key"]:-' '}"
                   # set or append the value
-                  [[ -z "${parse_results["$key"]:-}" ]] && parse_results["$key"]="$value" || parse_results["$key"]+="$value_sep$value"
+                  [[ -z "${parse_results["$key"]:-}" ]] && parse_results["$key"]="$value" || parse_results["$key"]+="${value_sep}${value}"
                 else # replace
                   parse_results["$key"]="$value"
                 fi
@@ -524,9 +524,9 @@ _tm::args::parse() {
     # pass back all the additional args to the option key with the flag 'remainder'
     if [[ ! ${#remaining_args[@]} == 0 ]]; then # if we have remaining args
       # handle multi key support. If multiple values, then append, otherwise replace
-      local value_sep="${multi_sep_by_key["$remainder_key"]:-}"
+      local value_sep="${multi_sep_by_key["$remainder_key"]:-' '}"
       if [[ "${multi_by_key["$remainder_key"]:-}" == "1" ]] && [[ -n "${parse_results["$remainder_key"]:-}" ]]; then # append 
-        IFS="$value_sep" parse_results["$remainder_key"]+="${remaining_args[@]}"
+        IFS="$value_sep" parse_results["$remainder_key"]+=" ${remaining_args[@]}"
       else # set
         IFS="$value_sep" parse_results["$remainder_key"]="${remaining_args[@]}"
       fi

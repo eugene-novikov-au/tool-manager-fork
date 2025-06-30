@@ -94,7 +94,7 @@ _invoke(){
         # Using a subshell to ensure `set -e` doesn't kill the parent script
         ( eval "$@" ) &
     else
-        eval "$@"
+        ( eval "$@" )
     fi
 }
 
@@ -137,7 +137,7 @@ done
 
 if [[ "${args[parallel]:-}" == "1" ]]; then
     _info "Waiting for parallel commands to complete and checking exit codes..."
-    local all_succeeded=true
+    declare all_succeeded=true
     for job_id in $(jobs -p); do
         wait "$job_id"
         if [[ $? -ne 0 ]]; then

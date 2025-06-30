@@ -394,6 +394,22 @@ _tm::util::parse::plugin_name(){
     fi
   fi
 
+  if [[ -z "$name" ]]; then
+    _fail "Invalid plugin name format.Is empty. From input '${parse_name}'"
+  fi
+
+  if [[ -n "$name" && ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    _fail "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${name}' from input '${parse_name}'"
+  fi
+
+  if [[ -n "$vendor" && ! "$vendor" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${vendor}' from input '${parse_name}'"
+  fi
+
+  if [[ -n "$version" && ! "$version" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
+    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hypens, dots. Start with letter/number. Instead got '${version}' from input '${parse_name}'"
+  fi
+
   result_name[vendor]="$vendor"
   result_name[name]="$name"
   result_name[version]="$version"
@@ -431,22 +447,39 @@ _tm::util::parse::plugin_name(){
 _tm::util::parse::plugin_id(){
   local -n result_id="$1" # expect it to be an associative array
   result_id=()
-  local id="$2"
-  _finest "_tm::util::parse::plugin_id : '$id'"
+  local parse_id="$2"
+  _finest "_tm::util::parse::plugin_id : '$parse_id'"
   # Read the id into an array, respecting empty fields
   local -a id_parts=()
-  IFS=':' read -r -a id_parts <<< "$id"
+  IFS=':' read -r -a id_parts <<< "$parse_id"
 
   if [[ "${id_parts[0]:-}" != "tm" ]]; then
-    _fail "Not a valid plugin id. expected 'tm:plugin:<vendor>:<name>:<version>:<prefix>', but got '$id'"
+    _fail "Not a valid plugin id. expected 'tm:plugin:<vendor>:<name>:<version>:<prefix>', but got '$parse_id'"
   fi
   if [[ "${id_parts[1]:-}" != "plugin" ]]; then
-    _fail "Not a valid plugin id. expected 'tm:plugin:<vendor>:<name>:<version>:<prefix>', but got '$id'"
+    _fail "Not a valid plugin id. expected 'tm:plugin:<vendor>:<name>:<version>:<prefix>', but got '$parse_id'"
   fi
   local vendor="${id_parts[2]:-}"
   local name="${id_parts[3]}"
   local version="${id_parts[4]:-}"
   local prefix="${id_parts[5]:-}"
+
+  if [[ -z "$name" ]]; then
+    _fail "Invalid plugin name format.Is empty. From id '${parse_id}'"
+  fi
+
+  if [[ -n "$name" && ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    _fail "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${name}' from id '${parse_id}'"
+  fi
+
+  if [[ -n "$vendor" && ! "$vendor" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${vendor}' from id '${parse_id}'"
+  fi
+
+  if [[ -n "$version" && ! "$version" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
+    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hypens, dots. Start with letter/number. Instead got '${version}' from id '${parse_id}'"
+  fi
+
 
   result_id[vendor]="$vendor"
   result_id[name]="$name"
@@ -473,6 +506,7 @@ _tm::util::parse::plugin_enabled_dir(){
 
   local dir_name="$2"
   # IFD can't do multiple chars, so convert '__' to newlines and then parse
+  # the format is vendor__name__prefix, where prefix is optional
    IFS=$'\n' read -d '' -r vendor name prefix <<< "${dir_name//__/$'\n'}" || true
 
   local version="${id_parts[4]:-}"

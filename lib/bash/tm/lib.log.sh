@@ -229,34 +229,38 @@ EOF
   
   if [[ $level -le $LEV_FINEST  ]] then
     _finest(){ _tm::log::finest "$@"; }
-    _is_finest(){ return 1; }
+    _is_finest(){ true; }
   else
     _finest(){ :; }
-    _is_finest(){ return 0; }
+    _is_finest(){ false; }
   fi
   if [[ $level -le $LEV_TRACE  ]] then
     _trace(){ _tm::log::trace "$@"; }
-    _is_trace(){ return 1; }
+    _is_trace(){ true; }
   else
     _trace(){ :; }
-    _is_trace(){ return 0; }
+    _is_trace(){ false; }
   fi
   if [[ $level -le $LEV_DEBUG  ]]; then
     _debug(){ _tm::log::debug "$@" ; }
-    _is_debug(){ return 1; }
+    _is_debug(){ true; }
   else
     _debug(){ :; }
-    _is_debug(){ return 0; }
+    _is_debug(){ false; }
   fi
   if [[ $level -le $LEV_INFO  ]]; then
     _info(){ _tm::log::info "$@"; }
+    _is_info(){ true; }
   else
     _info(){ :; }
+    _is_info(){ false; }
   fi
   if [[ $level -le $LEV_WARN  ]]; then
     _warn(){ _tm::log::warn "$@"; }
+    _is_warn(){ true; }
   else
     _warn(){ :; }
+    _is_warn(){ false; }
   fi
 
   if [[ ${#__tm_log_filters[@]} -ne 0 ]]; then
@@ -265,14 +269,15 @@ EOF
         local log_name="$1"
         for logger in "${__tm_log_filters[@]}"; do
           if [[ "$log_name" == $logger ]]; then
-              return 0
+             true
+             return
           fi
         done
-        return 1
+        false
     }
   else # no-op
   _tm::log::__filter() {
-    return 0
+     true
   }
   fi
 }
@@ -486,7 +491,7 @@ _tm::log::__to_console(){
   local color="$3"
   shift 3
 
-  >&2 echo -e "$(echo "${color}$@${COLOR_NONE}" | sed "s|^|${level_name} [${logger_details}] |" || true)"
+  >&2 echo -e "$(echo "${color}$*${COLOR_NONE}" | sed "s|^|${level_name} [${logger_details}] |" || true)"
   #>&2 echo -e "${color}${level_name} [${logger_details}]${COLOR_NONE} $@"
   _tm::log::__stack
 }
