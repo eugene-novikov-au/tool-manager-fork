@@ -435,7 +435,10 @@ _tm::args::parse() {
     # Clear the array
     for key in "${keys[@]}"; do
         # set initial values
-        parse_results["$key"]="${defaults_by_key["$key"]:-}"
+        #parse_results["$key"]="${defaults_by_key["$key"]:-}"
+        # we set to blank, rather than defaults, as else with 'multi' values we end up appending to
+        # the default
+        parse_results["$key"]=""
     done
 
     # Now parse the user command-line arguments
@@ -531,6 +534,14 @@ _tm::args::parse() {
         IFS="$value_sep" parse_results["$remainder_key"]="${remaining_args[@]}"
       fi
     fi
+
+    # set default values if no value was provided
+    for key in "${keys[@]}"; do
+        if [[ -z "${parse_results["$key"]}" ]]; then
+          parse_results["$key"]="${defaults_by_key["$key"]:-}"
+        fi
+    done
+
 
     # Check required options are set
     local print_help=0

@@ -56,13 +56,13 @@ tm-plugin-ls --help
 If you are developing plugins, you can call:
 
 ```bash
-tm-edit <plugin-name>
+tm-plugin-edit <plugin-name>
 ```
 
 or
 
 ```bash
-tm-edit 
+tm-plugin-edit 
 ```
 to get to the top plugin install dir
 

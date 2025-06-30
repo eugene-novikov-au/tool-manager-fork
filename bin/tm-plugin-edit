@@ -2,7 +2,7 @@
 #
 # Opens an editor in the specified plugin's installation directory,
 # or in the Tool Manager's home directory if no plugin is specified.
-# Usage: tm-edit [plugin_basename] [editor_command]
+# Usage: tm-plugin-edit [plugin_basename] [editor_command]
 #   plugin_basename: The base directory name of the plugin in $TM_PLUGINS_INSTALL_DIR.
 #                    This is typically the repository name used during cloning.
 #   editor_command: Optional. The editor command to use (e.g., "vi", "nano", "code").

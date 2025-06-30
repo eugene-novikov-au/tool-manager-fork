@@ -4,3 +4,4 @@ docs/code-reviews/
 .roo/*
 .cursor/*
 *.log
+.idea/

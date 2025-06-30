@@ -35,7 +35,7 @@ _tm::plugin::reload(){
     _info "Reloading plugin '${qname}' ('$enabled_link')..."
 
   if [[ -L "$enabled_link" ]]; then
-    _trace "plugin_reload=${!plugin_reload[@]}"
+    _trace "plugin_reload=${!plugin_reload[*]}"
     _tm::plugin::disable plugin_reload
     _tm::plugin::enable plugin_reload
     _tm::plugin::regenerate_wrapper_scripts plugin_reload
@@ -109,7 +109,7 @@ _tm::plugin::load() {
   fi
 
   if [[ -d "$plugin_dir/service.d" ]]; then
-    for file in "$plugin_dir/service.d/*.sh"; do
+    for file in "$plugin_dir/service.d/"*.sh; do
       #TODO: check if service already running (existing pid). If so, stop it, and start again?
       _debug "starting service: $file"
       # Track PID in the central TM_PLUGINS_PID_DIR
@@ -141,23 +141,6 @@ _tm::plugin::load() {
 }
 
 
-_tm::plugin::__already_run_persistent() {
-  local path="$1"
-  local path_hash=$(echo -n "$path" | md5sum | cut -d ' ' -f1)
-  local once_var="__TM_CACHE_PLGN_${path_hash}"
-  if [[ -v "$once_var" ]]; then
-  # caller should not run the action, it's already run before
-  #echo "already run persistant: $path"
-    return 0
-  fi
-  #echo "not run persistant: $path"
-  # mark sourced. Do it now to avoid circular loading (early escape)
-  export "$once_var"="1"
-
-  # caller should run the action
-  return 1
-}
-
 #
 # Function to collect non-hidden recursive directories within the given dir
 #
@@ -173,7 +156,7 @@ _tm::plugin::__add_scripts_to_path() {
   # Find directories and capture into a local array
   local -a found_dirs=()
   mapfile -t found_dirs < <(find "$bin_dir" -type d \( -name ".*" -prune -o -print \))
-  _debug "found dirs: ${found_dirs[@]}"
+  _debug "found dirs: ${found_dirs[*]}"
 
   # Append found directories to the global array if any were found
   _tm::boot::add_to_path "${found_dirs[@]}"
@@ -421,7 +404,7 @@ _tm::plugin::__generate_wrapper_scripts() {
   _tm::plugin::__find_scripts_in "$plugin_bin_dir" | while IFS= read -r file; do
     [[ -z "$file" ]] && continue # Skip empty lines if any
 
-    # ignroe non-executable files
+    # ignore non-executable files
     if [[ ! -x "$file" ]]; then
       _warn "Script '$file' is not executable. Skipping"
       continue
