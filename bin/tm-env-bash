@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
 #
-# Run a bash script in a tool-manager env. This will ensur ethe tool manager is initialised, and the basics source/include/log functions
+# Run a bash script in a tool-manager env. This will ensure the tool manager is initialised, and the basics source/include/log functions
 # are available
+#
+# We want to provide as low an overhead as possible, as user scripts might be called in tight loops. If the user wants additional
+# performance, they should just use the bash interpreter directly
 #
 # _fail is a utility function sourced from .bashrc_script that prints an error message to stderr and exits with a non-zero status.
 #

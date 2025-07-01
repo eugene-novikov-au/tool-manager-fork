@@ -150,8 +150,8 @@ __main(){
     while [[ -z "${yn}" ]]; do
         _read "Enable this plugin?[yn]" yn
         case "$yn" in 
-            y|Y|yes) tm-plugin-enable "${qname}" ;;
-            n|N|no) _info "to enable this plugin run 'tm-plugin-enable ${qname}'" ;;
+            [Yy]*) tm-plugin-enable "${qname}" ;;
+            [Nn]*) _info "to enable this plugin run 'tm-plugin-enable ${qname}'" ;;
         esac
     done
 

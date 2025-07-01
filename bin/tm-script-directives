@@ -1,0 +1,12 @@
+#!/usr/bin/env tm-env-bash
+
+# Parses a text file and extracts all '@require' directives
+#
+# Arguments:
+# $1 - the file to parse
+# $2 - (optional) the directives file to write to, else stdout
+#
+
+_include @tm/lib.common.sh .tm.venv.directives.sh
+
+_tm::venv::extract_directives "$@"

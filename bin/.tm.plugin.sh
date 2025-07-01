@@ -21,7 +21,7 @@
 # Args:
 #   $1 - plugin_reload: The name of an associative array containing plugin details.
 #                       Expected keys: 'qname' (qualified name), 'enabled_dir'.
-#
+#  $2 - (optional) auto_yes, if '1' then prompts are automatically yes
 # Usage:
 #   declare -A my_plugin
 #   _tm::util::parse::plugin my_plugin "myplugin"
@@ -29,6 +29,7 @@
 #
 _tm::plugin::reload(){
   local -n plugin_reload="$1"
+  local auto_yes="${2:-0}"
 
   local qname="${plugin_reload[qname]}"
   local enabled_link="${plugin_reload[enabled_dir]}"
@@ -37,7 +38,7 @@ _tm::plugin::reload(){
   if [[ -L "$enabled_link" ]]; then
     _trace "plugin_reload=${!plugin_reload[*]}"
     _tm::plugin::disable plugin_reload
-    _tm::plugin::enable plugin_reload
+    _tm::plugin::enable plugin_reload "$auto_yes"
     _tm::plugin::regenerate_wrapper_scripts plugin_reload
   else
     _warn "'${qname}' is not enabled. Ignoring reload"
@@ -75,7 +76,7 @@ _tm::plugin::load() {
   
   _debug "loading plugin ${qname} from '$plugin_dir' ..."
   _pushd "$plugin_dir" || { _error "Failed to pushd to '$plugin_dir'"; return 1; }
-  _tm::log::child "plugin/$(basename "$plugin_dir")"
+  _tm::log::push_child "plugin/$(basename "$plugin_dir")"
 
   local original_path="$PATH"
 
@@ -201,6 +202,7 @@ _tm::plugin::__find_scripts_in() {
 # Args:
 #   $1 - plugin_enable: The name of an associative array containing plugin details.
 #                       Expected keys: 'qname' (qualified name), 'install_dir', 'enabled_dir', 'tm' (boolean).
+#  $2 - (optional) auto_yes, if '1' then prompts are automatically yes
 #
 # Behavior:
 #   - Skips enabling if the plugin is the tool-manager itself (always enabled).
@@ -222,10 +224,14 @@ _tm::plugin::__find_scripts_in() {
 #
 _tm::plugin::enable() {
   local -n plugin_enable="$1"
+  local auto_yes="${2:-0}"
 
   local plugin_dir="${plugin_enable[install_dir]}"
   local qname="${plugin_enable[qname]}"
   local enabled_dir="${plugin_enable[enabled_dir]}"
+  local vendor="${plugin_enable[vendor]}"
+  local qname="${plugin_enable[qname]}"
+
   #_trace "enabling plugin: '${qname}'"
   local is_tool_manager=${plugin_enable[tm]}
 
@@ -241,7 +247,7 @@ _tm::plugin::enable() {
     if [[ -L "$enabled_dir" ]]; then
       _info "plugin '${qname}' already enabled"
     else
-      _info "enabling plugin: '${qname}' ($plugin_dir)"
+      _info "enabling plugin '${qname}' ($plugin_dir)"
       mkdir -p "$(dirname "$enabled_dir")"
       ln -s "$plugin_dir/" "$enabled_dir" || { 
         _error "Failed to create symlink for plugin '${qname}' from '$plugin_dir/' to '$enabled_dir'." 
@@ -251,22 +257,60 @@ _tm::plugin::enable() {
 
       _tm::plugin::__generate_wrapper_scripts plugin_enable 
 
+      # plugin requires script
       local requires_script="$plugin_dir/plugin-requires"
       if [[ -f "$requires_script" ]]; then
-        local run_it=""
-        while [[  -z "$run_it" ]]; do
-          _read "Plugin has a 'plugin-requires' script ($requires_script), should I run it? [yn]" run_it 
-          case "$run_it" in 
-            [Yy]* )
-              _info "Running plugin requires script: '$requires_script'"
-              chmod a+x "$requires_script" || true
-              ("$requires_script") || ( _warn "Error running requires script: '$requires_script'. Ignoring failures, disable/re-enable to run again" || true )
-              break
-              ;;
-          esac
+        local yn=""
+        if [[ "$auto_yes" == '1' ]]; then
+          yn='y'
+        fi
+        while [[ -z "$yn" ]]; do
+          _read "Plugin has a 'plugin-requires' script ('$requires_script'), should I run it? [yn]: " yn
         done
+        case "$yn" in
+          [Yy]* )
+            _info "Running plugin requires script: '$requires_script'"
+            chmod a+x "$requires_script" || true
+            ( "$requires_script" ) || _warn "Error running requires script: '$requires_script'. Ignoring failures, disable/re-enable to run again"
+            ;;
+         * )
+            _info "Not running '$requires_script'. Plugin might not work without it's dependencies"
+            ;;
+        esac
       fi
 
+      # lib contributions.
+      # TODO: do we allow lib contributions to be active, even if the plugin is disabled? Other scripts might depend on it
+      # we might also want to use some of it's libs without the plugin actually be active
+      local lib_dir="$plugin_dir/lib-shared"
+      if [[ -d "$lib_dir" ]]; then
+        _debug "plugin has a '$lib_dir' dir"
+        local yn=''
+        if [[ "$auto_yes" == '1' ]]; then
+          yn='y'
+        fi
+        while [[  -z "$yn" ]]; do
+          echo "Plugin provides a 'lib-shared' directory, with libs:"
+          _pushd "$lib_dir"
+            find . -type f
+          _popd
+          _read "Make this available to other plugins via '_include @${vendor}/<lib-name>.sh' ? [yn]': " yn
+        done
+
+        case "$yn" in
+          [Yy]* )
+            _info "Linking '${TM_PLUGINS_LIB_DIR}/${vendor}' to '${lib_dir}'"
+            mkdir -p "${TM_PLUGINS_LIB_DIR}"
+            ln -sf "${lib_dir}" "${TM_PLUGINS_LIB_DIR}/${vendor}"
+            _info "plugin libs available under '_include @${vendor}/<lib-name>.sh'"
+            ;;
+          * )
+            _info "Not making '${lib_dir}' available to other plugins"
+            ;;
+        esac
+      fi
+
+      # enable script
       local enable_script="$plugin_dir/plugin-enable"
       if [[ -f "$enable_script" ]]; then
         _info "Running plugin enable script: '$enable_script'"
@@ -311,18 +355,18 @@ _tm::plugin::disable() {
   local plugin_dir="${plugin_arr[install_dir]}"
   local plugin_enabled_link="${plugin_arr[enabled_dir]}"
   
-  _trace "Disabling plugin '${qname}'"
+  _info "Disabling plugin '${qname}'"
 
   if [[ -L "$plugin_enabled_link" ]]; then
       local disable_script="$plugin_enabled_link/plugin-disable"
       if [[ -f "$disable_script" ]]; then
-        _debug "Running plugin disable script: '$disable_script'"
+        _debug "running plugin disable script: '$disable_script'"
         chmod a+x "$disable_script" || true
         ("$disable_script") || _warn "Error running disable script: '$disable_script'"
       fi
-      _info "Removing symlink '$plugin_enabled_link'"
+      _debug "removing symlink '$plugin_enabled_link'"
       if rm -f "$plugin_enabled_link"; then
-        _info "Plugin '$qname' is disabled. Link '$plugin_enabled_link' to '${plugin_dir}' removed"
+        _info "plugin is disabled"
       else
         _error "Failed to remove symlink '$plugin_enabled_link'."
         return 1
@@ -330,8 +374,8 @@ _tm::plugin::disable() {
 
       _tm::plugins::reload_all_enabled
   else
-    _info "Plugin '$qname' is already disabled"
-    _info " - no symlink '$plugin_enabled_link' to plugin '$plugin_dir'"
+    _info "plugin is already disabled"
+    _debug " - no symlink '$plugin_enabled_link' to plugin '$plugin_dir'"
     if [[ ! -d "$plugin_dir" ]]; then
       _warn " - also no plugin '$plugin_dir' exists"
     fi
@@ -401,6 +445,7 @@ _tm::plugin::__generate_wrapper_scripts() {
   _debug "plugin '${qname}' contributes: "
   # now create wrapper scripts for all the plugin scripts
   local file
+  local -a directives
   _tm::plugin::__find_scripts_in "$plugin_bin_dir" | while IFS= read -r file; do
     [[ -z "$file" ]] && continue # Skip empty lines if any
 
@@ -412,18 +457,16 @@ _tm::plugin::__generate_wrapper_scripts() {
 
     local name_only="${script_prefix}$(basename "$file")"
     local wrapper_script="$TM_PLUGINS_BIN_DIR/${name_only%.*}"  # remove suffixes like '.sh' and '.py' etc
-    #if [[ ! -f "$wrapper_script" ]]; then
-      _trace "script $wrapper_script invokes $file"
-      _debug "   - $name_only"
-      
-      cat << EOF > "$wrapper_script"
+    local wrapper_script_checksum=$(stat -c %Y "$file" | md5sum | awk '{print $1}')
+    local directives_file="$TM_PLUGINS_BIN_DIR/${script_prefix}$(basename "$file").${__TM_VENV_REQUIRES_SUFFIX}"
+    _tm::venv::extract_directives "$file" "$directives_file"
+    _trace "script $wrapper_script invokes $file"
+    _debug "   - $name_only"
+
+    cat << EOF > "$wrapper_script"
 #!/usr/bin/env bash
 $TM_HOME/bin-internal/tm-run-script '$wrapper_script' '$plugin_id' '$plugin_dir' '$plugin_cfg_dir' '$file' "\$@"
 EOF
-      chmod a+x "$wrapper_script"
-    #fi
+    chmod a+x "$wrapper_script"
   done
 }
-
-
-

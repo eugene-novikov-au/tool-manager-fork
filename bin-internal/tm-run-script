@@ -39,8 +39,8 @@ plugin_cfg_dir="$4"
 real_script="$5"
 shift 4 # the remaining is the user args
 
-export TM_PLUGIN_HOME="$plugin_dir"
-export TM_PLUGIN_ID="$plugin_id"
+export TM_PLUGIN_HOME="$plugin_dir" # could be the plugin dir or the enabled dir
+export TM_PLUGIN_ID="$plugin_id" # this include the fully qualified name, install dir, vendor, prefix etc
 export TM_PLUGIN_CFG_DIR="$plugin_cfg_dir"
 
 # ensure plugin's can call their own scripts, without the prefix. The plugin env variables (TM_PLUGIN_..) should still work

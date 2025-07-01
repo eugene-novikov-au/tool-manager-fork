@@ -1,4 +1,4 @@
-if command -v _tm::log::name &>/dev/null; then
+if command -v _tm::log::push_name &>/dev/null; then
   return
 fi
 
@@ -11,12 +11,19 @@ fi
 __tm_log_starttime=${__tm_log_starttime:-$(date +%s%N)}
 
 # ANSI Color Codes for logging
-COLOR_BLACK='\033[0;0m'
+COLOR_BLACK='\033[0;30m'
+COLOR_BLACK_BOLD='\033[1;30m'
+COLOR_BLUE='\033[0;34m'
 COLOR_GREEN='\033[0;32m'
-COLOR_RED='\033[0;31m'
+COLOR_GREEN_BOLD='\033[1;32m'
 COLOR_GREY='\033[0;37m'
+COLOR_GREY_BOLD='\033[1;37m'
+COLOR_ORANGE='\033[0;33m'
+COLOR_ORANGE_BOLD='\033[1;33m'
+COLOR_RED='\033[0;31m'
+COLOR_RED_BOLD='\033[1;31m'
+COLOR_YELLOW='\033[0;33m'
 COLOR_NONE='\033[0m' # No Color
-
 
 TM_LOG_NAME="${TM_LOG_NAME:-$(basename ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]})}"
 if ([[ "$TM_LOG_NAME" == ".bashrc" ]] || [[ "$TM_LOG_NAME" == "bash" ]]); then
@@ -39,7 +46,7 @@ _tm::log::init(){
 }
 
 #
-# Set the varipus logging options. 
+# Set the various logging options.
 # $1: csv string of options. Can contain any of the log levels, caller, timings. Case and space insensitive
 #
 _tm::log::set_opts(){
@@ -50,7 +57,7 @@ _tm::log::set_opts(){
 
   local LEV_FINEST=0 LEV_TRACE=1 LEV_DEBUG=2 LEV_INFO=3 LEV_WARN=4 LEV_ERR=5
   local log_pid=0
-  local log_timing=0
+  local log_duration=0
   local log_call_file=0 log_call_func=0
   local log_timestamp=0 log_datestamp=0 log_epoch=0
   local log_user=0
@@ -83,8 +90,8 @@ _tm::log::set_opts(){
       proc|pid)
         log_pid=true
         ;;
-      timing)
-        log_timing=true
+      du|duration)
+        log_duration=true
         ;;
       ts|timestamp)
         log_timestamp=true
@@ -134,7 +141,7 @@ _tm::log::set_opts(){
         log_call_func=true
         log_datestamp=true
         log_pid=true
-        log_timing=true
+        log_duration=true
         log_user=true
         ;;
       @*)
@@ -142,7 +149,7 @@ _tm::log::set_opts(){
         __tm_log_filters+=("${logger}")
         ;;
       *)
-        >&2 echo "WARN [_tm::log::opt_level] unknown log option '$opt', ignoring. Options are comma seperated. Include 'help' in the TM_LOG for all options. [finest,trace,debug,info,warn,help,all,caller,cfile,cfunc,datestamp,epoch,pid,timestamp,timing,user,stack]'"
+        >&2 echo "WARN [_tm::log::opt_level] unknown log option '$opt', ignoring. Options are comma seperated. Include 'help' in the TM_LOG for all options. [finest,trace,debug,info,warn,help,all,caller,cfile,cfunc,datestamp,epoch,pid,timestamp,duration,user,stack]'"
         ;;
     esac
   done
@@ -161,12 +168,12 @@ LEVEL OPTIONS:
  - warn|w
  
 INCLUDE OPTIONS:  (by default, all are off)
-  - all          : shortcut for 'datestamp,pid,caller,user,timing'
+  - all          : shortcut for 'datestamp,pid,caller,user,duration'
   - cfile        : include the caller file
   - cfunc        : include the caller function
   - caller|call  : shortcut for 'cfile,cfunc'
   - proc|pid     : include the process id
-  - timing       : include the length of timer since the logger was started
+  - duration|du  : include the length of time since the logger was started
   - user         : include the current user
 
 TIME STAMPS:
@@ -200,7 +207,7 @@ EOF
   elif [[ $log_epoch == true ]]; then
     log_details+=("\${EPOCHREALTIME}")
   fi
-  if [[ $log_timing == true ]]; then
+  if [[ $log_duration == true ]]; then
     log_details+=("\$(_tm::log::__elapsed_time)")
   fi
   if [[ $log_call_file == true ]] && [[ $log_call_func == true ]]; then
@@ -217,7 +224,7 @@ EOF
     log_details+=("p\$BASHPID")
   fi
   
-  if [[ "${#log_details[@]}" -ne 0 ]]; then
+  if [[ ${#log_details[@]} -ne 0 ]]; then
     local details="${log_details[@]}"
     local func_def="_tm::log::__details() {
         echo -n \"$details \" || true
@@ -228,35 +235,35 @@ EOF
   fi
   
   if [[ $level -le $LEV_FINEST  ]] then
-    _finest(){ _tm::log::finest "$@"; }
+    _finest(){ _tm::log::finest "$*"; }
     _is_finest(){ true; }
   else
     _finest(){ :; }
     _is_finest(){ false; }
   fi
   if [[ $level -le $LEV_TRACE  ]] then
-    _trace(){ _tm::log::trace "$@"; }
+    _trace(){ _tm::log::trace "$*"; }
     _is_trace(){ true; }
   else
     _trace(){ :; }
     _is_trace(){ false; }
   fi
   if [[ $level -le $LEV_DEBUG  ]]; then
-    _debug(){ _tm::log::debug "$@" ; }
+    _debug(){ _tm::log::debug "$*" ; }
     _is_debug(){ true; }
   else
     _debug(){ :; }
     _is_debug(){ false; }
   fi
   if [[ $level -le $LEV_INFO  ]]; then
-    _info(){ _tm::log::info "$@"; }
+    _info(){ _tm::log::info "$*"; }
     _is_info(){ true; }
   else
     _info(){ :; }
     _is_info(){ false; }
   fi
   if [[ $level -le $LEV_WARN  ]]; then
-    _warn(){ _tm::log::warn "$@"; }
+    _warn(){ _tm::log::warn "$*"; }
     _is_warn(){ true; }
   else
     _warn(){ :; }
@@ -280,8 +287,11 @@ EOF
      true
   }
   fi
+  if [[ -n "$TM_LOG_FILE" ]]; then
+      mdkir -p "$(dirname "$TM_LOG_FILE")"
+      touch "$TM_LOG_FILE"
+  fi
 }
-
 
 #
 # Print to console with no prefix. To stderr so it won't be used in function returns
@@ -322,30 +332,15 @@ fi
 #   _err "Something went wrong"
 #
 _err() {
-    _tm::log::__msg "ERR" "$COLOR_RED" $*
+    _tm::log::error "$*"
 }
 
 _error() {
-    _tm::log::__msg "ERR" "$COLOR_RED" $*
-}
-
-# Log a warning message (red text)
-#
-# Args:
-#   $@ - Warning message to log
-#
-# Output:
-#   Writes formatted warning message to stderr
-#
-# Usage:
-#   _warn "This might cause issues"
-#
-_tm::log::warn() {
-  _tm::log::__msg "WRN" "$COLOR_RED" $*
+    _tm::log::error "$*"
 }
 
 _todo() {
-  _tm::log::__msg "TODO" "$COLOR_RED" $*
+  _tm::log::__msg "TODO" "$COLOR_YELLOW" "$COLOR_YELLOW" "$*"
 }
 
 # Log a standard message (green text)
@@ -361,37 +356,59 @@ _todo() {
 #   _log "Processing complete"
 #
 _log() {
+  # we go through the _<level> scripts as these are swapped out by the log options
   case "${1:-}" in
     finest)
       shift
-      _finest "$@"
+      _finest "$*"
       ;;
     trace)
       shift
-      _trace "$@"
+      _trace "$*"
       ;;
     debug)
       shift
-      _debug "$@"
+      _debug "$*"
       ;;
     info)
       shift
-      _info "$@"
+      _info "$*"
       ;;
     warn)
       shift
-      _warn "$@"
+      _warn "$*"
       ;;
     error|err)
       shift
-      _error "$@"
+      _error "$*"
       ;;
     *)
       # assume user just wants to log to info
-      _info "$@"
+      _info "$*"
       ;;
   esac  
 }
+
+
+_tm::log::error() {
+    _tm::log::__msg "ERR" "$COLOR_RED_BOLD" "$COLOR_RED" "$*"
+}
+
+# Log a warning message (red text)
+#
+# Args:
+#   $@ - Warning message to log
+#
+# Output:
+#   Writes formatted warning message to stderr
+#
+# Usage:
+#   _warn "This might cause issues"
+#
+_tm::log::warn() {
+  _tm::log::__msg "WRN" "$COLOR_ORANGE_BOLD" "$COLOR_ORANGE_BOLD" "$*"
+}
+
 
 # Log an informational message (green text)
 #
@@ -405,7 +422,7 @@ _log() {
 #   _info "Operation completed successfully"
 #
 _tm::log::info() {
-  _tm::log::__msg "INF" "$COLOR_GREEN" "$@"
+  _tm::log::__msg "INF" "$COLOR_BLACK_BOLD" "$COLOR_BLACK" "$*"
 }
 
 # Log a debug message (grey text) if debug mode is enabled
@@ -420,7 +437,7 @@ _tm::log::info() {
 #   _debug "Debug information"
 #
 _tm::log::debug() {
-  _tm::log::__msg "DBG" "$COLOR_GREEN" "$@"
+  _tm::log::__msg "DBG" "$COLOR_GREEN_BOLD" "$COLOR_GREEN" "$*"
 }
 
 #
@@ -431,7 +448,7 @@ _tm::log::debug() {
 # }
 
 _tm::log::trace() {
-  _tm::log::__msg "TRC" "$COLOR_GREY" "$@"
+  _tm::log::__msg "TRC" "$COLOR_GREY_BOLD" "$COLOR_GREY" "$*"
 }
 
 #
@@ -442,7 +459,7 @@ _tm::log::trace() {
 # }
 
 _tm::log::finest() {
-  _tm::log::__msg "FINEST" "$COLOR_GREY" "$@"
+  _tm::log::__msg "FINEST" "$COLOR_GREY" "$COLOR_GREY" "$*"
 }
 
 # _is_finest(){
@@ -468,20 +485,21 @@ _tm::log::is_console(){
 _tm::log::__msg() {
   # No need for the level check, as we replace the functions with no-op funcs in _tm::log::set_opts
   local level_name="$1"
-  local color="$2"
-  shift 2
+  local color_details="$2"
+  local color_text="$3"
+  shift 3
 
+  # the filter function might be set to only look for certain logs
   if ! _tm::log::__filter "$TM_LOG_NAME"; then
     return
   fi
 
-
   local logger_details="$(printf "%-12s" "$(_tm::log::__details)${TM_LOG_NAME}")"
   if [[ "${TM_LOG_CONSOLE:-}" == "1" ]]; then
-    _tm::log::__to_console "$level_name" "$logger_details" "$color" "$@"
+    _tm::log::__to_console "$level_name" "$logger_details" "$color_details" "$color_text" "$*"
   fi
-  if [[ "${TM_LOG_FILE:-}" == "1" ]]; then
-    _tm::log::__to_file "$level_name" "$logger_details" "$@"
+  if [[ -n "${TM_LOG_FILE:-}" ]]; then
+    _tm::log::__to_file "$level_name" "$logger_details" "$*"
   fi
 }
 
@@ -491,8 +509,8 @@ _tm::log::__to_console(){
   local color="$3"
   shift 3
 
-  >&2 echo -e "$(echo "${color}$*${COLOR_NONE}" | sed "s|^|${level_name} [${logger_details}] |" || true)"
-  #>&2 echo -e "${color}${level_name} [${logger_details}]${COLOR_NONE} $@"
+  >&2 echo -e "${color}${level_name} [${logger_details}] ${*}${COLOR_NONE}"
+
   _tm::log::__stack
 }
 
@@ -501,7 +519,7 @@ _tm::log::__to_file(){
   local logger_details="$2"
   shift 2
 
-  echo -e "$(echo "$@" | sed "s|^|$level_name [${logger_details}] |" || true)" >> "$TM_LOG_FILE" || true
+   echo "${level_name} [${logger_details}] ${*}" >> "$TM_LOG_FILE" || true
   _tm::log::__stack >> "$TM_LOG_FILE" || true
 }
 
@@ -521,7 +539,15 @@ _tm::log::__filter(){
   :
 }
 
-_tm::log::name(){
+#
+# Replace the current log name with the given name
+#
+# Call '_tm::log::pop' to restore to the previous log name
+#
+# Arguments:
+# $1 - the log name
+#
+_tm::log::push_name(){
   if [[ "$1" != "$TM_LOG_NAME" ]]; then
     #_tm::log::finest "setting logname to '$1'"
     __tm_log_names+=("$TM_LOG_NAME")
@@ -529,7 +555,15 @@ _tm::log::name(){
   fi
 }
 
-_tm::log::child(){
+#
+# Append the given name to the end of the current log name, using a '/' separator
+#
+# Call '_tm::log::pop' to restore to the previous log name
+#
+# Arguments:
+# $1 - the log name
+#
+_tm::log::push_child(){
   if [[ "$1" != "$TM_LOG_NAME" ]]; then
     local new_name="$TM_LOG_NAME/$1"
     __tm_log_names+=("$TM_LOG_NAME")
@@ -537,6 +571,14 @@ _tm::log::child(){
   fi
 }
 
+#
+# Restore the log name to the previous log name, if it has previously been pushed with
+# '_tm::log::push_name' or '_tm::log::push_child'
+#
+# If no pushed names, does nothing
+#
+# Arguments:none
+#
 _tm::log::pop(){
   if [[ ${#__tm_log_names[@]} -gt 0 ]]; then
 
@@ -582,7 +624,7 @@ _tm::log::__caller_file_func(){
   local i=0
   local line file func
   while IFS=' ' read -r line func file < <(caller $i); do         
-    if [[ "$file" != *"/lib.log.sh" ]]; then # first non logger file
+    if [[ "$file" != *"/lib.log.sh" ]] && ([[ "$file" != *"/lib.util.sh" ]] && [[ "$func" != "_fail" ]]); then # first non logger file
       echo -n "($(_tm::log::__safe_basename "${file}"):${line} ${func})"
       return
     fi    
@@ -594,7 +636,7 @@ _tm::log::__caller_file(){
   local i=0
   local line file func
   while IFS=' ' read -r line func file < <(caller $i); do         
-    if [[ "$file" != *"/lib.log.sh" ]]; then # first non logger file
+    if [[ "$file" != *"/lib.log.sh" ]] && ([[ "$file" != *"/lib.util.sh" ]] && [[ "$func" != "_fail" ]]); then # first non logger file
       echo -n "($(_tm::log::__safe_basename"${file}"):${line})"
       return
     fi
@@ -606,7 +648,7 @@ _tm::log::__caller_func(){
   local i=0
   local line file func
   while IFS=' ' read -r line func file < <(caller $i); do         
-    if [[ "$file" != *"/lib.log.sh" ]]; then # first non logger file
+    if [[ "$file" != *"/lib.log.sh" ]] && ([[ "$file" != *"/lib.util.sh" ]] && [[ "$func" != "_fail" ]]); then # first non logger file
       echo -n "(#${func})"
       return
     fi

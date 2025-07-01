@@ -50,7 +50,7 @@ _parse_args() {
 _tm::args::parse() {
 
     if _is_finest; then
-      _finest "args: '$@'"
+      _finest "args: '$*'"
     fi
     local process_args=0
     local caller_help=

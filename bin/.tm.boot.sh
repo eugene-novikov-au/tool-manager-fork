@@ -9,20 +9,21 @@ fi
 export TM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}" )/.." && pwd)"
 # Relies on _realpath from .tm.common.sh (sourced at the top of this script).
 export TM_BIN="$TM_HOME/bin"
-export TM_LIB_BASH="$TM_HOME/lib/bash"
+export TM_LIB_BASH="$TM_HOME/lib-shared/tm/bash"
 
 # prefix seperator
 # for plugin names
 __TM_SEP_PREFIX_NAME=":"
 # for dirs (s we can't use the above)
-__TM_SEP_PREFIX_DIR="__" 
+__TM_SEP_PREFIX_DIR="__"
+# filename suffix for venv requirements files
+__TM_VENV_REQUIRES_SUFFIX="tm.venv.requires"
 
 # ensure the logging is loaded first
-source "$TM_LIB_BASH/tm/lib.log.sh"
+source "$TM_LIB_BASH/lib.log.sh"
 # then the '_tm::source' functions are available
-source "$TM_LIB_BASH/tm/lib.source.sh"
-
-_source_once "$TM_LIB_BASH/tm/lib.util.sh"
+source "$TM_LIB_BASH/lib.source.sh"
+_source_once "$TM_LIB_BASH/lib.util.sh"
 #
 # This script bootstraps the entire tools process. Expected to be run once in a bash login script.
 # Key responsibilities:
@@ -67,15 +68,15 @@ _tm::boot::refresh() {
 #
 _tm::boot::reload() {
   local plugin_name="${1:-}"
-  _tm::log::name "$__TM_NAME"
-  _tm::source::include_once @tm/lib.common.sh .tm.plugin.sh .tm.plugins.sh .tm.common.sh
+  _tm::log::push_name "$__TM_NAME"
+  _tm::source::include_once @tm/lib.common.sh .tm.plugin.sh .tm.plugins.sh .tm.common.sh .tm.venv.directives.sh
 
   # reload all
   # note that order is very important here, as we are clearing things, we need to be
   # careful the functions are called in the right order again to resetup the env
   _info "Reloading $__TM_NAME..."
   _tm::boot::__clear_cache
-  _tm::boot::init
+  #_tm::boot::init
   _tm::plugins::regenerate_all_wrapper_scripts
   _tm::boot::load
   _info "...$__TM_NAME reloaded"
@@ -100,8 +101,7 @@ _tm::boot::load(){
   fi
   export TM_PLUGINS_LOADED="1"
   # lazy load the deps
-  _tm::source::include_once @tm/lib.common.sh 
-  _tm::source::once "$TM_BIN/.tm.plugin.sh" "$TM_BIN/.tm.plugins.sh" "$TM_BIN/.tm.common.sh"
+  _tm::source::include_once @tm/lib.common.sh .tm.plugin.sh .tm.plugins.sh .tm.common.sh .tm.venv.directives.sh
   _tm::plugins::load_all_enabled || _warn "Error loading tool-manager (tm) and plugins. Some features may be unavailable."
 }
 
@@ -110,7 +110,7 @@ _tm::boot::load(){
 # during a reload or specific operations.
 _tm::boot::__clear_cache() {
   local key
-  for key in "$(compgen -v | grep -E "^__TM_CACHE_" || true )"; do
+  for key in $(compgen -v | grep -E "^__TM_CACHE_" || true ); do
     unset "$key" || true
   done
   unset TM_PLUGINS_LOADED
@@ -133,30 +133,32 @@ _tm::boot::init() {
   # --- Logging and Debugging Flags ---
   TM_RELOAD="${TM_RELOAD:-0}"
 
-  _tm::log::name "$__TM_NAME"
+  _tm::log::push_name "$__TM_NAME"
 
-  local config_dir="${XDG_CONFIG_HOME:-"$HOME/.config"}"
-  local state_dir="${XDG_STATE_HOME:-"$HOME/.local/share"}"
+  local user_config_dir="${XDG_CONFIG_HOME:-"$HOME/.config"}"
+  local user_state_dir="${XDG_STATE_HOME:-"$HOME/.local/share"}"
   
   # --- Variable Data and Runtime Paths ---
   # Base directory for tool-manager's variable data (logs, PIDs, etc.).
-  TM_VAR_DIR="$state_dir/tool-manager"
+  TM_VAR_DIR="$user_state_dir/tool-manager"
   TM_CACHE_DIR="${TM_CACHE_DIR:-"${XDG_CACHE_HOME:-$HOME/.cache}/tool-manager"}"
   
   # Directory for storing Process ID (PID) files of background plugin services.
-  TM_PLUGINS_PID_DIR="$TM_VAR_DIR/plugins-pid"
+  TM_PLUGINS_PID_DIR="$TM_VAR_DIR/plugins/pid"
   # --- Plugin Structure Paths ---
   # Directory where wrapper scripts for plugin commands are generated. This dir is added to PATH.
-  TM_PLUGINS_BIN_DIR="$TM_VAR_DIR/plugins-bin"  
+  TM_PLUGINS_BIN_DIR="$TM_VAR_DIR/plugins/bin"
   # Base directory where plugin repositories are cloned.
   TM_PLUGINS_INSTALL_DIR="$TM_HOME/plugins"
-  # Directory for user-specific plugin configurations (e.g., <plugin_name>.bashrc files).
-  TM_PLUGINS_CFG_DIR="$config_dir/tool-manager"
   # where plugin virtual environments are placed (pip/uv/conda etc)
-  TM_PLUGINS_VENV_DIR="$TM_VAR_DIR/plugin-venv"
+  TM_PLUGINS_VENV_DIR="$TM_VAR_DIR/plugins/tm-venv"
   # Directory containing symbolic links to currently enabled plugins.
   TM_PLUGINS_ENABLED_DIR="$TM_VAR_DIR/plugins/enabled"
-
+  # Directory where plugin provided libs are stored. They are stored under a plugins vendor name
+  TM_PLUGINS_LIB_DIR="$TM_VAR_DIR/plugins/lib"
+  # Directory for user-specific plugin configurations (e.g., <plugin_name>.bashrc files).
+  TM_PLUGINS_CFG_DIR="$user_config_dir/tool-manager"
+  # where spaces are stored
   TM_SPACE_DIR="${TM_SPACE_DIR:-$HOME/space}"
   
   # --- Docker Integration (Placeholder) ---

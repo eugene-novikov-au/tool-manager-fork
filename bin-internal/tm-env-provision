@@ -1,0 +1,11 @@
+#!/usr/bin/env tm-env-bash
+
+#
+# Provision a tool-manager env from a requires/directives file
+#
+
+directives_file="$1"
+if [[ ! -f "$directives_file" ]]; then
+  exit 1
+fi
+

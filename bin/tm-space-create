@@ -48,7 +48,7 @@ if [[ -f "$space_file" ]]; then
         _read "space already exists ('$space_file'), delete existing? [yn]" yn
     done
     case "$yn" in 
-        y|Y)
+        [Yy]*)
             rm -f "$space_file"
             rm -fR "$space_dir" || true         
             ;;

@@ -86,7 +86,7 @@ _tm::cfg::__process() {
     local note="${args[note]}"
     
     IFS=' ' read -ra keys <<< "${args[keys]}"
-    _trace "checking keys: '${keys[@]}'"
+    _trace "checking keys: '${keys[*]}'"
     for key in "${keys[@]}"; do
         _trace "checking key '$key'"
         value="${!key:-}"

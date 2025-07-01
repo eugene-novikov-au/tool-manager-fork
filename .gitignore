@@ -1,7 +1,2 @@
-plugins/
-.aider*
-docs/code-reviews/
-.roo/*
-.cursor/*
-*.log
-.idea/
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*

@@ -11,8 +11,9 @@
 # It depends on .tm.util.sh for INI parsing and .tm.plugin.sh for individual plugin operations.
 #
 
-_tm::source::include @tm/lib.file.ini.sh
+_tm::source::include_once @tm/lib.file.ini.sh
 _tm::source::once "$TM_BIN/.tm.plugin.sh"
+_tm::source::once "$TM_BIN/.tm.venv.directives.sh"
 
 #
 # _tm::plugins::regenerate_all_wrapper_scripts
@@ -287,9 +288,7 @@ _tm::plugins::__ini_files_to_array() {
     # shellcheck disable=SC2226 # We want word splitting here for read -a
     readarray -d '' _target_plugins_array < <(_tm::plugins::find_ini_files)
 
-    if _is_trace; then
-      _trace "plugin ini files: [${_target_plugins_array[@]}]'"
-    fi
+    _is_trace && _trace "plugin ini files: [${_target_plugins_array[*]}]'"
 }
 
 _tm::plugins::find_ini_files() {
@@ -338,7 +337,7 @@ _tm::plugins::uninstall() {
   while [[ -z "$yn" ]]; do
     _read "Really uninstall plugin ${qname} in ${plugin_dir}? [yn]" yn
     case "$yn" in
-      y|Y|yes)
+      [Yy]*)
         if _tm::plugin::disable plugin_to_disable; then
             _info "Plugin '${qname}' disabled successfully."
         else
@@ -352,7 +351,7 @@ _tm::plugins::uninstall() {
             return 1
         fi
         ;;
-      n|N|no)
+      [Nn]*)
         _info "Not removing plugin '${qname}'."
         return 0
         ;;
@@ -421,7 +420,7 @@ _tm::plugins::install_from_git() {
   while [[ -z "$yn" ]]; do
     _read "really install '${qname}' into '${install_dir}' from '${git_repo}'? [yn]" yn
     case "$yn" in 
-      y|Y|yes)
+      [Yy]*)
         if _tm::plugins::__clone_and_install plugin_details "${git_repo}" "${version}"; then
           _info "sucessfully installed"
           return
@@ -429,7 +428,7 @@ _tm::plugins::install_from_git() {
           _fail "error installing plugin"
         fi
         ;;
-      n|N|no)
+      [Nn]*)
         _info "skipping install"
         return 1
         ;;
@@ -505,7 +504,7 @@ _tm::plugins::install_from_registry(){
       return
     fi
   done
-  _fail "Could not install plugin '$plugin_name' (from input '$qualified_name')s"
+  _fail "Could not install plugin '$plugin_name' (from input '$qualified_name')"
 }
 
 #
@@ -598,7 +597,7 @@ _tm::plugins::foreach_available_callback() {
 
     _trace "Reading available plugins config..."
     _trace "Callback Function: $callback_func"
-    _trace "Plugin registry files ${plugin_files[@]}"
+    _trace "Plugin registry files ${plugin_files[*]}"
 
     [[ -n "$match_name" ]] && _debug "Matching Plugin Name: '$match_name' (first occurrence)"
     _debug "Default branch/commit (if not specified in INI): $default_commit"

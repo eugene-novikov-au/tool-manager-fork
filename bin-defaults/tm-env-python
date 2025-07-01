@@ -10,8 +10,6 @@ source "$TM_BIN/.tm.boot.sh"
 runner_args=()
 script_path=""
 script_cmd_args=()
-pip_requirements=""
-requirements=""
 
 # Find the index of the script path.
 # This assumes the script path is the first argument that exists as a file and is executable,
@@ -55,194 +53,138 @@ if [[ $((script_index + 1)) -le $# ]]; then
     script_cmd_args=("${@:$((script_index + 1))}")
 fi
 
-venv_provider='python' # uv/python/none
-python_version='3.13'
-venv_type='plugin'
+# todo: remove these
+PIP_REQUIREMENTS=""
+VENV_PROVIDER='python' # uv/python/none
+PYTHON_VERSION='3.13'
+VENV_TYPE='plugin'  #none/script/plugin
+VENV_PATH=''
 
-_main(){
-  #
-  # We cache the results of the parse, and only regenerate an environment if changes detected. This makes
-  # script invocation much faster
-    # get a hash of the file, only restore if things changed, or the env needs updating
-  local current_checksum=$(stat -c %Y "$script_path" | md5sum | awk '{print $1}') # Hash concatenated mtimes. Probably good enough for now
+__provision_env(){
+    local -n env_details="$1" #associative array
+    local script_path="$2"
 
-  local path_hash=$(echo "$script_path" | md5sum | awk '{print $1}') # Consistent cache file name
-  # make the checksum part of the generated path
-  local cache_file="$TM_CACHE_DIR/tm-env-python/script-${path_hash}.cache"
-  local venv_path=''
-  if [[ -f "$cache_file" ]]; then  
-    IFS=":" read -r saved_checksum venv_type venv_provider venv_path< <(cat "$cache_file")
-  fi
+    env_details=() # clear the array
 
-  if [[ ! -f "$cache_file" ]] || [[ "$current_checksum" != "${saved_checksum:-}" ]]; then
-    __parse_file
-    __extract_pip_requirements # the encs will install the requirements now, otherwise they are left as is
+    local VENV_PROVIDER='python' # uv/python/none
+    local PYTHON_VERSION='3.13'
+    local VENV_TYPE='plugin'  #none/script/plugin
+    local VENV_PATH=''
 
-    if [[ "$venv_type" != "none" ]]; then
-      _debug "pip_requirements=$pip_requirements"
+    #
+    # We cache the results of the parse, and only regenerate an environment if changes detected. This makes
+    # script invocation much faster
 
-      # list requirements if any
-      if [[ -n "$pip_requirements" ]]; then
-        _debug "Script require directives detected. Requires dependencies:"
-        # Print each requirement before attempting to install all
-        echo "$pip_requirements" | while IFS= read -r req_line; do
-          if [[ -n "$req_line" ]]; then
-              _debug "  - $req_line"
-          fi
-        done
-      fi
-      venv_path="$(__get_venv_dir "$script_path" "$venv_type")"
+    # Get a hash of the file, only regenerate if things changed, or the env needs updating (e.g. removed)
+    local current_checksum=$(stat -c %Y "$script_path" | md5sum | awk '{print $1}') # Hash concatenated mtimes. Probably good enough for now
+    local path_hash=$(echo "$script_path" | md5sum | awk '{print $1}') # Consistent cache file name
+    # a file that has cached our previous analysis of this file. It includes a checksum of the file we analysed, so that we can detect when
+    # it needs regeneration
+    # we want to do as little work as possible once we have a script env setup, so lazy load as much as we can
+    local cache_file="$TM_CACHE_DIR/tm-env-python/script-${path_hash}.cache"
+    if [[ -f "$cache_file" ]]; then
+      # load from cache
+      IFS=$'\t' read -r saved_checksum VENV_TYPE VENV_PROVIDER VENV_PATH< <(cat "$cache_file")
+
+      _is_finest && _finest "cache_file '$cache_file', contents: $(cat "$cache_file")"
+      _is_trace && _trace "VENV_TYPE='${VENV_TYPE}' VENV_PROVIDER='${VENV_PROVIDER}' VENV_PATH='${VENV_PATH}'"
     fi
-    mkdir -p "$(dirname "$cache_file")"
-    echo "$current_checksum:$venv_type:$venv_provider:$venv_path" > "$cache_file"
-  fi
+    # analyse file if we have no cache, or the file checksum has changed
+    if [[ ! -f "$cache_file" ]] || [[ "$current_checksum" != "${saved_checksum:-}" ]]; then
+      # extract all the directives from the script
+      local directives_file="${TM_CACHE_DIR}/tm-venv-scripts/script-${path_hash}.${__TM_VENV_REQUIRES_SUFFIX}.${current_checksum}"
+      if [[ ! -f "$directives_file" ]]; then
+         _source_once "$TM_BIN/.tm.venv.directives.sh"
+        _tm::venv::extract_directives "${script_path}" "${directives_file}"
+      fi
+      _is_finest && _finest "directives_file '$directives_file', contents: $(cat "$directives_file")"
+      _is_trace && _trace "VENV_TYPE='${VENV_TYPE}' VENV_PROVIDER='${VENV_PROVIDER}' VENV_PATH='${VENV_PATH}'"
+
+      # Use mapfile (or readarray) to read lines into an array
+      # -t option removes the trailing newline character from each line
+      mapfile -t directives < "$directives_file"
+      PIP_REQUIREMENTS=''
+      for directive in "${directives[@]}"; do
+        echo "directive: '$directive'" # Using quotes around $line is crucial to preserve spaces
+        # Perform actions with "$line" here
+        if [[ -n "${directive}" ]]; then
+              _debug "  - '${directive}'" # Log the full directive
+              if [[ "${directive}" == "pip:"* ]]; then
+                # Extract the package spec after "pip:"
+                pip_package="${directive#pip:}"
+                # Add to PIP_REQUIREMENTS, ensuring newline separation if not empty
+                if [[ -z "$PIP_REQUIREMENTS" ]]; then
+                  PIP_REQUIREMENTS="$pip_package"
+                else
+                  PIP_REQUIREMENTS="$PIP_REQUIREMENTS"$'\n'"$pip_package"
+                fi
+              elif [[ "${directive}" == "python:"* ]]; then
+                #_debug "    (Note: Python version directive '${req_line#python:}' captured)"
+                PYTHON_VERSION="${directive#python:}"
+              elif [[ "${directive}" == "venv:provider:"* ]]; then
+                VENV_PROVIDER="${directive#venv:provider:}"
+              elif [[ "${directive}" == "venv:"* ]]; then
+                VENV_TYPE="${directive#venv:}"
+              else
+                : #_debug "    (Note: Non-pip/non-python directive captured: $req_line)"
+              fi
+          fi
+      done
+      if [[ "$VENV_TYPE" != "none" ]]; then
+        _debug "PIP_REQUIREMENTS=$PIP_REQUIREMENTS"
+
+        # list requirements if any
+        if [[ -n "$PIP_REQUIREMENTS" ]]; then
+          _debug "Script require directives detected. Requires dependencies:"
+          # Print each requirement before attempting to install all
+          echo "$PIP_REQUIREMENTS" | while IFS= read -r req_line; do
+            if [[ -n "$req_line" ]]; then
+                _debug "  - $req_line"
+            fi
+          done
+        fi
+        VENV_PATH="$(__get_venv_dir "$script_path" "$VENV_TYPE")"
+      fi
+      mkdir -p "$(dirname "$cache_file")"
+      echo -e "$current_checksum\t$VENV_TYPE\t$VENV_PROVIDER\t$VENV_PATH" > "$cache_file"
+    fi
+
+    env_details[venv_type]="$VENV_TYPE"
+    env_details[venv_path]="$VENV_PATH"
+    env_details[venv_provider]="$VENV_PROVIDER"
+    env_details[pip_requirements]="$PIP_REQUIREMENTS"
+}
+__invoke_env(){
+    local -n env_details="$1" #associative array
+    local script_path="$2"
+
+}
+_main(){
+  local -A env
+  __provision_env env "$script_path"
+  #__invoke_env  env "$script_path" # todo: figure this one out
+
+  local venv_type="${env[venv_type]}"
+  local venv_path="${env[venv_path]}"
+  local venv_provider="${env[venv_provider]}"
+  local pip_requirements="${env[pip_requirements]}"
 
   if [[ "$venv_type" == "none" ]]; then
       # run directly
-      __invoke_direct "${script_cmd_args[@]}"
+      _python3 "$script_path" "${script_cmd_args[@]}"
   else
+    _source_once "$TM_BIN/.tm.venv.provision.sh"
+
     _debug "Target venv path: $venv_path"
     # Ensure the parent directory for the venv exists
     mkdir -p "$(dirname "$venv_path")"
-
     if [[ "$venv_provider" == 'uv' ]]; then
-      __invoke_via_uv "$venv_path" "${script_cmd_args[@]}"
+      __invoke_in_uv_env "$venv_path" uv run --no-project "${script_path}" "${script_cmd_args[@]}"
     elif [[ "$venv_provider" == "python" ]]; then
-      __invoke_via_python_venv "$venv_path" "${script_cmd_args[@]}"
+      __invoke_in_python_venv "$venv_path" python "${script_path}" "${script_cmd_args[@]}"
     else
-      _fail "unknown venv_provider provider '$venv_provider'"
+      _fail "unknown venv_provider '$venv_provider'"
     fi
-  fi
-}
-
-__parse_file() {
-  # Stage 1: Extract the header content for require directives
-  AWK_SCRIPT_MODULE_DOCSTRING=$(cat << 'EOF'
-  BEGIN {
-    in_docstring_type = 0 # 0: not in docstring, 1: in """, 2: in '''
-    after_docstring = 0   # Becomes 1 after the main docstring block finishes
-  }
-  {
-    # Shebang (only first line)
-    if (NR == 1 && /^#!\//) { print; next }
-
-    # Inside """ docstring
-    if (in_docstring_type == 1) {
-      print
-      if (/"\""/) {
-        in_docstring_type = 0
-        after_docstring = 1 # Main docstring finished
-      }
-      next
-    }
-
-    # Inside ''' docstring
-    if (in_docstring_type == 2) {
-      print
-      if (/\'\'\'/) {
-        in_docstring_type = 0
-        after_docstring = 1 # Main docstring finished
-      }
-      next
-    }
-
-    # If we are after the main docstring, only allow immediately following blank lines.
-    # Any comment or actual code will stop the header collection.
-    if (after_docstring == 1) {
-      if (/^[ \t]*$/) { print; next } # Blank line immediately after docstrings
-      exit # Anything else (comment or code), stop.
-    }
-
-    # --- Not currently in a multi-line docstring, and not after a docstring yet ---
-
-    # Start of """ docstring
-    if (/^[ \t]*\"\"\"/) {
-      print
-      if (! ($0 ~ /^[ \t]*\"\"\"[^\"]*\"\"\"[ \t]*$/) ) { # If not single-line
-        in_docstring_type = 1
-      } else { # Single-line docstring
-        after_docstring = 1 # Main docstring finished
-      }
-      next
-    }
-
-    # Start of ''' docstring
-    if (/^[ \t]*'''/) {
-      print
-      if (! ($0 ~ /^[ \t]*'''[^']*'''[ \t]*$/) ) { # If not single-line
-        in_docstring_type = 2
-      } else { # Single-line docstring
-        after_docstring = 1 # Main docstring finished
-      }
-      next
-    }
-
-    # Comment lines (these are pre-docstring comments)
-    if (/^[ \t]*#/) { print; next }
-
-    # Blank lines (pre-docstring or between pre-docstring comments)
-    if (/^[ \t]*$/) { print; next }
-
-    # If none of the above matched, this line is considered the first line of actual code.
-    exit # Stop processing, header is complete.
-  }
-  # No END block needed, as $(awk ...) captures all stdout before exit.
-EOF
-  )
-  header_content=$(awk "$AWK_SCRIPT_MODULE_DOCSTRING" "$script_path")
-
-  # Stage 2: Extract "require" lines from the obtained header_content
-  requirements=""
-  if [[ -n "$header_content" ]]; then
-    awk_script_requirements=$(cat << 'EOF'
-  # Match optional leading spaces, optional '#', optional spaces, then "@require", optional spaces, colon, optional spaces
-  /^[[:space:]]*(#[[:space:]]*)?@require[[:space:]]*:[[:space:]]*/ {
-    # Remove the matched part from the beginning of the line (@require: prefix)
-    sub(/^[[:space:]]*(#[[:space:]]*)?@require[[:space:]]*:[[:space:]]*/, "");
-
-    # Remove inline comment ( # comment) from the end of the value
-    sub(/[[:space:]]*#.*/, "");
-
-    # Trim leading/trailing whitespace from the remaining part (the actual value)
-    gsub(/^[[:space:]]+|[[:space:]]+$/, "");
-
-    if ($0 != "") { # Print only if something remains (the cleaned value)
-      print $0
-    }
-  }
-EOF
-  )
-    requirements=$(echo "$header_content" | awk "$awk_script_requirements")
-  fi
-}
-
-__extract_pip_requirements(){
-  # Stage 3: Process require directives
-  pip_requirements=""
-  if [[ -n "$requirements" ]]; then
-    _debug "Script require directives detected:"
-    while IFS= read -r req_line; do
-        if [[ -n "$req_line" ]]; then
-            _debug "  - '$req_line'" # Log the full directive
-            if [[ "$req_line" == "pip:"* ]]; then
-              # Extract the package spec after "pip:"
-              pip_package="${req_line#pip:}"
-              # Add to pip_requirements, ensuring newline separation if not empty
-              if [[ -z "$pip_requirements" ]]; then
-                pip_requirements="$pip_package"
-              else
-                pip_requirements="$pip_requirements"$'\n'"$pip_package"
-              fi
-            elif [[ "$req_line" == "python:"* ]]; then
-              #_debug "    (Note: Python version directive '${req_line#python:}' captured)"
-              python_version="${req_line#python:}"
-            elif [[ "$req_line" == "venv:"* ]]; then
-              venv_type="${req_line#venv:}"
-            else
-              : #_debug "    (Note: Non-pip/non-python directive captured: $req_line)"
-            fi
-        fi
-    done  < <(echo "$requirements")
   fi
 }
 
@@ -253,7 +195,7 @@ __get_venv_dir(){
   __extract_plugin_name(){
     local script_path="$1"
     local dir="$2"
-    _trace "args: $@"
+    _trace "args: $*"
     
     local remove_prefix="$dir/"
     local script_rel_path="${script_path#$remove_prefix}"
@@ -277,11 +219,8 @@ __get_venv_dir(){
   fi
 }
 
-__invoke_direct(){
-    _python3 "$script_path" "$@"
-}
 
-__invoke_via_uv(){
+__invoke_in_uv_env(){
   local venv_path="$1"
   shift
   # Create/update the virtual environment using uv
@@ -291,14 +230,14 @@ __invoke_via_uv(){
   if ! uv venv --quiet "$venv_path"; then
       _fail "Error: Failed to create or validate venv at $venv_path using uv."
   fi
-  if [[ -n "$pip_requirements" ]]; then
+  if [[ -n "$PIP_REQUIREMENTS" ]]; then
     _debug "Installing dependencies:"
     # Install all requirements at once using uv, targeting the venv's Python
     local python_in_venv="$venv_path/bin/python"
     if [[ ! -x "$python_in_venv" ]]; then
       _error "Error: Python executable not found or not executable in venv: $python_in_venv"
       _warn "Warning: Skipping dependency installation."
-    elif ! echo "$pip_requirements" | uv pip install --quiet --python "$python_in_venv" -r /dev/stdin; then
+    elif ! echo "$PIP_REQUIREMENTS" | uv pip install --quiet --python "$python_in_venv" -r /dev/stdin; then
       _warn "Warning: Failed to install some/all dependencies into $venv_path using 'uv pip install --python ...'."
       # Decide if this should be a fatal error. For now, a warning.
     else
@@ -313,13 +252,15 @@ __invoke_via_uv(){
   # activate env
   source "$venv_path/bin/activate"
   # finally run it
-  uv run --no-project "$script_path" "$@"
+  "$@"
 }
 
-__invoke_via_python_venv(){
+__invoke_in_python_venv(){
   local venv_path="$1"
-  _debug "invoking via python venv ($venv_path)"
   shift
+
+  _debug "invoking via python venv ($venv_path)"
+
 
   if [[ ! -f "$venv_path/bin/activate" ]]; then
     _debug "no venv, creating '$venv_path'"
@@ -335,10 +276,10 @@ __invoke_via_python_venv(){
   else
     source "$venv_path/bin/activate"
   fi
-  if [[ -n "$pip_requirements" ]]; then
+  if [[ -n "$PIP_REQUIREMENTS" ]]; then
     _debug "Installing pip dependencies:"
     # Install all requirements at once using uv, targeting the venv's Python
-    if ! echo "$pip_requirements" | python -m pip install -r /dev/stdin; then
+    if ! echo "$PIP_REQUIREMENTS" | python -m pip install -r /dev/stdin; then
       _warn "Warning: Failed to install some/all dependencies into $venv_path using 'python3 -m pip install ...'."
       # Decide if this should be a fatal error. For now, a warning.
     else
@@ -346,7 +287,7 @@ __invoke_via_python_venv(){
     fi
   fi
   _debug "invoking python script '$script_path'"
-  python3 "$script_path" "$@"
+ "$@"
 }
 
 

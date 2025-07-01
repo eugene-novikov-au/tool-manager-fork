@@ -1,0 +1,11 @@
+#!/usr/bin/env tm-env-bash
+
+# Provision a script based on a directive file
+#
+# Arguments:
+# $1 - the script file to provision
+#
+
+_include @tm/lib.common.sh .tm.venv.provision.sh
+
+_tm::venv::provision "$@"

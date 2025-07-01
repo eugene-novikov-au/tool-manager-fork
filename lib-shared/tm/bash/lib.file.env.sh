@@ -30,7 +30,7 @@ _tm::file::env::read() {
     local effective_key
 
     # Read the file line by line
-    for file in "$env_files"; do
+    for file in $env_files; do
         if [[ ! -f "$file" ]] || [[ ! -r "$file" ]]; then
             continue
         fi

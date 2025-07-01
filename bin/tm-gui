@@ -1,7 +1,8 @@
 #!/usr/bin/env tm-env-python
 
 # @require:venv:script      # none|script|plugin - tcl doesn't work in a uv env atm
-# @require:python:3.13
+# @require:python:3.12
+# @require:  pip:tk
 # @require:pip:ttkbootstrap
 
 import ttkbootstrap as ttk

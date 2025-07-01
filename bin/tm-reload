@@ -13,20 +13,22 @@ _parse_args \
     --opt-plugins "|remainder|multi|short=p|value=PLUGIN|desc=The plugins to reload. Or all if left blank." \
     --opt-fix "|flag|desc=(TODO)Fix any issues, like broken links etc" \
     --opt-scripts "|flag|short=s|desc=Only regenerate the plugin scripts, not reload the entire plugin" \
+    --opt-yes "|flag|short=y|desc=If set, confirm all prompts" \
     --result args \
     -- "$@"
 
 [[ "${args[scripts]}" == "1" ]] && scripts=1 || scripts=0 
+auto_yes="${args[yes]}"
 
 IFS=' ' read -r -a plugin_names <<< "${args[plugins]:-}"
-if [[ "${#plugin_names[@]}" -gt 0 ]]; then   # reload just the given plugin(s)
+if [[ ${#plugin_names[@]} -gt 0 ]]; then   # reload just the given plugin(s)
     declare -A plugin_details
     for plugin_name in "${plugin_names[@]}"; do
         _tm::util::parse::plugin plugin_details "$plugin_name"
         if [[ $scripts == 1 ]]; then
             _tm::plugin::regenerate_wrapper_scripts plugin_details
         else
-            _tm::plugin::reload plugin_details
+            _tm::plugin::reload plugin_details "$auto_yes"
         fi
     done
 else

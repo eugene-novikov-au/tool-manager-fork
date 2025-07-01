@@ -27,10 +27,8 @@ _trap_sigs() {
 #
 _fail() {
   # this function is early in the file, as the top most functions need access to it
-  _err "ERROR! $@"
-  if _is_trace; then
-    _trace "$(_tm::log::stacktrace)"
-  fi
+  _err "ERROR! $*"
+  _is_trace && _trace "$(_tm::log::stacktrace)"
   exit 1
 }
 
@@ -48,9 +46,7 @@ _fail() {
 #
 _die() {
   _err "$@"
-  if _is_trace; then
-    _trace "$(_tm::log::stacktrace)"
-  fi
+  _is_trace && _trace "$(_tm::log::stacktrace)"
   exit 1
 }
 
@@ -132,7 +128,7 @@ _popd() {
 #   _grep pattern file.txt
 #
 _grep() {
-    grep $@ || true
+    grep "$@" || true
 }
 
 # Enhanced touch that creates parent directories
@@ -167,7 +163,6 @@ _realpath() {
   else
     # _warn "realpath command not found, using fallback implementation"
     local path="$1"
-    local relative_to="${2:-}"
     
     # On macOS, use python as fallback
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -608,7 +603,7 @@ _tm::util::add_to_path() {
     # no paths to add, skip all
     return
   fi
-  _debug "adding paths $@"
+  _debug "adding paths $*"
   # TODO: handle differnt seperator in different OS's?
   IFS=':' read -ra current_paths <<< "$PATH"
   local path_exists
