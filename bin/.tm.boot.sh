@@ -16,8 +16,6 @@ export TM_LIB_BASH="$TM_HOME/lib-shared/tm/bash"
 __TM_SEP_PREFIX_NAME=":"
 # for dirs (s we can't use the above)
 __TM_SEP_PREFIX_DIR="__"
-# filename suffix for venv requirements files
-__TM_VENV_REQUIRES_SUFFIX="tm.venv.requires"
 
 # ensure the logging is loaded first
 source "$TM_LIB_BASH/lib.log.sh"

@@ -1,9 +1,9 @@
 #!/usr/bin/env tm-env-python
 
-# @require:venv:script      # none|script|plugin - tcl doesn't work in a uv env atm
-# @require:python:3.13
-# @require:pip:ttkbootstrap
-# @require:pip:customtkinter
+# @require:venv     script      # none|script|plugin - tcl doesn't work in a uv env atm
+# @require:python   3.13
+# @require:pip      ttkbootstrap
+# @require:pip      customtkinter
 
 import customtkinter
 import tkinter # For constants if needed, and Menu

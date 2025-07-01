@@ -11,6 +11,7 @@
 #
 
 source "$TM_HOME/.bashrc_script" || _fail "Failed to source TM_HOME/.bashrc_script"
+source "$TM_BIN/.tm.venv.sh"
 
 runner_args=()
 script_path=""
@@ -63,7 +64,11 @@ fi
 # we source it so the we get better stack trace errors, and so we have better control of the env it runs in
 TM_LOG_NAME="$(basename "$script_path")"
 set -- "${script_cmd_args[@]}" # set the '$@' args for the plugin script
+# todo: maybe only if there are directives do we run in a separate env?
+
 source "$script_path" || _fail "Failed to execute script: $script_path" # run the plugin script
+# TODO:integrate this in. Can we run in the env and 'source' the script?
+#__tm::venv::run "bash" "$script_path" source "$script_path" || _fail "Failed to execute script: $script_path" # run the plugin script
 
 # ensure the init scripts are run, which will setup the tool-manager and make all the functions available
 #TM_LOG_NAME="$(basename "$script_path")" bash --init-file "$TM_HOME/.bashrc_script" -i -- "$script_path" "${script_cmd_args[@]}"

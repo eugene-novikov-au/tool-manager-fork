@@ -457,9 +457,6 @@ _tm::plugin::__generate_wrapper_scripts() {
 
     local name_only="${script_prefix}$(basename "$file")"
     local wrapper_script="$TM_PLUGINS_BIN_DIR/${name_only%.*}"  # remove suffixes like '.sh' and '.py' etc
-    local wrapper_script_checksum=$(stat -c %Y "$file" | md5sum | awk '{print $1}')
-    local directives_file="$TM_PLUGINS_BIN_DIR/${script_prefix}$(basename "$file").${__TM_VENV_REQUIRES_SUFFIX}"
-    _tm::venv::extract_directives "$file" "$directives_file"
     _trace "script $wrapper_script invokes $file"
     _debug "   - $name_only"
 

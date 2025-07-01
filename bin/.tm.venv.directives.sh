@@ -28,20 +28,28 @@ _tm::venv::extract_directives(){
   local -a directives
   if _tm::venv::__parse_directives "$file" directives; then
     local venv_provider_included=1
-    local venv_provider='venv:provider:python'
+    local venv_provider='venv:provider=python'
     for directive in "${directives[@]}"; do
-      if [[ -z "$venv_provider" ]]; then
-        if [[ "$directive" == "_hashbang:bash" ]] \
-          || [[ "$directive" == "_hashbang:tm-env-bash" ]] \
-          || [[ "$directive" == "_hashbang:python" ]] \
-          || [[ "$directive" == "_hashbang:tm-env-python" ]]; then
-          venv_provider='venv:provider:python'
-        fi
-      fi
-      if [[ "$directive" == "venv:provider:"* ]]; then
+      if [[ "$directive" == "venv:provider="* ]]; then
           venv_provider_included=1
       fi
-
+      if [[ -z "$venv_provider" ]] && [[ "$directive" == "hashbang="*  ]]; then
+        if [[ "$directive" == "hashbang=bash" ]] \
+          || [[ "$directive" == "hashbang=tm-env-bash" ]] \
+          || [[ "$directive" == "hashbang=python" ]] \
+          || [[ "$directive" == "hashbang=tm-env-python" ]]; then
+          venv_provider='venv:provider=python'
+        elif [[ "$directive" == "hashbang=java" ]] \
+          || [[ "$directive" == "hashbang=tm-env-java" ]]; then
+          venv_provider='venv:provider=java'
+        elif [[ "$directive" == "hashbang=kotlin" ]] \
+          || [[ "$directive" == "hashbang=tm-env-kotlin" ]]; then
+          venv_provider='venv:provider=kotlin'
+        elif [[ "$directive" == "hashbang=node" ]] \
+          || [[ "$directive" == "hashbang=tm-env-node" ]]; then
+          venv_provider='venv:provider=node'
+        fi
+      fi
       __append "$directive"
     done
 
@@ -90,7 +98,8 @@ _tm::venv::__parse_directives(){
 
   # Regular expression for comment lines containing '@require'
   # It captures the content after '@require' into BASH_REMATCH[2]
-  local regex_comment_require="^[[:space:]]*(\/\/|#)[[:space:]]*@require:([^#\/[:space:]]*)[[:space:]]*"
+  #local regex_comment_require="^[[:space:]]*(\/\/|#)[[:space:]]*@require:([^#\/[:space:]]*)[[:space:]]*"
+  local regex_comment_require="^[[:space:]]*(\/\/|#)[[:space:]]*@require:([^[:space:]]*)[[:space:]]+([^#\/[:space:]]+).*"
   local regex_comment="^[[:space:]]*(\/\/|#).*$"
 
   local hashbang_runner_extracted=0
@@ -115,7 +124,7 @@ _tm::venv::__parse_directives(){
 
       if [[ -n "$runner_path" ]]; then
           runner="${runner_path##*/}" # Get basename (e.g., 'bash' from '/bin/bash', 'python3' from '/usr/bin/python3')
-          target_array+=("_hashbang:$runner")
+          target_array+=("hashbang=$runner")
       fi
       hashbang_runner_extracted=1 # Mark shebang as processed
       continue # Move to the next line
@@ -128,13 +137,12 @@ _tm::venv::__parse_directives(){
 
     # Check if it's a comment line containing '@require'
     if [[ "$line" =~ $regex_comment_require ]]; then
-      local extracted_directive="${BASH_REMATCH[2]}"
-      if [[ -n "${extracted_directive}" ]]; then
-        # regexp should trim this
-        #extracted_directive="${extracted_directive#"${extracted_directive%%[![:space:]]*}"}"      # Remove leading whitespace
-        #extracted_directive="${extracted_directive%"${trimmed_string##*[![:space:]]}"}"      # Remove trailing whitespace
-        target_array+=("$extracted_directive") # Add the cleaned directive content
-        _is_trace && _trace "extracted_directive='${extracted_directive}'"
+      local directive_key="${BASH_REMATCH[2]}"
+      local directive_value="${BASH_REMATCH[3]}"
+      if [[ -n "${directive_key}" ]]; then
+        local directive="${directive_key}=${directive_value}"
+        target_array+=("${directive}") # Add the cleaned directive content
+        _is_trace && _trace "directive='${directive}'"
       fi
     elif [[ ! "$line" =~ $regex_comment ]]; then
       # If the line is not empty, not a shebang, and not a recognized comment with @require,
