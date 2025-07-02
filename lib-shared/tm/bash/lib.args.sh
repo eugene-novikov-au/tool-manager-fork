@@ -338,6 +338,9 @@ _tm::args::parse() {
             plugin-prefix)
               [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-prefix)" || true
               ;;
+            space-key)
+              [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (space-key)" || true
+              ;;
             re:*)
                 local regexp="^${validator#re:}+$"
                 _finest "using re:${regexp}"

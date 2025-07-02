@@ -9,10 +9,10 @@ declare -A args
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
     --help-tip \
-    --opt-key "|remainder|short=k|value=NAME|desc=The space key (namespace, dot seperated, no spaces)" \
+    --opt-key "|remainder|short=k|value=NAME|desc=The space key (namespace, dot seperated, no spaces)|validators=space-key" \
     --opt-guid "|short=g|value=GUID|desc=The space guid" \
     --opt-label "|short=l|value=LABEL|desc=The human friendly space label" \
-    --opt-parent-key "|multi|short=pk|value=KEY|desc=The parent key" \
+    --opt-parent-key "|multi|short=pk|value=KEY|desc=The parent key|validators=space-key" \
     --opt-parent-guid "|multi|short=pq|value=GUID|desc=The parent guid" \
     --opt-dir "|short=d|desc=The (custom) directory to save the space in, else the default is used" \
     --opt-clone "|flag|group=config|desc=If to clone config (default)" \
