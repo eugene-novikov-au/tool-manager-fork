@@ -27,52 +27,22 @@ _parse_args \
     --result args \
     -- "$@"
 
-# Gets the editor to use for editing the configuration file.
-editor_to_use=""
-if [[ -n "${args[editor]}" ]]; then
-  editor_to_use="${args[editor]}"
-else
-  case "$TM_CFG_EDITOR:$EDITOR" in
-    (:*)
-      if command -v vi &>/dev/null; then
-        editor_to_use="vi"
-      elif command -v nano &>/dev/null; then
-        editor_to_use="nano"
-      else
-        _fail "No editor found. Please set \$TM_CFG_EDITOR or \$EDITOR"
-      fi
-      ;;
-    (*:*)
-      editor_to_use="$TM_CFG_EDITOR"
-      ;;
-    (*)
-      editor_to_use="$EDITOR"
-      ;;
-  esac
-fi
-qualified_name="${args[plugin]}"
 
-#_info "using editor: $editor_to_use"
+editor_to_use="$(_tm::cfg::get_cfg_editor "${args[editor]}")"
+plugin_name="${args[plugin]}"
 
 declare -A plugin=()
-
-if [[ -z "$qualified_name" ]] && [[ -n "${args[tm]}" ]]; then
-    # Parses the plugin ID from the given string and populates the plugin array.
-    _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
-elif [[ -z "$qualified_name" ]] && [[ -n "${args[this]}" ]]; then
+if [[ -n "${plugin_name}" ]]; then # plugin name provided
+    _tm::util::parse::plugin plugin "${plugin_name}"
+elif [[ -n "${args[this]}" ]]; then # plugin name provided
     if [[ -z "${TM_PLUGIN_ID:-}" ]]; then
         _fail "Set flag '--this', but no env variable 'TM_PLUGIN_ID' has been set. Ensure you are calling this via the wrapper scripts"
     fi
-    # Parses the plugin ID from the given string and populates the plugin array.
-    _tm::util::parse::plugin_id plugin "$TM_PLUGIN_ID"
-else
-    # Parses the plugin ID from the given string and populates the plugin array.
-    _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
+    _tm::util::parse::plugin_id plugin "${TM_PLUGIN_ID}"
+else # fallback to the tool-manager itself
+  _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 fi
 
-if [[ -z "$qualified_name" ]]; then
-    qualified_name="$__TM_NAME"
-fi
 
 if [[ "${plugin[name]}" == "$__TM_NAME" ]]; then
     # Edit the root plugin configuration directory
@@ -84,25 +54,17 @@ if [[ "${plugin[name]}" == "$__TM_NAME" ]]; then
 else
     # Edit a specific plugin's config file
     plugin_name="${plugin[name]}"
-    prefix="${plugin[prefix]}"
-
-    plugin_cfg_file_dir="$TM_PLUGINS_CFG_DIR/$plugin_name"
-    if [[ -n "$prefix" ]]; then
-        plugin_cfg_file_dir="$TM_PLUGINS_CFG_DIR/${prefix}${__TM_SEP_PREFIX_DIR}${plugin_name}"
-    fi
-    target_path="${plugin_cfg_file_dir}/cfg.sh"
+    plugin_cfg_dir="${plugin[cfg_dir]}"
+    target_path="${plugin[cfg_sh]}"
 
     # Ensure the directory exists
-    if [[ ! -d "$plugin_cfg_file_dir" ]]; then
-        _info "Plugin configuration directory '$plugin_cfg_file_dir' does not exist. Creating it."
-        if ! mkdir -p "$plugin_cfg_file_dir"; then
-        	_error "Could not create directory '$plugin_cfg_file_dir'."
+    if [[ ! -d "$plugin_cfg_dir" ]]; then
+        _info "Plugin configuration directory '$plugin_cfg_dir' does not exist. Creating it."
+        if ! mkdir -p "$plugin_cfg_dir"; then
+        	_error "Could not create directory '$plugin_cfg_dir'."
         fi
     fi
-    if [[ ! -d "$plugin_cfg_file_dir" ]]; then
-        _fail "Failed to create directory '$plugin_cfg_file_dir'."
-    fi
-    
+
     # Touch the file to ensure it exists before opening, helpful for some editors
     touch "$target_path" || _warn "Could not touch file '$target_path', editor might create it."
 

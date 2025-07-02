@@ -125,7 +125,7 @@ _tm::boot::init() {
   TM_BIN_DEFAULTS="$TM_HOME/bin-defaults"
   # __TM_NAME: Internal name for the tool manager.
   __TM_NAME="tool-manager"
-  __TM_PLUGIN_ID="tm:plugin::tool-manager::"
+  __TM_PLUGIN_ID="tm:plugin:::tool-manager::"
   __TM_NO_VENDOR="default"
 
   # --- Logging and Debugging Flags ---
@@ -164,9 +164,9 @@ _tm::boot::init() {
   TM_BASH_USE_DOCKER="${TM_BASH_USE_DOCKER:-0}"
 
   # --- General Configuration ---
-  # THese dirs contains *.ini files defining the available plugins
+  # These dirs contains *.ini files defining the available plugins
   # Allows users to add their own custom plugin definition files.
-  TM_PLUGINS_REGISTRY_DIR="${TM_PLUGINS_REGISTRY_DIR:-}" # custom user one
+  TM_PLUGINS_REGISTRY_DIR="${TM_PLUGINS_REGISTRY_DIR:-"${TM_PLUGINS_CFG_DIR}/tool-manager/registry"}" # custom user one
   TM_PLUGINS_DEFAULT_REGISTRY_DIR="$TM_HOME/plugin-registry" # default built in one
 
   # --- Directory Creation ---

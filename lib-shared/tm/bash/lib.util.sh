@@ -410,7 +410,7 @@ _tm::util::parse::plugin_name(){
   result_name[version]="$version"
   result_name[prefix]="$prefix"
 
-  _tm::utill::parse::__set_plugin_derived_vars result_name
+  _tm::util::parse::__set_plugin_derived_vars result_name
 
   if _is_finest; then
     _finest "parsed to: $(_tm::util::print_array result_name)"
@@ -419,15 +419,7 @@ _tm::util::parse::plugin_name(){
   return 0
 }
 
-#
-# Parse a plugin id string into an associative array
-#
-# $1 - the name of the associative array to put the results in
-# $2 - the plugin id
-#
-# Usage:
-#  _tm::util::parse::plugin_id parts "tm:plugin:<vendor>:<name>:<version>:<prefix>"
-#
+
 # Parses a plugin id string into an associative array
 #
 # $1 - the name of the associative array to put the results in
@@ -437,7 +429,7 @@ _tm::util::parse::plugin_name(){
 #   Parses a plugin id string into an associative array.
 #
 # Usage:
-#  _tm::util::parse::plugin_id parts "tm:plugin:<vendor>:<name>:<version>:<prefix>"
+#  _tm::util::parse::plugin_id parts "tm:plugin:<space>:<vendor>:<name>:<version>:<prefix>"
 #
 _tm::util::parse::plugin_id(){
   local -n result_id="$1" # expect it to be an associative array
@@ -449,15 +441,16 @@ _tm::util::parse::plugin_id(){
   IFS=':' read -r -a id_parts <<< "$parse_id"
 
   if [[ "${id_parts[0]:-}" != "tm" ]]; then
-    _fail "Not a valid plugin id. expected 'tm:plugin:<vendor>:<name>:<version>:<prefix>', but got '$parse_id'"
+    _fail "Not a valid plugin id. expected 'tm:plugin:<space>:<vendor>:<name>:<version>:<prefix>', but got '$parse_id'"
   fi
   if [[ "${id_parts[1]:-}" != "plugin" ]]; then
-    _fail "Not a valid plugin id. expected 'tm:plugin:<vendor>:<name>:<version>:<prefix>', but got '$parse_id'"
+    _fail "Not a valid plugin id. expected 'tm:plugin:<space>:<vendor>:<name>:<version>:<prefix>', but got '$parse_id'"
   fi
-  local vendor="${id_parts[2]:-}"
-  local name="${id_parts[3]}"
-  local version="${id_parts[4]:-}"
-  local prefix="${id_parts[5]:-}"
+  local space="${id_parts[2]:-}"
+  local vendor="${id_parts[3]:-}"
+  local name="${id_parts[4]}"
+  local version="${id_parts[5]:-}"
+  local prefix="${id_parts[6]:-}"
 
   if [[ -z "$name" ]]; then
     _fail "Invalid plugin name format.Is empty. From id '${parse_id}'"
@@ -481,7 +474,7 @@ _tm::util::parse::plugin_id(){
   result_id[version]="$version"
   result_id[prefix]="$prefix"
 
-  _tm::utill::parse::__set_plugin_derived_vars result_id
+  _tm::util::parse::__set_plugin_derived_vars result_id
 
   if _is_finest; then
     _finest "$(_tm::util::print_array result_id)"
@@ -511,7 +504,7 @@ _tm::util::parse::plugin_enabled_dir(){
   result[version]=""
   result[prefix]="$prefix"
 
-  _tm::utill::parse::__set_plugin_derived_vars result
+  _tm::util::parse::__set_plugin_derived_vars result
 
   if _is_finest; then
     _finest "$(_tm::util::print_array result)"
@@ -524,12 +517,13 @@ _tm::util::parse::plugin_enabled_dir(){
 #
 # $1 - the plugin associative array
 #
-_tm::utill::parse::__set_plugin_derived_vars(){
+_tm::util::parse::__set_plugin_derived_vars(){
   local -n result_derived="$1" # expect it to be an associative array
 
   local name="${result_derived[name]}"
   local prefix="${result_derived[prefix]}"
   local vendor="${result_derived[vendor]}"
+  local space="${result_derived[space]:-}"
 
     # qname (qualified name)
   local qname=""
@@ -586,12 +580,11 @@ _tm::utill::parse::__set_plugin_derived_vars(){
     key+="__${prefix}"
   fi
   result_derived[key]="$key"
-  result_derived[id]="tm:plugin:$vendor:$name:$version:$prefix"
+  result_derived[id]="tm:plugin:$space:$vendor:$name:$version:$prefix"
   result_derived[cfg_spec]="${result_derived[install_dir]}/plugin.cfg.yaml"
   result_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
   result_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh"
 }
-
 
 #
 # Add the passed in path to the PATH if it's not already added

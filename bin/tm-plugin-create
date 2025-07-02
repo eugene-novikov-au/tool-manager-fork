@@ -30,13 +30,15 @@ __main(){
         --file "${BASH_SOURCE[0]}" \
         --help-tip \
         --opt-name "|remainder|multi|short=n|value=NAME|desc=The name of the new plugin|example=my-plugin, my-vendor/my-plugin" \
-        --opt-prefix "|short=p|desc=The prefix to append to all the plugin's script" \
+        --opt-vendor "|short=v|desc=The name of the vendor|example=my-vendor, acme|validators=plugin-vendor" \
+        --opt-prefix "|short=p|desc=The prefix to append to all the plugin's script|validators=plugin-prefix" \
         --opt-repo "|short=r|desc=The Git repository URL for the plugin|example=git@github.com:user/repo.git" \
         --opt-desc "|short=d|desc=A brief description of what the plugin provides" \
         --result args \
         -- "$@"
 
-    local plugin_name="${args[name]:-}"   
+    local plugin_name="${args[name]:-}"
+    local vendor="${args[vendor]:-}"
     local plugin_repo="${args[repo]:-}"
     local script_name_prefix="${args[prefix]:-}"
     local plugin_desc="${args[desc]:-}"
@@ -59,6 +61,9 @@ __main(){
             fi
         fi
     done
+    if [[ -n "${vendor}" ]]; then
+        plugin_name="${vendor}/${plugin_name}"
+    fi
     while [[ -z "$plugin_repo" ]]; do
         _tm::util::parse::plugin_name plugin "${plugin_name}"
 
@@ -278,7 +283,7 @@ if _is_finest; then # a logging conditional. Exists for all the log levels up ti
 fi
 _log debug "can provide a log level to '_log'. Slower than the direct method"
 
-_read "Do you really want a pie? [yn]" yn
+_read "Do you really want a pie? [yn]: " yn
 _info "user selected pie : \${yn}"
 
 # my_value="\$(tm-cfg-get --this --key SOME_KEY --default "some/default/value" --prompt)"

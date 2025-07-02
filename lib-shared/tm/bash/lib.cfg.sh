@@ -129,7 +129,7 @@ _tm::cfg::__process() {
         else
             _fail "No cfg with key '$key' set for plugin '${plugin[name]}', and no default supplied. Not in interactive shell so can't prompt"
         fi
-        _tm::cfg::__prompt_for_key "${plugin[name]}" "${plugin[qpath]}" "$plugin_custom_cfg_file" "$key" "$default_value" "$note" 
+        _tm::cfg::__prompt_for_key "${plugin[qname]}" "${plugin[qpath]}" "$plugin_custom_cfg_file" "$key" "$default_value" "$note"
         # ensure the new key is rad by the caller
        
         if [[ $is_get == 1 ]]; then
@@ -141,7 +141,7 @@ _tm::cfg::__process() {
 
 
 _tm::cfg::__prompt_for_key() {
-    local plugin_name="$1"
+    local qname="$1"
     local qpath="$2"
     local cfg_file="$3"
     local cfg_key="$4"
@@ -149,7 +149,7 @@ _tm::cfg::__prompt_for_key() {
     local note="${6:-}"
     
     # Prompt to stderr to avoid contaminating stdout [8]
-    _tm::log::println "Environment variable '$cfg_key' not set for plugin '$plugin_name'" 
+    _tm::log::println "Environment variable '$cfg_key' not set for plugin '$qname'"
     _tm::log::println "  Setting value in '$cfg_file' (qpath '$qpath')"
 
     #_info "env=$(env | sort)"
@@ -230,10 +230,11 @@ _tm::cfg::set_value(){
     local plugin_name="${parts[name]}"
     local prefix="${parts[prefix]}"
     local qpath="${parts[qpath]}"
+    local qname="${parts[qname]}"
     
     local plugin_dir="$TM_PLUGINS_INSTALL_DIR/$plugin_name"
     if [[ ! "$plugin_name" == "$__TM_NAME" ]] && [[ ! -d "$plugin_dir" ]]; then
-        _fail "No plugin '$plugin_name' installed. Expected dir '$plugin_dir'"
+        _fail "No plugin '$qname' installed. Expected dir '$plugin_dir'"
     fi
     
     cfg_key="${cfg_key^^}" # uppercase config keys
@@ -339,14 +340,16 @@ _tm::cfg::__load_cfg(){
     local hash="$(_tm::cfg::__generate_hash_for "${env_files[@]}" "${plugin_config_yaml}" )"
 
     local base_config_dir="$TM_CACHE_DIR/merged-config"
-    
+    if [[ ! -d "${base_config_dir}" ]]; then
+      mkdir -p "${base_config_dir}"
+    fi
+
     while [[ true ]]; do
 
       # make the hash part of the generated path so it's easy to check if things have changed
       local merged_bashrc_file="$base_config_dir/${qpath}.cfg.sh.${hash}"
       _debug "using merged config '$merged_bashrc_file'"
       if [[  -f "$merged_bashrc_file" ]]; then #we're done, just load the config
-
         _debug "sourcing '$merged_bashrc_file' into current shell"
         source "$merged_bashrc_file"
         return

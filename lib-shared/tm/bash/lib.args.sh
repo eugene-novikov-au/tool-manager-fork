@@ -23,7 +23,7 @@ fi
 #                    - example       (optional) example text
 #                    - default       (optional) default value. Default is an empty string
 #                    - allowed       (optional) allowed values. First char is the value seperator if non alpha-numeric. Default is ','
-#     
+#                    - validators    (optional) (TODO) comma separated validators (alphanumeric,numbers,letters,nowhitespace,noslash,re:<pattern>,plugin-vendor,plugin-name,plugin-prefix)
 #             If there are semi colons in any of the values, you can specify a different seperator, by setting the first char to the seperator (non alpahumeric)
 #                      e.g. '|short=x|desc=The value for 'x', with a semicolon; This is also part of the the desc now'
 #   
@@ -68,9 +68,10 @@ _tm::args::parse() {
     # flags by key
     local -A flags_by_key=()
     local -A defaults_by_key=()
-    local -A multi_by_key=()
-    local -A multi_sep_by_key=()
-    local -A allowed_by_key=()
+    local -A multi_by_key=() # 0/1 flag to determine if a key can have multiple values
+    local -A multi_sep_by_key=() # separators used to separate multi values values, by key
+    local -A allowed_by_key=() # allowed values for a given key
+    local -A validators_by_key=() # list of validators to apply to a value, by key
     local remainder_key=''
     #
     # Parses an option spec string given in "key=value;key2=value2" format.
@@ -96,6 +97,7 @@ _tm::args::parse() {
           [required]=0 \
           [short]='' \
           [value]='value' \
+          [validators]='' \
       )
 
       local old_ifs="$IFS"
@@ -178,7 +180,10 @@ _tm::args::parse() {
                   ;;        
               value) # the name of the help option 'value'
                   ref_array[value]="$value"
-                  ;;                            
+                  ;;
+              validators) # the validation options
+                  ref_array[validators]="$value"
+                  ;;
               *)
                   # Silently ignore unknown keys, or add a _warn if debugging is needed
                   IFS= _fail "Unknown command args spec option '$key', for option '$option_key', in option spec '$option_spec'"
@@ -279,6 +284,71 @@ _tm::args::parse() {
       fi
       read -ra array_ref <<< "$allowed"
       IFS="$old_ifs"
+    }
+
+    __validate_arg(){
+      local key="$1"
+      local value="$2"
+
+      # check the value is valid if enabled
+      local allowed="${allowed_by_key["$key"]:-}"
+      if [[ -n "$allowed" ]]; then
+        local allowed_values=()
+        __parse_allowed_values "$allowed" allowed_values
+        local valid=0
+        for valid_val in "${allowed_values[@]}"; do
+          if [[ "$valid_val" == "$value" ]]; then
+            valid=1
+            break
+          fi
+        done
+        if [[ $valid == 0 ]]; then
+          _fail "invalid value '$value' for '$key'. Valid values are: $allowed"
+        fi
+      fi
+
+      # run any provided validators
+      local validators_csv="${validators_by_key["$key"]}"
+      if [[ -n "$value" ]] && [[ -n "${validators_csv}" ]]; then
+        local -a validators
+        IFS=',' read -ra validators <<< "$validators_csv"
+        for validator in "${validators[@]}"; do
+          case "${validator}" in
+            nowhitespace)
+              [[ "$value" =~ " " ]] && _fail "arg '${key}' with value '${value}' cannot contain whitespace (nowhitespace)" || true
+              ;;
+            noslashes)
+              { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  } && _fail "arg '${key}' with value '${value}' cannot contain forward or back slashes (noslashes)" || true
+              ;;
+            alphanumeric)
+              [[ ! "$value" =~ ^[a-zA-Z0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must be alphanumeric (alphanumeric)" || true
+              ;;
+            letters)
+              [[ ! "$value" =~ ^[a-zA-Z]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only letters (letters)" || true
+              ;;
+            numbers)
+              [[ ! "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only numbers (numbers)" || true
+              ;;
+            plugin-vendor)
+              [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-vendor)" || true
+              ;;
+            plugin-name)
+              [[ ! "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (plugin-name)" || true
+              ;;
+            plugin-prefix)
+              [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-prefix)" || true
+              ;;
+            re:*)
+                local regexp="^${validator#re:}+$"
+                _finest "using re:${regexp}"
+                [[ ! "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' does not match pattern '${regexp}' (re)" || true
+                ;;
+            *)
+              _warn "Unknown validator '${validator}', skipping"
+          esac
+        done
+      fi
+
     }
     #
     # Print a single option
@@ -420,6 +490,7 @@ _tm::args::parse() {
           [[ "${parts[required]}" == '1' ]] && required_keys+=("$key") || true
           [[ "${parts[multi]}" == '1' ]] && multi_by_key["$key"]="1" || true
           flags_by_key["$key"]="${parts[flag]}"
+          validators_by_key["$key"]="${parts[validators]}"
         ;;
         '--')
           shift
@@ -476,22 +547,8 @@ _tm::args::parse() {
                       value=""
                   fi
                 fi
-                # check the value is valid if enabled
-                local allowed="${allowed_by_key["$key"]:-}"
-                if [[ -n "$allowed" ]]; then
-                  local allowed_values=()
-                  __parse_allowed_values "$allowed" allowed_values
-                  local valid=0
-                  for valid_val in "${allowed_values[@]}"; do
-                    if [[ "$valid_val" == "$value" ]]; then
-                      valid=1
-                      break
-                    fi
-                  done
-                  if [[ $valid == 0 ]]; then
-                    _fail "invalid value '$value' for '$key'. Valid values are: $allowed"
-                  fi
-                fi
+                # run any validation
+                __validate_arg "$key" "$value"
                 # set arg value. Check if a single value option, or a multiple value option
                 if [[ "${multi_by_key["$key"]:-}" == "1" ]]; then # append if set
                   local value_sep="${multi_sep_by_key["$key"]:-' '}"
@@ -542,7 +599,6 @@ _tm::args::parse() {
         fi
     done
 
-
     # Check required options are set
     local print_help=0
     for key in "${required_keys[@]}"; do
@@ -561,6 +617,7 @@ _tm::args::parse() {
             print_help=1
         fi
     done
+
 
     if [[ $print_help == 1 ]]; then
        _die "Run again with '-h' or '--help' for available options"

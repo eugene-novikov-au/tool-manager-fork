@@ -230,7 +230,6 @@ _tm::plugin::enable() {
   local qname="${plugin_enable[qname]}"
   local enabled_dir="${plugin_enable[enabled_dir]}"
   local vendor="${plugin_enable[vendor]}"
-  local qname="${plugin_enable[qname]}"
 
   #_trace "enabling plugin: '${qname}'"
   local is_tool_manager=${plugin_enable[tm]}
@@ -247,7 +246,7 @@ _tm::plugin::enable() {
     if [[ -L "$enabled_dir" ]]; then
       _info "plugin '${qname}' already enabled"
     else
-      _info "enabling plugin '${qname}' ($plugin_dir)"
+      _info "enabling plugin '${qname}' in '$plugin_dir'"
       mkdir -p "$(dirname "$enabled_dir")"
       ln -s "$plugin_dir/" "$enabled_dir" || { 
         _error "Failed to create symlink for plugin '${qname}' from '$plugin_dir/' to '$enabled_dir'." 
@@ -318,7 +317,7 @@ _tm::plugin::enable() {
         ("$enable_script") || ( _warn "Error running enable script: '$enable_script'" && rm -f "$enabled_dir" || true )
       fi
 
-      _info "enabled plugin '$plugin_dir'"
+      _info "enabled plugin '${qname}' in '$plugin_dir'"
 
       _tm::plugin::load plugin_enable || _warn "Couldn't load plugin '${qname}' in '${plugin_dir}'"
     fi

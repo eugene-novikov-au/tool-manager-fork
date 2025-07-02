@@ -14,7 +14,7 @@ SCRATCH_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 # _tm::plugins::find_ini_files
 
 # declare -a files
-# _tm::plugins::__ini_files_to_array files
+# _tm::plugins::__plugin_files_to_array files
 
 # echo "array files: ${files[@]}"
 

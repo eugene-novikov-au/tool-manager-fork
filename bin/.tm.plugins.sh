@@ -185,7 +185,7 @@ _tm::plugins::find_all_available_plugin_ids() {
   # TODO: scan the plugin files
   _todo "find available plugin ids"
   local -a plugin_ini_files=()
-  _tm::plugins::__ini_files_to_array plugin_ini_files
+  _tm::plugins::__plugin_files_to_array plugin_ini_files
 
   if [[ ${#plugin_ini_files[@]} -eq 0 ]]; then
       _warn "No plugin install files found"
@@ -235,7 +235,7 @@ _tm::plugins::find_all_available_plugin_ids() {
 #
 _tm::plugins::__get_all_available_dirs() {
     local plugin_files_array=()
-    _tm::plugins::__ini_files_to_array "plugin_files_array"
+    _tm::plugins::__plugin_files_to_array plugin_files_array
 
     if [[ ${#plugin_files_array[@]} -eq 0 ]]; then
         _warn "Cannot find available plugin dirs."
@@ -278,7 +278,7 @@ _tm::plugins::__get_all_available_dirs() {
 # Arguments:
 #   $1: Name of the array to populate (passed by reference)
 #
-_tm::plugins::__ini_files_to_array() {
+_tm::plugins::__plugin_files_to_array() {
     if [[ -z "$1" ]]; then
         _error "Usage: $FUNCNAME <array_name_ref>"
         return 1
@@ -422,7 +422,7 @@ _tm::plugins::install_from_git() {
     case "$yn" in 
       [Yy]*)
         if _tm::plugins::__clone_and_install plugin_details "${git_repo}" "${version}"; then
-          _info "sucessfully installed"
+          _info "successfully installed"
           return
         else
           _fail "error installing plugin"
@@ -463,7 +463,7 @@ _tm::plugins::install_from_registry(){
   _info "Attempting to install plugin: vendor="${vendor}", name='${plugin_name}', version='${version}', prefix='${prefix:-none}' (from input '$qualified_name')"
 
   local -a plugin_files=()
-  _tm::plugins::__ini_files_to_array "plugin_files"
+  _tm::plugins::__plugin_files_to_array plugin_files
 
   local plugin_ini_file 
   # TODO: read the registry files and cache the processed output
@@ -552,12 +552,25 @@ _tm::plugins::__clone_and_install(){
     if [[ $? -eq 0 ]]; then
       _info "Plugin '$plugin_name' installed successfully into '$plugin_dir'."
       # Attempt to enable the plugin after successful installation using the original qualified name
-      if tm-plugin-enable "${qname}"; then # Use original full name for enabling
-        _info "Plugin '${qname}' enabled successfully."
-      else
-        _warn "Plugin '${qname}' installed but failed to enable."
-      fi
-      return 0 # Successful installation and attempted enable
+      local yn=''
+      while [[ -z "${yn}" ]]; do
+        _read "enable plugin? (no prefix) [yn] : " yn
+        case "${yn}" in
+          [yY]*)
+            if tm-plugin-enable "${qname}"; then # Use original full name for enabling
+              _info "Plugin '${qname}' enabled successfully."
+            else
+              _warn "Plugin '${qname}' installed but failed to enable."
+            fi
+          break
+          ;;
+        [nN]*)
+          _info "Not enabling"
+          break
+         ;;
+        esac
+      done
+      return 0 # Successful installation
     else
       _error "Failed to clone plugin '$plugin_name' from '$repo' (commit/branch: '${commit}')."
       return 1
@@ -588,7 +601,7 @@ _tm::plugins::foreach_available_callback() {
     local default_commit="${args[default-commit]}"
 
     local -a plugin_files=()
-    _tm::plugins::__ini_files_to_array plugin_files
+    _tm::plugins::__plugin_files_to_array plugin_files
 
     if [[ ${#plugin_files[@]} -eq 0 ]]; then
         _warn "No installable plugin files found"

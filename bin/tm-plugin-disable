@@ -16,11 +16,21 @@ declare -A args
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
     --opt-plugins "|remainder|multi|short=p|long=plugin|value=PLUGIN|desc=The plugin(s) to disable. Of the form : 'prefix:vendor/name'|example=foo:acme/do-it  acme/do-it " \
-    --opt-prefix "|desc=The plugin prefix" \
+    --opt-prefix "|desc=The plugin prefix|validators=plugin-prefix" \
+    --opt-vendor "|short=v|desc=The plugin vendor|validators=plugin-vendor" \
     --opt-all "|flag|desc=If to apply to all installed plugins or not" \
     --result args \
     -- "$@"
 
+vendor_prefix=''
+if [[ -n "${args[vendor]}" ]]; then
+   vendor_prefix="${args[vendor]}/"
+fi
+
+all_prefix=''
+if [[ -n "${args[prefix]}" ]]; then
+    all_prefix+="${args[prefix]}:"
+fi
 
 if [[ "${args[all]}" == "1" ]]; then
     _info "Disabling all plugins by removing '$TM_PLUGINS_ENABLED_DIR'"
@@ -31,11 +41,6 @@ if [[ "${args[all]}" == "1" ]]; then
         exit 1
     fi
 else
-    prefix="${args[prefix]}"
-    if [[ -n "$prefix" ]]; then
-        prefix+=":"
-    fi
-
     IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
     if [[  "${#plugin_names[@]}" -eq 0 ]]; then
         echo "No plugins provided"
@@ -43,7 +48,7 @@ else
     else
         declare -A plugin
         for plugin_name in "${plugin_names[@]}"; do
-            _tm::util::parse::plugin plugin "$prefix$plugin_name"
+            _tm::util::parse::plugin plugin "${all_prefix}${vendor_prefix}${plugin_name}"
             _tm::plugin::disable plugin
         done
     fi
