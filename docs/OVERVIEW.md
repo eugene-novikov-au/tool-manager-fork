@@ -78,7 +78,7 @@ The Tool Manager (`tm`) is a Bash-based framework designed to manage a collectio
 
 *   **Plugin Installation (e.g., `tm-plugin-install <plugin_name>`)**:
     1.  `tm-plugin-install` script calls `_tm::plugins::install`.
-    2.  `_tm::plugins::install` scans `TM_PLUGINS_REGISTRY_DIR` and  `TM_PLUGINS_DEFAULT_REGISTRY_DIR` fior plugin files.
+    2.  `_tm::plugins::install` scans `TM_PLUGINS_REGISTRY_DIR` and  `TM_PLUGINS_DEFAULT_REGISTRY_DIR` for plugin files.
     3.  Finds the section for `<plugin_name>`.
     4.  Clones the plugin's Git repo (specified by `repo` and `commit` in INI) into `$TM_PLUGINS_INSTALL_DIR/<vendor>/<plugin-name>`.
     5.  Attempts to call `tm-plugin-enable <vendor>/<plugin_name>`.
