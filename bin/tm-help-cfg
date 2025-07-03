@@ -15,30 +15,32 @@ _tm::source::include .tm.script.sh .tm.plugins.sh
 spacer="    "
 echo "$__TM_NAME config"
 # TM_HOME: The root directory for tool-manager's core files.
-echo "   home-dir: ${TM_HOME}$spacer(TM_HOME)"
+echo "   home-dir         : ${TM_HOME}$spacer(TM_HOME)"
 # TM_BIN: The directory where tool-manager's executable scripts are located.
-echo "   bin-dir : ${TM_BIN}$spacer(TM_BIN)"
-# TM_VAR_DIR: The directory for tool-manager's variable data and runtime files.
-echo "   var-dir : ${TM_VAR_DIR}$spacer(TM_VAR_DIR)"
+echo "   bin-dir          : ${TM_BIN}$spacer(TM_BIN)"
+# TM_STATE_DIR: The directory for tool-manager's variable data and runtime files.
+echo "   state-dir        : ${TM_STATE_DIR}$spacer(TM_STATE_DIR)"
 echo "   config:"
 # __TM_NAME: The name of the current tool-manager plugin.
 echo "      plugin-name   : ${__TM_NAME}"
 # Custom config file location for the current plugin.
-echo "      custom-config : $TM_PLUGINS_CFG_DIR/${__TM_NAME}/.env"
+echo "      custom-config : $TM_PLUGINS_CFG_DIR/${__TM_NAME}/config.sh"
 echo "   logging:"
 # TM_LOG: Indicates if debug logging is enabled.
-echo "      debug-enabled       : $(if _is_debug; then echo "true"; else echo "false"; fi )$spacer(TM_LOG)"
+echo "      debug-enabled : $(if _is_debug; then echo "true"; else echo "false"; fi )$spacer(TM_LOG)"
 # TM_LOG: Indicates if trace logging is enabled.
-echo "      trace-enabled       : $(if _is_trace; then echo "true"; else echo "false"; fi)$spacer(TM_LOG)"
+echo "      trace-enabled : $(if _is_trace; then echo "true"; else echo "false"; fi)$spacer(TM_LOG)"
 echo "   plugins:"
 # TM_PLUGINS_INSTALL_DIR: The directory where plugins are installed.
-echo "      install-dir: ${TM_PLUGINS_INSTALL_DIR}$spacer(TM_PLUGINS_INSTALL_DIR)"
+echo "      install-dir   : ${TM_PLUGINS_INSTALL_DIR}$spacer(TM_PLUGINS_INSTALL_DIR)"
 # TM_PLUGINS_ENABLED_DIR: The directory containing symlinks to enabled plugins.
-echo "      enabled-dir: ${TM_PLUGINS_ENABLED_DIR}$spacer(TM_PLUGINS_ENABLED_DIR)"
+echo "      enabled-dir   : ${TM_PLUGINS_ENABLED_DIR}$spacer(TM_PLUGINS_ENABLED_DIR)"
 # TM_PLUGINS_BIN_DIR: The directory for plugin-specific executable scripts.
-echo "      bin-dir    : ${TM_PLUGINS_BIN_DIR}$spacer(TM_PLUGINS_BIN_DIR)"
+echo "      bin-dir       : ${TM_PLUGINS_BIN_DIR}$spacer(TM_PLUGINS_BIN_DIR)"
 # TM_PLUGINS_CFG_DIR: The directory for plugin configuration files.
-echo "      config-dir : ${TM_PLUGINS_CFG_DIR}$spacer(TM_PLUGINS_CFG_DIR)"
+echo "      config-dir    : ${TM_PLUGINS_CFG_DIR}$spacer(TM_PLUGINS_CFG_DIR)"
+# TM_PLUGINS_STATE_DIR: The directory for plugin state files.
+echo "      state-dir     : ${TM_PLUGINS_STATE_DIR}$spacer(TM_PLUGINS_STATE_DIR)"
 
 echo "   enabled-plugins:"
 tm-plugin-ls --enabled --name | sed 's|^|      |'

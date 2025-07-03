@@ -230,6 +230,7 @@ _tm::plugin::enable() {
   local qname="${plugin_enable[qname]}"
   local enabled_dir="${plugin_enable[enabled_dir]}"
   local vendor="${plugin_enable[vendor]}"
+  local plugin_cfg_sh="${plugin_enable[cfg_sh]}"
 
   #_trace "enabling plugin: '${qname}'"
   local is_tool_manager=${plugin_enable[tm]}
@@ -263,7 +264,7 @@ _tm::plugin::enable() {
         if [[ "$auto_yes" == '1' ]]; then
           yn='y'
         fi
-        if _read_is_confirm "Plugin has a 'plugin-requires' script ('$requires_script'), should I run it?" yn; then
+        if _confirm "Plugin has a 'plugin-requires' script ('$requires_script'), should I run it?" yn; then
             _info "Running plugin requires script: '$requires_script'"
             chmod a+x "$requires_script" || true
             ( "$requires_script" ) || _warn "Error running requires script: '$requires_script'. Ignoring failures, disable/re-enable to run again"
@@ -287,7 +288,7 @@ _tm::plugin::enable() {
         _pushd "$lib_dir"
           find . -type f
         _popd
-        if _read_is_confirm "Make this available to other plugins via '_include @${vendor}/<lib-name>.sh'?" yn; then
+        if _confirm "Make this available to other plugins via '_include @${vendor}/<lib-name>.sh'?" yn; then
             _info "Linking '${TM_PLUGINS_LIB_DIR}/${vendor}' to '${lib_dir}'"
             mkdir -p "${TM_PLUGINS_LIB_DIR}"
             ln -sf "${lib_dir}" "${TM_PLUGINS_LIB_DIR}/${vendor}"
@@ -296,6 +297,11 @@ _tm::plugin::enable() {
             _info "Not making '${lib_dir}' available to other plugins"
         fi
       fi
+
+      # config file. User can find this and edit it manually
+      mkdir -p "$(dirname "${plugin_cfg_sh}")"
+      touch "${plugin_cfg_sh}"
+      _info "plugin config '${plugin_cfg_sh}'"
 
       # enable script
       local enable_script="$plugin_dir/plugin-enable"
@@ -411,12 +417,13 @@ _tm::plugin::__generate_wrapper_scripts() {
   local vendor="${plugin_generate[vendor]}"
   local plugin_name="${plugin_generate[name]}"
   local qname="${plugin_generate[qname]}"
+  local qpath="${plugin_generate[qpath]}"
   local plugin_dir="${plugin_generate[install_dir]}"
   local plugin_id="${plugin_generate[id]}"
 
   local plugin_bin_dir="${plugin_dir}/bin"
-  local plugin_cfg_dir="${TM_PLUGINS_CFG_DIR}/${qname}"
-  local plugin_state_dir="${TM_PLUGINS_STATE_DIR}/${qname}"
+  local plugin_cfg_dir="${TM_PLUGINS_CFG_DIR}/${qpath}"
+  local plugin_state_dir="${TM_PLUGINS_STATE_DIR}/${qpath}"
 
   _debug "Generating wrapper invoke scripts for plugin '$qname', prefix '"$prefix"' in $TM_PLUGINS_BIN_DIR to ${plugin_bin_dir}"
 

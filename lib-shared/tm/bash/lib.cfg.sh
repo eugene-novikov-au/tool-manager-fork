@@ -109,7 +109,7 @@ _tm::cfg::__process() {
     declare -A plugin=()
     _tm::util::parse::plugin_id plugin "$plugin_id"
 
-    local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${plugin[qpath]}/cfg.sh"
+    local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${plugin[qpath]}/config.sh"
     for key in "${missing_keys[@]}"; do
         if [[ "$prompt" == '0' ]] ; then
             if [[ -n "$default_value" ]]; then # just use the default
@@ -347,7 +347,7 @@ _tm::cfg::__load_cfg(){
     while [[ true ]]; do
 
       # make the hash part of the generated path so it's easy to check if things have changed
-      local merged_bashrc_file="$base_config_dir/${qpath}.cfg.sh.${hash}"
+      local merged_bashrc_file="$base_config_dir/${qpath}.config.sh.${hash}"
       _debug "using merged config '$merged_bashrc_file'"
       if [[  -f "$merged_bashrc_file" ]]; then #we're done, just load the config
         _debug "sourcing '$merged_bashrc_file' into current shell"
@@ -356,7 +356,7 @@ _tm::cfg::__load_cfg(){
       fi
       # we needs generation
       local -a previous_bashrcs=() # collect old config
-      mapfile -t previous_bashrcs < <(find "$base_config_dir" -type f \( -name "${qpath}.cfg.sh.*" -prune -o -print \))
+      mapfile -t previous_bashrcs < <(find "$base_config_dir" -type f \( -name "${qpath}.config.sh.*" -prune -o -print \))
 
       _tm::cfg::env::__generate_cfg_bashrc "$merged_bashrc_file" "${env_files[@]}"
       # remove the old merged config files
@@ -368,7 +368,7 @@ _tm::cfg::__load_cfg(){
       source "$merged_bashrc_file"
 
       #TODO: prompt if new keys needed? check all variable available, and if not, prompt user, then regenerate?
-      if _tm::cfg::__ensure_config_has_required_values "${plugin_config_yaml}" "$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh" "${merged_bashrc_file}"; then
+      if _tm::cfg::__ensure_config_has_required_values "${plugin_config_yaml}" "$TM_PLUGINS_CFG_DIR/${qpath}/config.sh" "${merged_bashrc_file}"; then
         return
       fi
     done
@@ -384,9 +384,9 @@ _tm::cfg::_tm::cfg::__add_config_files_to() {
     array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/plugin.config.sh") # plugin provided
     array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.bashrc") # plugin provided .bashrc
     #array_config_files+=("$TM_PLUGINS_CFG_DIR/.env") # shared between all the plugins
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/cfg.sh") # shared between all the plugins
+    array_config_files+=("$TM_PLUGINS_CFG_DIR/config.sh") # shared between all the plugins
     #array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/.env") # config for this plugin instance
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh") # config for this plugin instance    
+    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/config.sh") # config for this plugin instance    
 }
 
 _tm::cfg::__ensure_config_has_required_values(){

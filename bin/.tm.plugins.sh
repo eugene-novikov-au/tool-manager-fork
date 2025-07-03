@@ -294,10 +294,10 @@ _tm::plugins::__plugin_files_to_array() {
 _tm::plugins::find_ini_files() {
     # user provided one stakes precedence
     if [[ -n "$TM_PLUGINS_REGISTRY_DIR" ]] && [[ -d "$TM_PLUGINS_REGISTRY_DIR" ]]; then
-      find "$TM_PLUGINS_REGISTRY_DIR" -type f -name '*.ini' -print0 | sort -z
+      find "$TM_PLUGINS_REGISTRY_DIR" -type f -name "*.${__TM_CONF_EXT}" -print0 | sort -z
     fi
     if [[ -n "$TM_PLUGINS_DEFAULT_REGISTRY_DIR" ]] && [[ -d "$TM_PLUGINS_DEFAULT_REGISTRY_DIR" ]]; then
-      find "$TM_PLUGINS_DEFAULT_REGISTRY_DIR" -type f -name '*.ini' -print0 | sort -z
+      find "$TM_PLUGINS_DEFAULT_REGISTRY_DIR" -type f -name "*.${__TM_CONF_EXT}" -print0 | sort -z
     fi
 }
 
@@ -334,7 +334,7 @@ _tm::plugins::uninstall() {
     _popd
   fi
   local yn=''
-  if _read_is_confirm "Really uninstall plugin ${qname} in ${plugin_dir}?"; then
+  if _confirm "Really uninstall plugin ${qname} in ${plugin_dir}?"; then
       if _tm::plugin::disable plugin_to_disable; then
           _info "Plugin '${qname}' disabled successfully."
       else
@@ -410,7 +410,7 @@ _tm::plugins::install_from_git() {
   local qname="${plugin_details[qname]}"
   local install_dir="${plugin_details[install_dir]}"
 
-  if _read_is_confirm "really install '${qname}' into '${install_dir}' from '${git_repo}'?"; then
+  if _confirm "really install '${qname}' into '${install_dir}' from '${git_repo}'?"; then
     if _tm::plugins::__clone_and_install plugin_details "${git_repo}" "${version}"; then
       _info "successfully installed"
       return
@@ -540,7 +540,7 @@ _tm::plugins::__clone_and_install(){
       _info "Plugin '$plugin_name' installed successfully into '$plugin_dir'."
       # Attempt to enable the plugin after successful installation using the original qualified name
       local yn=''
-      if _read_is_confirm "enable plugin? (no prefix)"; then
+      if _confirm "enable plugin? (no prefix)"; then
           if tm-plugin-enable "${qname}"; then # Use original full name for enabling
             _info "Plugin '${qname}' enabled successfully."
           else

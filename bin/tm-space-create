@@ -29,12 +29,12 @@ main(){
   __prompt_value space_label "${args[label]:-}" "space label"
 
   local space_uuid="${args[guid]:-$(uuidgen)}"
-  local space_file="$TM_SPACE_DIR/.space.${space_key}.ini"
+  local space_file="$TM_SPACE_DIR/.space.${space_key}.${__TM_CONF_EXT}"
   # todo: look in space file for custom dir
   local space_dir="$TM_SPACE_DIR/${space_key}/"
 
   if [[ -f "$space_file" ]]; then
-      if _read_is_confirm "space already exists ('$space_file'), delete existing?"; then
+      if _confirm "space already exists ('$space_file'), delete existing?"; then
         rm -f "$space_file"
         rm -fR "$space_dir" || true
       else
@@ -57,7 +57,7 @@ main(){
   mkdir -p "$space_dir"
 
   # internal to the space (defaults)
-  local space_ini="$space_dir/.space.ini"
+  local space_ini="$space_dir/.space.${__TM_CONF_EXT}"
   echo "key=${space_key}" > "$space_ini"
   echo "guid=${space_uuid}" >> "$space_ini"
   echo "label=\"${space_label}\"" >> "$space_ini"

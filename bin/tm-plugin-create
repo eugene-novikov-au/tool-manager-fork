@@ -46,7 +46,7 @@ main(){
 
     local -A plugin
     while [[ -z "$plugin_name" ]]; do
-        _read_not_empty "Name of new plugin (e.g., my-plugin, must match lowercase, numbers, and -): " plugin_name
+        _read_not_empty "Name of new plugin (e.g., my-plugin, must match lowFwhiteercase, numbers, and -)" plugin_name
 
         if [[ -n "$plugin_name" && ! "$plugin_name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
             _error "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number."
@@ -71,7 +71,7 @@ main(){
         local name="${plugin[name]}"
         local vendor="${plugin[vendor]}"
         local git_repo_placeholder="git@github.com:${vendor}/${name}.git"
-        _read_not_empty "Git repo URL (e.g., git@github.com:user/repo.git): " plugin_repo "$git_repo_placeholder"
+        _read_not_empty "Git repo URL (e.g., git@github.com:user/repo.git)" plugin_repo "$git_repo_placeholder"
         
         # Basic validation for common git URL patterns (optional, can be expanded)
         if [[ -n "$plugin_repo" && ! ( "$plugin_repo" =~ ^git@.+\..+:.*\/.*\.git$ || "$plugin_repo" =~ ^https?:\/\/.+\..+\/.*\/.* ) ]]; then
@@ -80,7 +80,7 @@ main(){
             _info "Ignoring remote git repo for now"
         fi
     done
-    _read_not_empty "Brief description of what this plugin provides: " plugin_desc
+    _read_not_empty "Brief description of what this plugin provides" plugin_desc
 
     _tm::util::parse::plugin_name plugin "${plugin_name}"
 
@@ -149,7 +149,7 @@ main(){
     local yn=''
     echo 
     while [[ -z "${yn}" ]]; do
-        if _read_is_confirm "Enable this plugin?"; then
+        if _confirm "Enable this plugin?"; then
            tm-plugin-enable "${qname}"
         else
            _info "to enable this plugin run 'tm-plugin-enable ${qname}'"

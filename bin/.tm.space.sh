@@ -32,7 +32,7 @@ _tm::space::file::get_by_guid_or_key(){
   if [[ -z "$space_guid" ]]; then
     _fail "No space guid provided"
   fi
-  local space_file="$TM_SPACE_DIR/space.${space_guid}.ini"
+  local space_file="$TM_SPACE_DIR/space.${space_guid}.${__TM_CONF_EXT}"
   if [[ ! -f "$space_file" ]]; then
       _error "No space with guid '${space_guid}'"
       false
@@ -46,7 +46,7 @@ _tm::space::file::get_by_guid(){
   if [[ -z "$space_guid" ]]; then
     _fail "No space guid provided"
   fi
-  local space_file="$TM_SPACE_DIR/space.${space_guid}.ini"
+  local space_file="$TM_SPACE_DIR/space.${space_guid}.${__TM_CONF_EXT}"
   if [[ ! -f "$space_file" ]]; then
       _error "No space with guid '${space_guid}'"
       false
@@ -65,7 +65,7 @@ _tm::space::file::get_by_key(){
    false
   fi
 
-  local space_file="$(find "$TM_SPACE_DIR" -maxdepth 1 -type f -name ".space.*.ini" | xargs grep -le "^key=${space_key}$" | head -n 1 )"
+  local space_file="$(find "$TM_SPACE_DIR" -maxdepth 1 -type f -name ".space.*.${__TM_CONF_EXT}" | xargs grep -le "^key=${space_key}$" | head -n 1 )"
   if [[ ! -f "${space_file}" ]]; then
     _error "No space with key '${space_key}'"
    false

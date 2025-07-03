@@ -59,14 +59,14 @@ _die() {
 #   $2 - Default value (optional). Can be [yYtT1]* or [nN]* (e.g. y, yes, YES, Yes,Y, true, 1, t ... same goes for no)
 #
 # Usage:
-#   if _read_is_confirm "Eat pie?" yn; then
+#   if _confirm "Eat pie?" yn; then
 #       echo "pies are great!"
 #   fi
-#   if _read_is_confirm "Eat pie?" yn "n"; then # with a  default value
+#   if _confirm "Eat pie?" yn "n"; then # with a  default value
 #       echo "pies are great!"
 #   fi
 #
-_read_is_confirm(){
+_confirm(){
     local prompt="${1}"
     local default_val="${2:-}"
     local yn=''
@@ -132,15 +132,15 @@ _read_yn(){
 #   $3 - Default value (optional)
 #
 # Usage:
-#   _read_not_empty "Food: " choice
-#   _read_not_empty "Food: " choice "pie"
+#   _read_not_empty "Food" choice
+#   _read_not_empty "Food" choice "pie"
 
 _read_not_empty(){
     local prompt="${1}"
     local -n value_not_empty_ref="${2}"
     local default_val="${3:-}"
 
-    while [[ -z "${value_not_empty_ref}"  ]]; do
+    while [[ -z "${value_not_empty_ref:-}"  ]]; do
         _read "$prompt:" value_not_empty_ref "${default_val}"
     done
 }
@@ -404,7 +404,7 @@ _tm::util::print_array(){
 #   _tm::util::parse::plugin my_plugin_info "tm:plugin:myvendor:myplugin:1.0.0:myprefix"
 #
 _tm::util::parse::plugin(){
-  _finest "_tm::util::parse::plugin : $2"
+  _finest "_tm::util::parse::plugin: '$2'"
   if [[ "$2" == "tm:plugin:"* ]]; then
     _tm::util::parse::plugin_id "$@"
   else
@@ -428,7 +428,7 @@ _tm::util::parse::plugin_name(){
   local -n result_name="$1" # expect it to be an associative array
   result_name=()
   local parse_name="$2"
-  _finest "_tm::util::parse::plugin_name : '$parse_name'"
+  _finest "_tm::util::parse::plugin_name: '$parse_name'"
 
   local prefix name version vendor
   prefix=''
@@ -506,9 +506,7 @@ _tm::util::parse::plugin_name(){
 
   _tm::util::parse::__set_plugin_derived_vars result_name
 
-  if _is_finest; then
-    _finest "parsed to: $(_tm::util::print_array result_name)"
-  fi
+  _is_finest && _finest "parsed to: $(_tm::util::print_array result_name)" || true
 
   return 0
 }
@@ -529,7 +527,7 @@ _tm::util::parse::plugin_id(){
   local -n result_id="$1" # expect it to be an associative array
   result_id=()
   local parse_id="$2"
-  _finest "_tm::util::parse::plugin_id : '$parse_id'"
+  _finest "_tm::util::parse::plugin_id: '$parse_id'"
   # Read the id into an array, respecting empty fields
   local -a id_parts=()
   IFS=':' read -r -a id_parts <<< "$parse_id"
@@ -603,7 +601,6 @@ _tm::util::parse::plugin_enabled_dir(){
   if _is_finest; then
     _finest "$(_tm::util::print_array result)"
   fi
-
 }
 
 #
@@ -677,7 +674,7 @@ _tm::util::parse::__set_plugin_derived_vars(){
   result_derived[id]="tm:plugin:$space:$vendor:$name:$version:$prefix"
   result_derived[cfg_spec]="${result_derived[install_dir]}/plugin.cfg.yaml"
   result_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
-  result_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/cfg.sh"
+  result_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh"
 }
 
 #

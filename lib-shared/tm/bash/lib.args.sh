@@ -351,8 +351,8 @@ _tm::args::parse() {
               [[ $match == 0 && "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only numbers (-numbers)" || true
               ;;
             plugin-vendor)
-              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-vendor)" || true
-              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only alphanumeric or dashes (-plugin-vendor)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9\-]*[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes or dots (plugin-vendor)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-]*[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must not contain  alphanumeric, dashes or dots (-plugin-vendor)" || true
               ;;
             plugin-name)
 #              [[ $match == 1 && ! "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (plugin-name)" || true
@@ -363,8 +363,8 @@ _tm::args::parse() {
               [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only alphanumeric or dashes (-plugin-prefix)" || true
               ;;
             space-key)
-              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots. Mut start with a alphanumeric (space-key)" || true
-              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-].+$ ]] && _fail "arg '${key}' with value '${value}' must not contain alphanumeric, dashes, or dots (-space-key)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-]+[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots. Mut start with a alphanumeric (space-key)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-].+[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must not contain alphanumeric, dashes, or dots (-space-key)" || true
               ;;
             name) # generic name field
               [[ $match == 1 && ! "$value" =~ ^[\.a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots (name)" || true

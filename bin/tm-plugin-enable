@@ -39,10 +39,10 @@ main(){
   for plugin_qname in "${plugin_names[@]}"; do
       _tm::util::parse::plugin plugin "$all_prefix$vendor_prefix$plugin_qname"
       if [[ -z "${plugin[prefix]}" ]]; then
-        if _read_is_confirm "Did you want to add a prefix to all the plugin's scripts? (e.g. 'my-')"; then
+        if _confirm "Did you want to add a prefix to all the plugin's scripts? (e.g. 'my-')"; then
           while [[ -z "${plugin[prefix]}" ]]; do
               declare prefix
-              _read_not_empty "What prefix? (e.g. 'my', 'acme'): " prefix
+              _read "What prefix? (e.g. 'my', 'acme')" prefix
               if [[ -n "${prefix}" ]]; then
                   _tm::util::parse::plugin plugin "$prefix:$vendor_prefix$plugin_qname"
               fi

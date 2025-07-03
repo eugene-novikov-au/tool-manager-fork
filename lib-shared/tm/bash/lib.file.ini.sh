@@ -1,7 +1,7 @@
 
 # This script provides a set of Bash functions for reading and parsing
 # INI-style configuration files. It is used by the Tool Manager to
-# process plugin definitions from files like 'plugins.ini'.
+# process plugin definitions from files like 'plugins.conf'.
 # Functions support reading entire INI files, specific sections,
 # listing section names, and checking for section existence.
 #
