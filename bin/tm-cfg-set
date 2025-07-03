@@ -18,8 +18,7 @@
 # If 'value' is not provided and the shell is interactive, prompts for the value.
 #
 
-_tm::source::include .tm.script.sh
-_tm::source::include .tm.cfg.sh
+_tm::source::include .tm.script.sh .tm.cfg.sh
 
 declare -A args
 # Using --opts-* to capture the command and its arguments after '--'

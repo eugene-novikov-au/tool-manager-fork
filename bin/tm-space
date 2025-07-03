@@ -8,22 +8,29 @@
 #   ./tm-space -k my-space-key
 #   ./tm-space -g 1234-5678-90ab-cdef
 
-_tm::source::include .tm.script.sh
+_tm::source::include .tm.script.sh .tm.space.sh
 
 declare -A args
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
-    --help-tip \
-    --opt-key "|remainder|short=k|value=KEY|desc=The space key" \
+    --opt-key "|remainder|short=k|value=KEY|desc=The space key|validator=space-key" \
     --opt-guid "|short=g|value=GUID|desc=The space guid" \
     --result args \
     -- "$@"
 
-if [[ -n "${args[KEY]}" ]]; then
-  _tm::space::launch --key "${args[KEY]}"
-elif [[ -n "${args[GUID]}" ]]; then
-  _tm::space::launch --guid "${args[GUID]}"
-else
-  _error "Either --key or --guid must be provided."
-  exit 1
-fi
+main(){
+    if [[ -z "${args[key]:-}" ]] && [[ -z "${args[guid]:-}" ]]; then
+        _fail "no key or guid provided"
+    fi
+    local space_guid="${args[guid]:-}"
+    local space_key="${args[key]:-}"
+    local space_file=""
+    if [[ -n "$space_guid" ]]; then
+      space_file="$(_tm::space::file::get_by_guid "$space_guid")"
+    else
+      space_file="$(_tm::space::file::get_by_key "$space_key")"
+    fi
+    _tm::space::launch_by_file "${space_file}"
+}
+
+main "$@"

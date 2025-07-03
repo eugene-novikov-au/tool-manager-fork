@@ -288,7 +288,7 @@ _tm::plugins::__plugin_files_to_array() {
     # shellcheck disable=SC2226 # We want word splitting here for read -a
     readarray -d '' _target_plugins_array < <(_tm::plugins::find_ini_files)
 
-    _is_trace && _trace "plugin ini files: [${_target_plugins_array[*]}]'"
+    _is_trace && _trace "plugin ini files: [${_target_plugins_array[*]}]'" || true
 }
 
 _tm::plugins::find_ini_files() {
@@ -334,29 +334,23 @@ _tm::plugins::uninstall() {
     _popd
   fi
   local yn=''
-  while [[ -z "$yn" ]]; do
-    _read "Really uninstall plugin ${qname} in ${plugin_dir}? [yn]" yn
-    case "$yn" in
-      [Yy]*)
-        if _tm::plugin::disable plugin_to_disable; then
-            _info "Plugin '${qname}' disabled successfully."
-        else
-            _warn "Failed to disable plugin '${qname}'. Proceeding with directory removal."
-        fi
-        if rm -fR "$plugin_dir"; then
-            _info "Plugin directory '${plugin_dir}' removed successfully."
-            return 0
-        else
-            _error "Failed to remove plugin directory '${plugin_dir}'."
-            return 1
-        fi
-        ;;
-      [Nn]*)
-        _info "Not removing plugin '${qname}'."
-        return 0
-        ;;
-    esac
-  done
+  if _read_is_confirm "Really uninstall plugin ${qname} in ${plugin_dir}?"; then
+      if _tm::plugin::disable plugin_to_disable; then
+          _info "Plugin '${qname}' disabled successfully."
+      else
+          _warn "Failed to disable plugin '${qname}'. Proceeding with directory removal."
+      fi
+      if rm -fR "$plugin_dir"; then
+          _info "Plugin directory '${plugin_dir}' removed successfully."
+          return 0
+      else
+          _error "Failed to remove plugin directory '${plugin_dir}'."
+          return 1
+      fi
+  else
+      _info "Not removing plugin '${qname}'."
+      return 0
+  fi
 }
 
 # _tm::plugins::install
@@ -416,24 +410,17 @@ _tm::plugins::install_from_git() {
   local qname="${plugin_details[qname]}"
   local install_dir="${plugin_details[install_dir]}"
 
-  local yn=''
-  while [[ -z "$yn" ]]; do
-    _read "really install '${qname}' into '${install_dir}' from '${git_repo}'? [yn]" yn
-    case "$yn" in 
-      [Yy]*)
-        if _tm::plugins::__clone_and_install plugin_details "${git_repo}" "${version}"; then
-          _info "successfully installed"
-          return
-        else
-          _fail "error installing plugin"
-        fi
-        ;;
-      [Nn]*)
-        _info "skipping install"
-        return 1
-        ;;
-    esac
-  done
+  if _read_is_confirm "really install '${qname}' into '${install_dir}' from '${git_repo}'?"; then
+    if _tm::plugins::__clone_and_install plugin_details "${git_repo}" "${version}"; then
+      _info "successfully installed"
+      return
+    else
+      _fail "error installing plugin"
+    fi
+   else
+      _info "skipping install"
+      return 1
+   fi
 }
 
 #
@@ -553,23 +540,15 @@ _tm::plugins::__clone_and_install(){
       _info "Plugin '$plugin_name' installed successfully into '$plugin_dir'."
       # Attempt to enable the plugin after successful installation using the original qualified name
       local yn=''
-      while [[ -z "${yn}" ]]; do
-        _read "enable plugin? (no prefix) [yn] : " yn
-        case "${yn}" in
-          [yY]*)
-            if tm-plugin-enable "${qname}"; then # Use original full name for enabling
-              _info "Plugin '${qname}' enabled successfully."
-            else
-              _warn "Plugin '${qname}' installed but failed to enable."
-            fi
-          break
-          ;;
-        [nN]*)
-          _info "Not enabling"
-          break
-         ;;
-        esac
-      done
+      if _read_is_confirm "enable plugin? (no prefix)"; then
+          if tm-plugin-enable "${qname}"; then # Use original full name for enabling
+            _info "Plugin '${qname}' enabled successfully."
+          else
+            _warn "Plugin '${qname}' installed but failed to enable."
+          fi
+      else
+        _info "Not enabling"
+      fi
       return 0 # Successful installation
     else
       _error "Failed to clone plugin '$plugin_name' from '$repo' (commit/branch: '${commit}')."

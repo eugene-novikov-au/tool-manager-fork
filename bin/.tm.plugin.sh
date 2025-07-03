@@ -263,19 +263,13 @@ _tm::plugin::enable() {
         if [[ "$auto_yes" == '1' ]]; then
           yn='y'
         fi
-        while [[ -z "$yn" ]]; do
-          _read "Plugin has a 'plugin-requires' script ('$requires_script'), should I run it? [yn]: " yn
-        done
-        case "$yn" in
-          [Yy]* )
+        if _read_is_confirm "Plugin has a 'plugin-requires' script ('$requires_script'), should I run it?" yn; then
             _info "Running plugin requires script: '$requires_script'"
             chmod a+x "$requires_script" || true
             ( "$requires_script" ) || _warn "Error running requires script: '$requires_script'. Ignoring failures, disable/re-enable to run again"
-            ;;
-         * )
+        else
             _info "Not running '$requires_script'. Plugin might not work without it's dependencies"
-            ;;
-        esac
+        fi
       fi
 
       # lib contributions.
@@ -288,25 +282,19 @@ _tm::plugin::enable() {
         if [[ "$auto_yes" == '1' ]]; then
           yn='y'
         fi
-        while [[  -z "$yn" ]]; do
-          echo "Plugin provides a 'lib-shared' directory, with libs:"
-          _pushd "$lib_dir"
-            find . -type f
-          _popd
-          _read "Make this available to other plugins via '_include @${vendor}/<lib-name>.sh' ? [yn]': " yn
-        done
 
-        case "$yn" in
-          [Yy]* )
+        echo "Plugin provides a 'lib-shared' directory, with libs:"
+        _pushd "$lib_dir"
+          find . -type f
+        _popd
+        if _read_is_confirm "Make this available to other plugins via '_include @${vendor}/<lib-name>.sh'?" yn; then
             _info "Linking '${TM_PLUGINS_LIB_DIR}/${vendor}' to '${lib_dir}'"
             mkdir -p "${TM_PLUGINS_LIB_DIR}"
             ln -sf "${lib_dir}" "${TM_PLUGINS_LIB_DIR}/${vendor}"
             _info "plugin libs available under '_include @${vendor}/<lib-name>.sh'"
-            ;;
-          * )
+          else
             _info "Not making '${lib_dir}' available to other plugins"
-            ;;
-        esac
+        fi
       fi
 
       # enable script
@@ -428,6 +416,7 @@ _tm::plugin::__generate_wrapper_scripts() {
 
   local plugin_bin_dir="${plugin_dir}/bin"
   local plugin_cfg_dir="${TM_PLUGINS_CFG_DIR}/${qname}"
+  local plugin_state_dir="${TM_PLUGINS_STATE_DIR}/${qname}"
 
   _debug "Generating wrapper invoke scripts for plugin '$qname', prefix '"$prefix"' in $TM_PLUGINS_BIN_DIR to ${plugin_bin_dir}"
 
@@ -461,7 +450,7 @@ _tm::plugin::__generate_wrapper_scripts() {
 
     cat << EOF > "$wrapper_script"
 #!/usr/bin/env bash
-$TM_HOME/bin-internal/tm-run-script '$wrapper_script' '$plugin_id' '$plugin_dir' '$plugin_cfg_dir' '$file' "\$@"
+$TM_HOME/bin-internal/tm-run-script '$wrapper_script' '$plugin_id' '$plugin_dir' '$plugin_cfg_dir' '$plugin_state_dir' '$file' "\$@"
 EOF
     chmod a+x "$wrapper_script"
   done

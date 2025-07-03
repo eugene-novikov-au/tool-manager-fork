@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+#
+# synonym for tm-plugin-cfg
+#
+
+tm-plugin-cfg "$@"

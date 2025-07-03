@@ -118,16 +118,16 @@ _tm::log::set_opts(){
       stack|stacktrace)
         _tm::log::__stack(){ _tm::log::stacktrace '...' ; }
         ;;
-      -console)
+      '-console')
         LOG_CONSOLE=0
         ;;
-      console)
+      +console|console)
         LOG_CONSOLE=1
-        ;;        
+        ;;
       -file)
         LOG_FILE=''
         ;;
-      file)
+      +file|file)
         if [[ -z "${LOG_FILE:-}" ]]; then
           LOG_FILE="$(pwd)/tm.log"          
           >&2 echo "Logging to file '$LOG_FILE'"
@@ -185,11 +185,19 @@ FILTERING OPTIONS:
   - @<logger-name> : the logger name to filter on. Can have multiple e.g. 
         @foobar* will only match any loggers starting with 'foobar'
         @*foobar* will only match any loggers containing 'foobar'
-        
+
+OUTPUT
+  - +file/file : enable logging to file. Used the 'TM_LOG_FILE' env var, or defaults to 'tm.log'
+  - -file : disable logging to file.
+  - +console/console : enable console logging
+  - -console : disable console logging
+
 OTHER OPTIONS:  
   -stack : include the stacktrace to all the log calls
+
   -help  : print this help
 
+Options are processed in order, so subsequent options could override previous ones
 
 This help was run as '\$TM_LOG'($TM_LOG) contained 'help'
 EOF

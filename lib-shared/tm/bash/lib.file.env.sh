@@ -87,7 +87,7 @@ _tm::file::env::read() {
             fi
             
             target_array_ref["$effective_key"]="$value"
-            _debug "Set ${output_array_name}['$effective_key'] = '$value'"
+            _is_debug && _debug "Set ${target_array_ref}['$effective_key'] = '$value'" || true
         done < "$file"
     done
     _debug "Finished reading env file(s) '$env_files'."

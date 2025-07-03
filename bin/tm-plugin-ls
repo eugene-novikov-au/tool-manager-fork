@@ -75,7 +75,7 @@ else
 fi
 
 
-_main() {
+main() {
     _debug "listing matching plugins..."
 
     if [[ -n "${args[scripts]:-}" ]]; then
@@ -421,4 +421,4 @@ __list_plugins() {
 }
 
 
-_main
+main

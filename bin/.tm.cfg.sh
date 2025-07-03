@@ -90,6 +90,8 @@ _tm::cfg2::plugin_init(){
 }
 
 #
+# Generate a .sh file which is run before any plugin script, to ensure all the plugins config is available
+#
 # $1 - the plugin id or name
 #
 _tm::cfg2::plugin_generate_sh_cfg_file(){

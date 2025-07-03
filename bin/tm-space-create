@@ -3,7 +3,7 @@
 # Create a new space
 #
 
-_tm::source::include .tm.script.sh
+_tm::source::include .tm.script.sh .tm.space.sh
 
 declare -A args
 _parse_args \
@@ -22,9 +22,50 @@ _parse_args \
     --result args \
     -- "$@"
 
-_todo "implement me!"
+main(){
+  local space_key space_label
 
-_prompt_value(){
+  __prompt_value space_key "${args[key]:-}" "space key"
+  __prompt_value space_label "${args[label]:-}" "space label"
+
+  local space_uuid="${args[guid]:-$(uuidgen)}"
+  local space_file="$TM_SPACE_DIR/.space.${space_key}.ini"
+  # todo: look in space file for custom dir
+  local space_dir="$TM_SPACE_DIR/${space_key}/"
+
+  if [[ -f "$space_file" ]]; then
+      if _read_is_confirm "space already exists ('$space_file'), delete existing?"; then
+        rm -f "$space_file"
+        rm -fR "$space_dir" || true
+      else
+        exit 1
+      fi
+  fi
+  if [[ -d "$space_dir" ]]; then
+      _fail  "space with this key already exists ('$space_dir'), aborting"
+  fi
+
+  mkdir -p "$TM_SPACE_DIR"
+
+  # our definition of the space
+  echo "key=${space_key}" > "$space_file"
+  echo "guid=${space_uuid}" >> "$space_file"
+  echo "label=\"${space_label}\"" >> "$space_file"
+  echo "dir=\"$space_dir\"" >> "$space_file"
+  echo "active=false" >> "$space_file"
+
+  mkdir -p "$space_dir"
+
+  # internal to the space (defaults)
+  local space_ini="$space_dir/.space.ini"
+  echo "key=${space_key}" > "$space_ini"
+  echo "guid=${space_uuid}" >> "$space_ini"
+  echo "label=\"${space_label}\"" >> "$space_ini"
+
+  _todo "implement me!"
+}
+
+__prompt_value(){
     local -n value_ref="$1"
     value_ref="$2"
     local prompt="$3"
@@ -33,47 +74,4 @@ _prompt_value(){
     done
 }
 
-_prompt_value space_key "${args[key]:-}" "space key"
-_prompt_value space_label "${args[label]:-}" "space label"
-
-
-space_uuid="${args[guid]:-$(uuidgen)}"
-space_file="$TM_SPACE_DIR/.space.${space_key}.ini"
-# todo: look in space file for custom dir
-space_dir="$TM_SPACE_DIR/${space_key}/"
-
-if [[ -f "$space_file" ]]; then
-    declare yn=''
-    while [[ -z "$yn" ]]; do
-        _read "space already exists ('$space_file'), delete existing? [yn]" yn
-    done
-    case "$yn" in 
-        [Yy]*)
-            rm -f "$space_file"
-            rm -fR "$space_dir" || true         
-            ;;
-        *)    
-            exit 1
-            ;;        
-    esac
-fi
-if [[ -d "$space_dir" ]]; then
-    _fail  "space with this key already exists ('$space_dir'), aborting" 
-fi
-
-mkdir -p "$TM_SPACE_DIR"
-
-# our definition of the space
-echo "key=${space_key}" > "$space_file"
-echo "guid=${space_uuid}" >> "$space_file"
-echo "label=\"${space_label}\"" >> "$space_file"
-echo "dir=\"$space_dir\"" >> "$space_file"
-echo "active=false" >> "$space_file"
-
-mkdir -p "$space_dir" 
-
-# internal to the space (defaults)
-space_ini="$space_dir/.space.ini"
-echo "key=${space_key}" > "$space_ini"
-echo "guid=${space_uuid}" >> "$space_ini"
-echo "label=\"${space_label}\"" >> "$space_ini"
+main "$@"

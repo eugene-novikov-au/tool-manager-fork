@@ -21,32 +21,36 @@ _parse_args \
     --result args \
     -- "$@"
 
-plugin_basename="${args[plugin]:-}"
-editor_cmd="${args[editor]:-"$(_tm::cfg::get_editor)"}"
+main(){
+  plugin_basename="${args[plugin]:-}"
+  editor_cmd="${args[editor]:-"$(_tm::cfg::get_editor)"}"
 
-if [[ -z "$plugin_basename" ]] && [[ -n "${args[tm]}" ]] then
-    plugin_basename="$__TM_NAME"
-fi
-if [[ "$plugin_basename" == "$__TM_NAME" ]] then
-    _info "Opening editor in Tool Manager home: $TM_HOME"
-    if ! cd "$TM_HOME"; then
-      _fail "Could not cd to $TM_HOME"
-    fi
-    _info "using editor: $editor_cmd"
-    "$editor_cmd" . # Open current directory
-else
-    plugin_dir="$TM_PLUGINS_INSTALL_DIR/$plugin_basename"
-    if [[ ! -d "$plugin_dir" ]]; then
-        _fail "Plugin directory '$plugin_dir' not found for plugin_basename '$plugin_basename'."
-    else
-        _info "Opening editor in plugin directory: $plugin_dir"
-        if ! cd "$plugin_dir"; then
-          _fail "Could not cd to $plugin_dir"
-        fi
-        if [[ "$editor_cmd" == 'bash' ]]; then
-            "$editor_cmd"
-        else
-            "$editor_cmd" . # Open current directory
-        fi
-    fi
-fi
+  if [[ -z "$plugin_basename" ]] && [[ -n "${args[tm]}" ]] then
+      plugin_basename="$__TM_NAME"
+  fi
+  if [[ "$plugin_basename" == "$__TM_NAME" ]] then
+      _info "Opening editor in Tool Manager home: $TM_HOME"
+      if ! cd "$TM_HOME"; then
+        _fail "Could not cd to $TM_HOME"
+      fi
+      _info "using editor: $editor_cmd"
+      "$editor_cmd" . # Open current directory
+  else
+      plugin_dir="$TM_PLUGINS_INSTALL_DIR/$plugin_basename"
+      if [[ ! -d "$plugin_dir" ]]; then
+          _fail "Plugin directory '$plugin_dir' not found for plugin_basename '$plugin_basename'."
+      else
+          _info "Opening editor in plugin directory: $plugin_dir"
+          if ! cd "$plugin_dir"; then
+            _fail "Could not cd to $plugin_dir"
+          fi
+          if [[ "$editor_cmd" == 'bash' ]]; then
+              "$editor_cmd"
+          else
+              "$editor_cmd" . # Open current directory
+          fi
+      fi
+  fi
+}
+
+main "$@"

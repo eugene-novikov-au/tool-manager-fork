@@ -154,6 +154,8 @@ _tm::boot::init() {
   TM_PLUGINS_ENABLED_DIR="$TM_VAR_DIR/plugins/enabled"
   # Directory where plugin provided libs are stored. They are stored under a plugins vendor name
   TM_PLUGINS_LIB_DIR="$TM_VAR_DIR/plugins/lib"
+  # where plugins store their state
+  TM_PLUGINS_STATE_DIR="$TM_VAR_DIR/plugins/state"
   # Directory for user-specific plugin configurations (e.g., <plugin_name>.bashrc files).
   TM_PLUGINS_CFG_DIR="$user_config_dir/tool-manager"
   # where spaces are stored

@@ -19,24 +19,25 @@
 
 _tm::source::include .tm.script.sh
 
-__main(){
-    # _tm::plugin::create::__new <plugin_name> <plugin_repo> <script_name_prefix> <plugin_desc>
-    #
-    # Creates a new Tool Manager plugin skeleton with the given details.
-    # If details are not provided as arguments, it prompts the user for them.
-    
-    declare -A args
-    _parse_args \
-        --file "${BASH_SOURCE[0]}" \
-        --help-tip \
-        --opt-name "|remainder|multi|short=n|value=NAME|desc=The name of the new plugin|example=my-plugin, my-vendor/my-plugin" \
-        --opt-vendor "|short=v|desc=The name of the vendor|example=my-vendor, acme|validators=plugin-vendor" \
-        --opt-prefix "|short=p|desc=The prefix to append to all the plugin's script|validators=plugin-prefix" \
-        --opt-repo "|short=r|desc=The Git repository URL for the plugin|example=git@github.com:user/repo.git" \
-        --opt-desc "|short=d|desc=A brief description of what the plugin provides" \
-        --result args \
-        -- "$@"
+# _tm::plugin::create::__new <plugin_name> <plugin_repo> <script_name_prefix> <plugin_desc>
+#
+# Creates a new Tool Manager plugin skeleton with the given details.
+# If details are not provided as arguments, it prompts the user for them.
 
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --help-tip \
+    --opt-name "|remainder|multi|short=n|value=NAME|desc=The name of the new plugin|example=my-plugin, my-vendor/my-plugin|validators=plugin-name" \
+    --opt-vendor "|short=v|desc=The name of the vendor|example=my-vendor, acme|validators=plugin-vendor" \
+    --opt-prefix "|short=p|desc=The prefix to append to all the plugin's script|validators=plugin-prefix" \
+    --opt-repo "|short=r|desc=The Git repository URL for the plugin|example=git@github.com:user/repo.git" \
+    --opt-space "|short=s|desc=The space to create this from|validators=space-key" \
+    --opt-desc "|short=d|desc=A brief description of what the plugin provides" \
+    --result args \
+    -- "$@"
+
+main(){
     local plugin_name="${args[name]:-}"
     local vendor="${args[vendor]:-}"
     local plugin_repo="${args[repo]:-}"
@@ -45,7 +46,7 @@ __main(){
 
     local -A plugin
     while [[ -z "$plugin_name" ]]; do
-        _read "Name of new plugin (e.g., my-plugin, must match lowercase, numbers, and -): " plugin_name
+        _read_not_empty "Name of new plugin (e.g., my-plugin, must match lowercase, numbers, and -): " plugin_name
 
         if [[ -n "$plugin_name" && ! "$plugin_name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
             _error "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number."
@@ -70,7 +71,7 @@ __main(){
         local name="${plugin[name]}"
         local vendor="${plugin[vendor]}"
         local git_repo_placeholder="git@github.com:${vendor}/${name}.git"
-        _read "Git repo URL (e.g., git@github.com:user/repo.git): " plugin_repo "$git_repo_placeholder"
+        _read_not_empty "Git repo URL (e.g., git@github.com:user/repo.git): " plugin_repo "$git_repo_placeholder"
         
         # Basic validation for common git URL patterns (optional, can be expanded)
         if [[ -n "$plugin_repo" && ! ( "$plugin_repo" =~ ^git@.+\..+:.*\/.*\.git$ || "$plugin_repo" =~ ^https?:\/\/.+\..+\/.*\/.* ) ]]; then
@@ -79,12 +80,7 @@ __main(){
             _info "Ignoring remote git repo for now"
         fi
     done
-    while [[ -z "$plugin_desc" ]]; do
-        _read "Brief description of what this plugin provides: " plugin_desc
-        if [[ -z "$plugin_desc"  ]]; then
-            plugin_desc="" # Clear to re-prompt
-        fi
-    done
+    _read_not_empty "Brief description of what this plugin provides: " plugin_desc
 
     _tm::util::parse::plugin_name plugin "${plugin_name}"
 
@@ -153,11 +149,11 @@ __main(){
     local yn=''
     echo 
     while [[ -z "${yn}" ]]; do
-        _read "Enable this plugin?[yn]" yn
-        case "$yn" in 
-            [Yy]*) tm-plugin-enable "${qname}" ;;
-            [Nn]*) _info "to enable this plugin run 'tm-plugin-enable ${qname}'" ;;
-        esac
+        if _read_is_confirm "Enable this plugin?"; then
+           tm-plugin-enable "${qname}"
+        else
+           _info "to enable this plugin run 'tm-plugin-enable ${qname}'"
+        fi
     done
 
     _info "to edit this plugin run 'tm-edit ${qname}' or 'tm-edit-ide ${qname}'"
@@ -292,4 +288,4 @@ _todo "hello world! from my $plugin_name script. Pies for all - \${yn}"
 EOF
 }
 
-__main "$@"
+main "$@"

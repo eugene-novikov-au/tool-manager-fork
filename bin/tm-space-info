@@ -3,28 +3,36 @@
 # Show the space info
 #
 
-_tm::source::include .tm.script.sh
+_tm::source::include .tm.script.sh .tm.space.sh
 
 declare -A args
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
-    --opt-key "|remainder|short=k|value=NAME|desc=The space key" \
+    --opt-key "|remainder|short=k|value=KEY|desc=The space key|validator=space-key" \
     --opt-guid "|short=g|value=GUID|desc=The space guid" \
     --result args \
     -- "$@"
 
-if [[ -z "${args[key]:-}" ]] && [[ -z "${args[guid]:-}" ]]; then
-    _fail "no key or guid provided"
-fi
-if [[ ! -d "$TM_SPACE_DIR" ]]; then
-    _fail "no spaces"
-fi
-space_guid="${args[guid]:-}"
-space_key="${args[key]:-}"
-if [[ -n "$space_guid" ]]; then
-    space_file="$TM_SPACE_DIR/space.${space_guid}.ini"
-    [[ -f "$space_file" ]] && cat "$space_file" || exit 1
-else
-    find "$TM_SPACE_DIR" -maxdepth 1 -type f -name ".space.*.ini" | xargs grep -le "^key=${space_key}$" | xargs cat
-fi
+main(){
+  local space_file="$(__find_file)"
+
+  local -A space
+  _tm::space::file::read_array space "${space_file}"
+  _tm::space::print_info space
+}
+
+__find_file(){
+    if [[ -z "${args[key]:-}" ]] && [[ -z "${args[guid]:-}" ]]; then
+        _fail "no key or guid provided"
+    fi
+    local space_guid="${args[guid]:-}"
+    local space_key="${args[key]:-}"
+    if [[ -n "$space_guid" ]]; then
+      _tm::space::file::get_by_guid "$space_guid"
+    elif [[ -n "$space_key" ]]; then
+      _tm::space::file::get_by_key "$space_key"
+    fi
+}
+
+main "$@"
 

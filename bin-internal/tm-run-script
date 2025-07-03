@@ -36,12 +36,14 @@ wrapper_script="$1"
 plugin_id="$2"
 plugin_dir="$3"
 plugin_cfg_dir="$4"
-real_script="$5"
-shift 4 # the remaining is the user args
+plugin_state_dir="$5"
+real_script="$6"
+shift 6 # the remaining are the user args
 
 export TM_PLUGIN_HOME="$plugin_dir" # could be the plugin dir or the enabled dir
 export TM_PLUGIN_ID="$plugin_id" # this include the fully qualified name, install dir, vendor, prefix etc
 export TM_PLUGIN_CFG_DIR="$plugin_cfg_dir"
+export TM_PLUGIN_STATE_DIR="$plugin_state_dir"
 
 # ensure plugin's can call their own scripts, without the prefix. The plugin env variables (TM_PLUGIN_..) should still work
 # to pass the config around.
@@ -73,5 +75,4 @@ fi
 # execute as is, we don't run in bash interactive mode by default, as users might just want simple, unadultered bash scripts. It's their choice as to 
 # what they want to include. We make it easy, as all they have to do is call one of the above exported functions, and the tool manager is loaded.
 # If users wan the full experience, they can run theirscripts using shebang: '#!/usr/bin/env tm-env-bash'
-shift
 "$real_script" "$@"

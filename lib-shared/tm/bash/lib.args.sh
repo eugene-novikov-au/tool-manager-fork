@@ -23,7 +23,9 @@ fi
 #                    - example       (optional) example text
 #                    - default       (optional) default value. Default is an empty string
 #                    - allowed       (optional) allowed values. First char is the value seperator if non alpha-numeric. Default is ','
-#                    - validators    (optional) (TODO) comma separated validators (alphanumeric,numbers,letters,nowhitespace,noslash,re:<pattern>,plugin-vendor,plugin-name,plugin-prefix)
+#                    - validators|validator    (optional) comma separated validators
+#                                                     (+alphanumeric,+numbers,+letters,+nowhitespace,+noslash,+re:<pattern>,plugin-vendor,plugin-name,plugin-prefix).
+#                                                     If prefixed with  a '+', must pass (default), if prefixed with a '-', must fail validator
 #             If there are semi colons in any of the values, you can specify a different seperator, by setting the first char to the seperator (non alpahumeric)
 #                      e.g. '|short=x|desc=The value for 'x', with a semicolon; This is also part of the the desc now'
 #   
@@ -184,6 +186,9 @@ _tm::args::parse() {
               validators) # the validation options
                   ref_array[validators]="$value"
                   ;;
+               validator) # the validation options
+                  ref_array[validators]="$value"
+                  ;;
               *)
                   # Silently ignore unknown keys, or add a _warn if debugging is needed
                   IFS= _fail "Unknown command args spec option '$key', for option '$option_key', in option spec '$option_spec'"
@@ -310,48 +315,73 @@ _tm::args::parse() {
       # run any provided validators
       local validators_csv="${validators_by_key["$key"]}"
       if [[ -n "$value" ]] && [[ -n "${validators_csv}" ]]; then
+        _is_finest && _finest "validating key '${key}' and value '${value}' with validators '${validators_csv}'"
         local -a validators
         IFS=',' read -ra validators <<< "$validators_csv"
         for validator in "${validators[@]}"; do
+          local match=1
+          case "${validator}" in
+            +*)
+              validator=${validator:1}
+              ;;
+            -*)
+              validator=${validator:1}
+              match=0
+              ;;
+          esac
           case "${validator}" in
             nowhitespace)
-              [[ "$value" =~ " " ]] && _fail "arg '${key}' with value '${value}' cannot contain whitespace (nowhitespace)" || true
+              [[ $match == 1 && "$value" =~ " " ]] && _fail "arg '${key}' with value '${value}' cannot contain whitespace (nowhitespace)" || true
+              [[ $match == 0 && ! "$value" =~ " " ]] && _fail "arg '${key}' with value '${value}' must contain whitespace (-nowhitespace)" || true
               ;;
             noslashes)
-              { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  } && _fail "arg '${key}' with value '${value}' cannot contain forward or back slashes (noslashes)" || true
+              [[ $match == 1 ]] && { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  }  && _fail "arg '${key}' with value '${value}' cannot contain forward or back slashes (noslashes)" || true
+              [[ $match == 0 ]] && ! { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  }  && _fail "arg '${key}' with value '${value}' must contain forward or back slashes (-noslashes)" || true
               ;;
             alphanumeric)
-              [[ ! "$value" =~ ^[a-zA-Z0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must be alphanumeric (alphanumeric)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must be alphanumeric (alphanumeric)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must not be alphanumeric (-alphanumeric)" || true
               ;;
             letters)
-              [[ ! "$value" =~ ^[a-zA-Z]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only letters (letters)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only letters (letters)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only letters (-letters)" || true
               ;;
             numbers)
-              [[ ! "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only numbers (numbers)" || true
+              [[ $match == 1 && ! "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only numbers (numbers)" || true
+              [[ $match == 0 && "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only numbers (-numbers)" || true
               ;;
             plugin-vendor)
-              [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-vendor)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-vendor)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only alphanumeric or dashes (-plugin-vendor)" || true
               ;;
             plugin-name)
-              [[ ! "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (plugin-name)" || true
+#              [[ $match == 1 && ! "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (plugin-name)" || true
+#              [[ $match == 0 && "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must not be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (-plugin-name)" || true
               ;;
             plugin-prefix)
-              [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-prefix)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-prefix)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only alphanumeric or dashes (-plugin-prefix)" || true
               ;;
             space-key)
-              [[ ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (space-key)" || true
+              [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots. Mut start with a alphanumeric (space-key)" || true
+              [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-].+$ ]] && _fail "arg '${key}' with value '${value}' must not contain alphanumeric, dashes, or dots (-space-key)" || true
+              ;;
+            name) # generic name field
+              [[ $match == 1 && ! "$value" =~ ^[\.a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots (name)" || true
+              [[ $match == 0 && "$value" =~ ^[\.a-zA-Z0-9-].+$ ]] && _fail "arg '${key}' with value '${value}' must not contain alphanumeric, dashes, or dots (-name)" || true
               ;;
             re:*)
-                local regexp="^${validator#re:}+$"
-                _finest "using re:${regexp}"
-                [[ ! "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' does not match pattern '${regexp}' (re)" || true
-                ;;
+              local regexp="^${validator#re:}+$"
+              _finest "using re:${regexp}"
+              [[ $match == 1 && ! "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' does not match pattern '${regexp}' (re)" || true
+              [[ $match == 0 && "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' must not match pattern '${regexp}' (re)" || true
+              ;;
             *)
               _warn "Unknown validator '${validator}', skipping"
           esac
+
         done
       fi
-
     }
     #
     # Print a single option

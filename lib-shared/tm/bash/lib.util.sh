@@ -50,6 +50,100 @@ _die() {
   exit 1
 }
 
+# Prompt user for a yes or no (yY* or nN*), and keep prompting until they choose one or the other (or ctrl+c).
+#
+# The exist code determines whether it was successful
+#
+# Args:
+#   $1 - Prompt text ( ' [yn]: ' will appended to it)
+#   $2 - Default value (optional). Can be [yYtT1]* or [nN]* (e.g. y, yes, YES, Yes,Y, true, 1, t ... same goes for no)
+#
+# Usage:
+#   if _read_is_confirm "Eat pie?" yn; then
+#       echo "pies are great!"
+#   fi
+#   if _read_is_confirm "Eat pie?" yn "n"; then # with a  default value
+#       echo "pies are great!"
+#   fi
+#
+_read_is_confirm(){
+    local prompt="${1}"
+    local default_val="${2:-}"
+    local yn=''
+    case "${default_val}" in
+      [yYtT]*|1)
+        prompt+=" [Yn]"
+        default_val='y'
+      ;;
+      [nNFf]*|0)
+        prompt+=" [yN]"
+        default_val='n'
+      ;;
+      *)
+        prompt+=" [yn]"
+        default_val=''
+      ;;
+    esac
+    _read_yn "$prompt" yn "${default_val}"
+    if [[ "${yn}" == 'y' ]]; then
+      true
+    else
+      false
+    fi
+}
+# Prompt user for a yes or no ([yYtT]*|1) or [nNfF]*|0, and keep prompting until they choose one or the other (or ctrl+c)
+#
+# It will set the value to either 'y' or 'n' (lowercase)
+#
+# Args:
+#   $1 - Prompt text
+#   $2 - Variable name to store result
+#   $3 - Default value (optional)
+#
+# Usage:
+#   _read_yn "Eat pie? [yn]: " yn
+#   _read_yn "Eat pie? [yN]: " yn "n"
+#
+_read_yn(){
+    local prompt="${1}"
+    local -n yn_ref="${2}"
+    local default_val="${3:-}"
+
+    while true; do
+      _read "$prompt: " yn_ref "$default_val"
+      case "${yn_ref}" in
+        [yYtT]*|1)
+          yn_ref='y'
+          break
+          ;;
+        [nNFf]*|0)
+          yn_ref='n'
+          break
+          ;;
+      esac
+    done
+}
+
+# Prompt user for input with a default value, and keep prompting until a non empty value is provided (or ctrl+c)
+#
+# Args:
+#   $1 - Prompt text
+#   $2 - Variable name to store result
+#   $3 - Default value (optional)
+#
+# Usage:
+#   _read_not_empty "Food: " choice
+#   _read_not_empty "Food: " choice "pie"
+
+_read_not_empty(){
+    local prompt="${1}"
+    local -n value_not_empty_ref="${2}"
+    local default_val="${3:-}"
+
+    while [[ -z "${value_not_empty_ref}"  ]]; do
+        _read "$prompt:" value_not_empty_ref "${default_val}"
+    done
+}
 # Prompt user for input with a default value
 #
 # Args:

@@ -40,56 +40,114 @@ _parse_args \
     --result args \
     -- "$@"
 
-[[ "${args[quiet]}" == "1" ]] && level=debug || level=info
+main(){
+  [[ "${args[quiet]}" == "1" ]] && level=debug || level=info
 
-# Determine the command to run
-full_command_string="${args[commands]:-':'}"
-if [[ -z "$full_command_string" ]]; then
-    _fail "No command specified to run. Use ' <command_and_args>'."
-fi
+  # Determine the command to run
+  full_command_string="${args[commands]:-':'}"
+  if [[ -z "$full_command_string" ]]; then
+      _fail "No command specified to run. Use ' <command_and_args>'."
+  fi
 
-# Determine which set of plugins to iterate over
-# Filters are mutually exclusive; the last one specified wins.
-# Default is installed plugins.
-plugin_list_cmd="_tm::plugins::find_all_installed_plugin_ids" # Default
-filter_description="installed"
+  # Determine which set of plugins to iterate over
+  # Filters are mutually exclusive; the last one specified wins.
+  # Default is installed plugins.
+  plugin_list_cmd="_tm::plugins::find_all_installed_plugin_ids" # Default
+  filter_description="installed"
 
-if [[ -n "${args[available]:-}" ]]; then
-    plugin_list_cmd="_tm::plugins::__get_all_available_plugin_ids" 
-    filter_description="available (from INI 'dir' field, relative to $TM_PLUGINS_INSTALL_DIR)"
-elif [[ -n "${args[enabled]:-}" ]]; then
-    plugin_list_cmd="_tm::plugins::find_all_enabled_plugin_ids"
-    filter_description="enabled"
-elif [[ -n "${args[installed]:-}" ]]; then
-    # This is the default, but explicit flag also sets it
-    plugin_list_cmd="_tm::plugins::find_all_installed_plugin_ids"
-    filter_description="installed"
-fi
+  if [[ -n "${args[available]:-}" ]]; then
+      plugin_list_cmd="_tm::plugins::__get_all_available_plugin_ids"
+      filter_description="available (from INI 'dir' field, relative to $TM_PLUGINS_INSTALL_DIR)"
+  elif [[ -n "${args[enabled]:-}" ]]; then
+      plugin_list_cmd="_tm::plugins::find_all_enabled_plugin_ids"
+      filter_description="enabled"
+  elif [[ -n "${args[installed]:-}" ]]; then
+      # This is the default, but explicit flag also sets it
+      plugin_list_cmd="_tm::plugins::find_all_installed_plugin_ids"
+      filter_description="installed"
+  fi
 
 
-declare -a plugin_ids_to_process
-mapfile -t plugin_ids_to_process < <($plugin_list_cmd)
+  declare -a plugin_ids_to_process
+  mapfile -t plugin_ids_to_process < <($plugin_list_cmd)
 
-if [[ ${#plugin_ids_to_process[@]} -eq 0 ]]; then
-    _warn "No plugins found for filter '$filter_description'. Nothing to do."
-    exit 0
-fi
+  if [[ ${#plugin_ids_to_process[@]} -eq 0 ]]; then
+      _warn "No plugins found for filter '$filter_description'. Nothing to do."
+      exit 0
+  fi
 
-git_commands_array=("status" "add" "show" "commit" "diff" "log" "restore" "checkout" "push")
-# Extract the first word of the full_command_string to check against git_commands_array
-first_command_word=$(echo "$full_command_string" | awk '{print $1}')
+  git_commands_array=("status" "add" "show" "commit" "diff" "log" "restore" "checkout" "push")
+  # Extract the first word of the full_command_string to check against git_commands_array
+  first_command_word=$(echo "$full_command_string" | awk '{print $1}')
+
+
+  declare -A plugin
+  for plugin_id in "${plugin_ids_to_process[@]}"; do
+      _tm::util::parse::plugin_id plugin "$plugin_id"
+
+      actual_plugin_dir="${plugin[install_dir]}"
+      if [[ ! -d "$actual_plugin_dir" ]]; then
+          _warn "Directory '$actual_plugin_dir' (derived from '$plugin_id') does not exist. Skipping."
+          continue
+      fi
+      if ! _pushd "$actual_plugin_dir"; then
+          _warn "Failed to change directory to '$actual_plugin_dir'. Skipping."
+          continue
+      fi
+      if [[ -d .git ]]; then
+          _log $level "In $actual_plugin_dir (Branch: '$(git branch --show-current 2>/dev/null || echo "N/A")' Repo: $(git remote -v | awk '/\(push\)$/{print $2; exit}')) ==>"
+
+          is_git_command=0
+          for gc in "${git_commands_array[@]}"; do
+              if [[ "$first_command_word" == "$gc" ]]; then
+                  is_git_command=1
+                  break
+              fi
+          done
+
+          if [[ "$is_git_command" -eq 1 ]]; then
+              _log $level "running: git $full_command_string"
+              __invoke "git $full_command_string" || _warn "Command 'git $full_command_string' failed in $actual_plugin_dir"
+          else
+              _log $level "running: '$full_command_string'"
+              __invoke "$full_command_string" || _warn "Command '$full_command_string' failed in $actual_plugin_dir"
+          fi
+      else
+          _debug "Skipping '$actual_plugin_dir' as it is not a Git repository."
+      fi
+      _popd
+  done
+
+  if [[ "${args[parallel]:-}" == "1" ]]; then
+      _info "Waiting for parallel commands to complete and checking exit codes..."
+      declare all_succeeded=true
+      for job_id in $(jobs -p); do
+          wait "$job_id"
+          if [[ $? -ne 0 ]]; then
+              all_succeeded=false
+              _warn "A parallel command (PID: $job_id) failed."
+          fi
+      done
+      if "$all_succeeded"; then
+          _info "All parallel commands completed successfully."
+      else
+          _warn "Some parallel commands failed."
+          exit 1 # Indicate failure if any parallel command failed
+      fi
+  fi
+}
 
 #
 # Invoke a given command either waiting, or in a background job
 #
-# _invoke()
+# __invoke()
 # Description: Invokes a given command, either waiting for it to complete or running it in the background.
 # Arguments:
 #   $@: The command and its arguments to execute.
 # Usage:
-#   _invoke "git status"
-#   _invoke "ls -l" &
-_invoke(){
+#   __invoke "git status"
+#   __invoke "ls -l" &
+__invoke(){
     if [[ "${args[parallel]:-}" == "1" ]]; then
         # Using a subshell to ensure `set -e` doesn't kill the parent script
         ( eval "$@" ) &
@@ -98,57 +156,5 @@ _invoke(){
     fi
 }
 
-declare -A plugin
-for plugin_id in "${plugin_ids_to_process[@]}"; do
-    _tm::util::parse::plugin_id plugin "$plugin_id"
 
-    actual_plugin_dir="${plugin[install_dir]}"
-    if [[ ! -d "$actual_plugin_dir" ]]; then
-        _warn "Directory '$actual_plugin_dir' (derived from '$plugin_id') does not exist. Skipping."
-        continue
-    fi
-    if ! _pushd "$actual_plugin_dir"; then
-        _warn "Failed to change directory to '$actual_plugin_dir'. Skipping."
-        continue
-    fi
-    if [[ -d .git ]]; then
-        _log $level "In $actual_plugin_dir (Branch: '$(git branch --show-current 2>/dev/null || echo "N/A")' Repo: $(git remote -v | awk '/\(push\)$/{print $2; exit}')) ==>"
-        
-        is_git_command=0
-        for gc in "${git_commands_array[@]}"; do
-            if [[ "$first_command_word" == "$gc" ]]; then
-                is_git_command=1
-                break
-            fi
-        done
-
-        if [[ "$is_git_command" -eq 1 ]]; then
-            _log $level "running: git $full_command_string"
-            _invoke "git $full_command_string" || _warn "Command 'git $full_command_string' failed in $actual_plugin_dir"
-        else
-            _log $level "running: '$full_command_string'"
-            _invoke "$full_command_string" || _warn "Command '$full_command_string' failed in $actual_plugin_dir"
-        fi
-    else
-        _debug "Skipping '$actual_plugin_dir' as it is not a Git repository."
-    fi
-    _popd
-done
-
-if [[ "${args[parallel]:-}" == "1" ]]; then
-    _info "Waiting for parallel commands to complete and checking exit codes..."
-    declare all_succeeded=true
-    for job_id in $(jobs -p); do
-        wait "$job_id"
-        if [[ $? -ne 0 ]]; then
-            all_succeeded=false
-            _warn "A parallel command (PID: $job_id) failed."
-        fi
-    done
-    if "$all_succeeded"; then
-        _info "All parallel commands completed successfully."
-    else
-        _warn "Some parallel commands failed."
-        exit 1 # Indicate failure if any parallel command failed
-    fi
-fi
+main "$@"

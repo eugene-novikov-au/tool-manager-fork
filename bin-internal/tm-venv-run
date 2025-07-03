@@ -1,0 +1,16 @@
+#!/usr/bin/env tm-env-bash
+
+# Run a script in a venv
+#
+# Arguments:
+# $1 - the script file to provision
+#
+
+_include @tm/lib.common.sh "$TM_BIN/.tm.venv.sh"
+
+# todo: grab the shebang line
+#
+# $1 - the script to run
+# $2... - the script args
+#
+_tm::venv::run "" "$@"

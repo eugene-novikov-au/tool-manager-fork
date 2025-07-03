@@ -8,7 +8,6 @@
 #
 
 set -Eeuo pipefail
-source "$TM_BIN/.tm.boot.sh"
 
 config_dir="$TM_PLUGINS_CFG_DIR"
 if [[ ! -d "$config_dir" ]]; then

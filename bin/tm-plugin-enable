@@ -13,52 +13,49 @@ _trap_error
 declare -A args
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
-    --opt-plugins "|remainder|required|multi|short=p|long=plugin|value=PLUGIN|desc=The plugin(s) to enable." \
+    --opt-plugins "|remainder|required|multi|short=p|long=plugin|value=PLUGIN|desc=The plugin(s) to enable.|validators=plugin-name" \
     --opt-vendor "|short=v|desc=The plugin vendor|validators=plugin-vendor" \
     --opt-prefix "|desc=The prefix to append to all the plugin's script|validators=plugin-prefix" \
+    --opt-space "|short=s|desc=The space to enable this in|validators=space-key" \
     --opt-force "|flag|short=f|desc=Whether to reload the plugin if it is already enabled." \
     --result args \
     -- "$@"
 
-vendor_prefix=''
-if [[ -n "${args[vendor]}" ]]; then
-    vendor_prefix+="${args[vendor]}/"
-fi
+main(){
+  vendor_prefix=''
+  if [[ -n "${args[vendor]}" ]]; then
+      vendor_prefix+="${args[vendor]}/"
+  fi
 
-all_prefix=''
-if [[ -n "${args[prefix]}" ]]; then
-    all_prefix+="${args[prefix]}:"
-fi
+  all_prefix=''
+  if [[ -n "${args[prefix]}" ]]; then
+      all_prefix+="${args[prefix]}:"
+  fi
 
-reload="${args[force]}"
+  reload="${args[force]}"
 
-IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
-declare -A plugin
-for plugin_qname in "${plugin_names[@]}"; do
-    _tm::util::parse::plugin plugin "$all_prefix$vendor_prefix$plugin_qname"
-    if [[ -z "${plugin[prefix]}" ]]; then
-      declare yn=''
-      while [[ -z "${yn}" ]]; do
-        _read "Did you want to add a prefix to all the plugin's scripts? (e.g. 'my-') [yn]: " yn
-        case "${yn}" in
-          [yY]*)
-            while [[ -z "${plugin[prefix]}" ]]; do
-                declare prefix
-                _read "What prefix? (e.g. 'my', 'acme'): " prefix
-                if [[ -n "${prefix}" ]]; then
-                    _tm::util::parse::plugin plugin "$prefix:$vendor_prefix$plugin_qname"
-                fi
-            done
-            ;;
-          [nN]*)
-           ;;
-        esac
-      done
-    fi
-    if [[ "$reload" == '1' ]]; then
-      _tm::plugin::disable plugin || true
-    fi
-    _tm::plugin::enable plugin 
-done
-#_tm::plugins::reload_all_enabled
+  IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
+  declare -A plugin
+  for plugin_qname in "${plugin_names[@]}"; do
+      _tm::util::parse::plugin plugin "$all_prefix$vendor_prefix$plugin_qname"
+      if [[ -z "${plugin[prefix]}" ]]; then
+        if _read_is_confirm "Did you want to add a prefix to all the plugin's scripts? (e.g. 'my-')"; then
+          while [[ -z "${plugin[prefix]}" ]]; do
+              declare prefix
+              _read_not_empty "What prefix? (e.g. 'my', 'acme'): " prefix
+              if [[ -n "${prefix}" ]]; then
+                  _tm::util::parse::plugin plugin "$prefix:$vendor_prefix$plugin_qname"
+              fi
+          done
+        fi
+      fi
+      if [[ "$reload" == '1' ]]; then
+        _tm::plugin::disable plugin || true
+      fi
+      _tm::plugin::enable plugin
+  done
+  #_tm::plugins::reload_all_enabled
 
+}
+
+main "$@"

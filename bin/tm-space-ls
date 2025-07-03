@@ -3,7 +3,7 @@
 # List the space
 #
 
-_tm::source::include .tm.script.sh
+_tm::source::include .tm.script.sh .tm.space.sh
 
 declare -A args
 _parse_args \
@@ -13,4 +13,20 @@ _parse_args \
     --result args \
     -- "$@"
 
-[[ -d "$TM_SPACE_DIR" ]] && find "$TM_SPACE_DIR" -maxdepth 1 -type f -name ".space.*.ini" | xargs grep "key" | sed -e 's/^key=//' || true
+
+
+
+main(){
+    local -A space
+    local -a space_files
+    readarray -t space_files < <(_tm::space::file::find_all)
+
+    for space_file in "${space_files[@]}"; do
+        echo "${space_file} -->"
+        _tm::space::file::read_array space "${space_file}"
+        _tm::space::print_info space
+    done
+}
+
+main "$@"
+_todo "implement me"
