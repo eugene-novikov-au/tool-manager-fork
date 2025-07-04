@@ -41,12 +41,23 @@ main(){
   if [[ -n "${plugins}" ]]; then
       IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
       declare -A plugin
-      for plugin in "${plugin_names[@]}"; do
-          plugin="$all_prefix$vendor_prefix$plugin"
-          if _tm::plugins::install "${plugin}"; then
+      for plugin_name in "${plugin_names[@]}"; do
+          plugin_name="$all_prefix$vendor_prefix$plugin_name"
+          if _tm::plugins::install "${plugin_name}"; then
               _reload=1
           else
-              _error "Failed to install plugin: '${plugin}'"
+            local -A plugin
+            _tm::util::parse::plugin plugin "${plugin_name}"
+            local github_url="git@github.com:${plugin[vendor]}/${plugin[name]}.git#${plugin[version]}"
+            if [[ ! "${plugin_name}" =~ *"git.com"* ]] && _confirm "The plugin was not found in the plugin registry, try to install from github directly? ($github_url)"; then
+              if _tm::plugins::install "${github_url}"; then
+                  _reload=1
+              else
+                _error "Failed to install plugin: '${plugin_name}'"
+              fi
+            else
+              _error "Failed to install plugin: '${plugin_name}'"
+            fi
           fi
       done
   else

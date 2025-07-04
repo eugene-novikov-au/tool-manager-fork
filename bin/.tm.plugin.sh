@@ -237,12 +237,13 @@ _tm::plugin::enable() {
 
   if [[ $is_tool_manager == true ]]; then
     _info "Skipping 'enabling' the tool-manager plugin as it's allways enabled"
-    return
+    return $_true
   fi
 
   if [[ ! -d "$plugin_dir" ]]; then
     _error "No plugin dir '$plugin_dir' exists for plugin '${qname}'"
-    _fail "Could not enable plugin. Run 'tm-plugin-ls' for available plugins"
+    _error "Could not enable plugin. Run 'tm-plugin-ls' for available plugins"
+    return $_false
   else
     if [[ -L "$enabled_dir" ]]; then
       _info "plugin '${qname}' already enabled"
@@ -252,7 +253,7 @@ _tm::plugin::enable() {
       ln -s "$plugin_dir/" "$enabled_dir" || { 
         _error "Failed to create symlink for plugin '${qname}' from '$plugin_dir/' to '$enabled_dir'." 
         _tm::plugins::reload_all_enabled
-        return 1
+        return $_false
       }
 
       _tm::plugin::__generate_wrapper_scripts plugin_enable 
@@ -362,7 +363,7 @@ _tm::plugin::disable() {
         _info "plugin is disabled"
       else
         _error "Failed to remove symlink '$plugin_enabled_link'."
-        return 1
+        return $_false
       fi
 
       _tm::plugins::reload_all_enabled

@@ -38,8 +38,12 @@ _tm::cfg::load() {
   _tm::cfg::__process 0 "$@"
 }
 
+#
+#
+# $1 - 0/1 whether to echo the value, or just load it as a variable. Default is 0 (load as variable)
+#
 _tm::cfg::__process() {
-    local is_get=$1
+    local is_get=${1:-0}
     shift
     local plugin_id="${TM_PLUGIN_ID:-$__TM_PLUGIN_ID}"
     _tm::cfg::__load_cfg_once "$plugin_id"
@@ -69,8 +73,7 @@ _tm::cfg::__process() {
     if [[ -n "${args[all]:-}" ]]; then
       _todo "print all the variables for this plugin"
       echo "$(_tm::cfg::__load_cfg "$plugin_id";printenv)"
-
-      return 0
+      return $_true
     fi
 
     local prompt=1
@@ -103,7 +106,7 @@ _tm::cfg::__process() {
     done
 
     if [[ ${#missing_keys[@]} == 0 ]]; then # no missing keys
-        return
+        return $_true
     fi
 
     declare -A plugin=()
@@ -113,6 +116,7 @@ _tm::cfg::__process() {
     for key in "${missing_keys[@]}"; do
         if [[ "$prompt" == '0' ]] ; then
             if [[ -n "$default_value" ]]; then # just use the default
+                _finest "running: export $key=\"$default_value\""
                 eval "export $key=\"$default_value\""
                 if [[ $is_get == 1 ]]; then
                   echo "$default_value"
@@ -293,6 +297,8 @@ _tm::cfg::__set_key_value_in_file(){
     local cfg_key="$2"
     local value="$3"
     local note="${4:-}"
+
+    #TODO: if the value starts with the home dir, replace it with '$HOME'? or ask?
 
     if [[ -f "$file" ]]; then # Check against the passed-in file argument
         if grep -q "^${cfg_key}=" "$file"; then # Ensure key is anchored and properly quoted in grep

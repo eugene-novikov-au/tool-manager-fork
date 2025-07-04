@@ -1,3 +1,5 @@
+_false=1
+_true=0
 
 ## trap Ctrl+c to kill the sub processes. Ensures any background processes are killed
 # Set up signal traps to clean up child processes
@@ -27,8 +29,8 @@ _trap_sigs() {
 #
 _fail() {
   # this function is early in the file, as the top most functions need access to it
-  _err "ERROR! $*"
-  _is_trace && _trace "$(_tm::log::stacktrace)"
+  _err "$*"
+  _is_trace && _trace "$(_tm::log::stacktrace)" || true
   exit 1
 }
 
@@ -86,9 +88,9 @@ _confirm(){
     esac
     _read_yn "$prompt" yn "${default_val}"
     if [[ "${yn}" == 'y' ]]; then
-      true
+      return $_true
     else
-      false
+      return $_false
     fi
 }
 # Prompt user for a yes or no ([yYtT]*|1) or [nNfF]*|0, and keep prompting until they choose one or the other (or ctrl+c)

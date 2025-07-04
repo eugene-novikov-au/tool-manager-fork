@@ -184,35 +184,35 @@ _tm::plugins::find_all_installed_dirs() {
 _tm::plugins::find_all_available_plugin_ids() {
   # TODO: scan the plugin files
   _todo "find available plugin ids"
-  local -a plugin_ini_files=()
-  _tm::plugins::__plugin_files_to_array plugin_ini_files
+  local -a plugin_conf_files=()
+  _tm::plugins::__plugin_files_to_array plugin_conf_files
 
-  if [[ ${#plugin_ini_files[@]} -eq 0 ]]; then
+  if [[ ${#plugin_conf_files[@]} -eq 0 ]]; then
       _warn "No plugin install files found"
       return 1
   fi
 
-  local ini_file
+  local conf_file
   declare -A plugin_details # plugin dtails from the ini file
   declare -A plugin # plugin details from the parsed name
 
-  for ini_file in "${plugin_ini_files[@]}"; do
-      if [[ ! -f "$ini_file" || ! -r "$ini_file" ]]; then
-          _warn "INI file not found or not readable: '$ini_file'. Skipping"
+  for conf_file in "${plugin_conf_files[@]}"; do
+      if [[ ! -f "$conf_file" || ! -r "$conf_file" ]]; then
+          _warn "INI file not found or not readable: '$conf_file'. Skipping"
           continue
       fi
 
       local section_names_in_file=()
-      _tm::file::ini::read_sections section_names_in_file "$ini_file"
+      _tm::file::ini::read_sections section_names_in_file "$conf_file"
 
       for vendor_slash_name in "${section_names_in_file[@]}"; do
           plugin_details=() # Clear for each section
-          _tm::file::ini::read_section plugin_details "$ini_file" "$vendor_slash_name"
+          _tm::file::ini::read_section plugin_details "$conf_file" "$vendor_slash_name"
           if [[ -n "${plugin_details[repo]}" ]]; then
               _tm::util::parse::plugin_name plugin "$vendor_slash_name"
               echo "${plugin[id]}"
           else
-              _warn "Plugin '$vendor_slash_name' in '$ini_file' is missing the 'repo' attribute. Skipping"
+              _warn "Plugin '$vendor_slash_name' in '$conf_file' is missing the 'repo' attribute. Skipping"
           fi
       done
   done
@@ -243,26 +243,26 @@ _tm::plugins::__get_all_available_dirs() {
     fi
 
     local all_dirs=()
-    local ini_file
+    local conf_file
     local plugin_name
     declare -A plugin_details
 
-    for ini_file in "${plugin_files_array[@]}"; do
-        if [[ ! -f "$ini_file" || ! -r "$ini_file" ]]; then
-            _warn "INI file not found or not readable: '$ini_file'. Skipping for available dirs."
+    for conf_file in "${plugin_files_array[@]}"; do
+        if [[ ! -f "$conf_file" || ! -r "$conf_file" ]]; then
+            _warn "INI file not found or not readable: '$conf_file'. Skipping for available dirs."
             continue
         fi
 
         local section_names_in_file=()
-        _tm::file::ini::read_sections section_names_in_file "$ini_file" 
+        _tm::file::ini::read_sections section_names_in_file "$conf_file" 
 
         for vendor_slash_name in "${section_names_in_file[@]}"; do
             plugin_details=() # Clear for each section
-            _tm::file::ini::read_section plugin_details "$ini_file" "$vendor_slash_name"
+            _tm::file::ini::read_section plugin_details "$conf_file" "$vendor_slash_name"
             if [[ -n "${plugin_details[repo]}" ]]; then
                 all_dirs+=("${TM_PLUGINS_INSTALL_DIR}/${vendor_slash_name}")
             else
-                _warn "Plugin '$vendor_slash_name' in '$ini_file' is missing the 'repo' attribute.."
+                _warn "Plugin '$vendor_slash_name' in '$conf_file' is missing the 'repo' attribute.."
             fi
         done
     done
@@ -286,12 +286,12 @@ _tm::plugins::__plugin_files_to_array() {
     local -n _target_plugins_array="$1" # Use nameref for the output array
     # Use space and newline as delimiters
     # shellcheck disable=SC2226 # We want word splitting here for read -a
-    readarray -d '' _target_plugins_array < <(_tm::plugins::find_ini_files)
+    readarray -d '' _target_plugins_array < <(_tm::plugins::find_conf_files)
 
     _is_trace && _trace "plugin ini files: [${_target_plugins_array[*]}]'" || true
 }
 
-_tm::plugins::find_ini_files() {
+_tm::plugins::find_conf_files() {
     # user provided one stakes precedence
     if [[ -n "$TM_PLUGINS_REGISTRY_DIR" ]] && [[ -d "$TM_PLUGINS_REGISTRY_DIR" ]]; then
       find "$TM_PLUGINS_REGISTRY_DIR" -type f -name "*.${__TM_CONF_EXT}" -print0 | sort -z
@@ -393,33 +393,35 @@ _tm::plugins::install() {
 
 _tm::plugins::install_from_git() {
   local git_repo="$1" 
-  # extract out the vendor path and use the paclage name as the plugin name
+  # extract out the vendor path and use the package name as the plugin name
   _trace "Installing from raw repo '$git_repo'"
   local path="$(echo "$git_repo" | sed -E 's|.*github.com[:/]?||' | sed 's|.git||')"
   local plugin_name prefix vendor version
   IFS="/" read -r vendor plugin_name <<< "$path"
-  IFS="@" read -r plugin_name version <<< "$plugin_name" # maybe ends with a some_repo.git@<version>
+  IFS="#" read -r plugin_name version <<< "$plugin_name" # maybe ends with a some_repo.git#<version>
   if [[ -z "$version" ]]; then # maybe it ended with a 'some_repo.git#<version>'
     IFS="#" read -r plugin_name version <<< "$plugin_name"
   fi
-  _debug "extracted plugin details: vendor '$vendor' plugin_name '$plugin_name' version '$version'"
+  git_repo="git@github.com:${vendor}/${plugin_name}"
+  _debug "extracted plugin details: vendor '$vendor' plugin_name '$plugin_name' version '$version' repo '$git_repo'"
 
   local -A plugin_details
-  _tm::util::parse::plugin_name plugin_details "$vendor/$plugin_name"
+  _tm::util::parse::plugin_name plugin_details "${vendor}/${plugin_name}@${version}"
 
   local qname="${plugin_details[qname]}"
   local install_dir="${plugin_details[install_dir]}"
 
-  if _confirm "really install '${qname}' into '${install_dir}' from '${git_repo}'?"; then
+  if _confirm "really install '${qname}' into '${install_dir}' from '${git_repo}', version '${version}'?"; then
     if _tm::plugins::__clone_and_install plugin_details "${git_repo}" "${version}"; then
       _info "successfully installed"
-      return
+      return $_true
     else
-      _fail "error installing plugin"
+      _error "error installing plugin"
+      return $_false
     fi
    else
       _info "skipping install"
-      return 1
+      return $_false
    fi
 }
 
@@ -433,7 +435,7 @@ _tm::plugins::install_from_registry(){
 
   if [[ -z "$qualified_name" ]]; then
     _error "Plugin name is required. Input: '$qualified_name'"
-    return 1
+    return $_false
   fi
 
   local -A plugin=()
@@ -452,31 +454,32 @@ _tm::plugins::install_from_registry(){
   local -a plugin_files=()
   _tm::plugins::__plugin_files_to_array plugin_files
 
-  local plugin_ini_file 
+  local plugin_conf_file 
   # TODO: read the registry files and cache the processed output
   # find the first matching plugin definition
-  for plugin_ini_file in "${plugin_files[@]}"; do
+  for plugin_conf_file in "${plugin_files[@]}"; do
     # Check if the INI file exists
-    if [[ ! -f "$plugin_ini_file" ]]; then
-      _warn "Plugin configuration file '$plugin_ini_file' not found."
+    if [[ ! -f "$plugin_conf_file" ]]; then
+      _warn "Plugin configuration file '$plugin_conf_file' not found."
       continue # read next file
     fi
 
     # Check if the plugin section exists in the INI file
-    if ! _tm::file::ini::has_section "$plugin_ini_file" "$vendor_and_name"; then
-      _debug "Plugin section '$plugin_name' not found in '$plugin_ini_file'."
+    if ! _tm::file::ini::has_section "$plugin_conf_file" "$vendor_and_name"; then
+      _debug "Plugin section '$plugin_name' not found in '$plugin_conf_file'."
       continue # next file
     fi
     
-    _debug "Plugin section '$vendor_and_name' found in '$plugin_ini_file'."
+    _debug "Plugin section '$vendor_and_name' found in '$plugin_conf_file'."
     
     # Read plugin details from the INI file
     declare -A plugin_details
-    if _tm::file::ini::read_section plugin_details "$plugin_ini_file" "$vendor_and_name"; then
+    if _tm::file::ini::read_section plugin_details "$plugin_conf_file" "$vendor_and_name"; then
       local plugin_cfg_repo="${plugin_details[repo]:-}"
       local plugin_cfg_commit="${plugin_details[commit]:-}" # Commit from INI is default
     else
-      fail "could not find plugin details in '$plugin_ini_file'"
+      _error "could not find plugin details in '$plugin_conf_file'"
+      return $_false
     fi
       
     # If a version was specified in the input, it overrides the commit from INI
@@ -484,14 +487,15 @@ _tm::plugins::install_from_registry(){
       _debug "Using specified version '$version' to override INI commit ('${plugin_cfg_commit:-none}')."
       plugin_cfg_commit="$version"
     elif [[ -z "$plugin_cfg_commit" ]]; then # If no version in input AND no commit in INI
-        _warn "No commit/branch/tag specified in INI for '$vendor_and_name' and no version in input. Defaulting to 'main' or 'master' if common, but git clone might fail or pick default."
+      _warn "No commit/branch/tag specified in INI for '$vendor_and_name' and no version in input. Defaulting to 'main' or 'master' if common, but git clone might fail or pick default."
     fi
     # local plugin_cfg_desc="${plugin_details[desc]}" # desc is available if needed
     if _tm::plugins::__clone_and_install plugin "${plugin_cfg_repo}" "${plugin_cfg_commit}"; then
-      return
+      return $_true
     fi
   done
-  _fail "Could not install plugin '$plugin_name' (from input '$qualified_name')"
+  _error "Could not install plugin '$plugin_name' (from input '$qualified_name')"
+  return $_false
 }
 
 #
@@ -600,61 +604,61 @@ _tm::plugins::foreach_available_callback() {
 
     local __process_plugin_from_file
     __process_plugin_from_file() {
-        local current_ini_file="$1"
+        local current_conf_file="$1"
         local current_plugin_name="$2"
 
         _tm::util::parse::plugin_name plugin_details "$current_plugin_name"
-        _tm::file::ini::read_section plugin_section_details "$current_ini_file" "$current_plugin_name" 
+        _tm::file::ini::read_section plugin_section_details "$current_conf_file" "$current_plugin_name"
 
-        local ini_repo="${plugin_section_details[repo]}"
-        local ini_commit="${plugin_section_details[commit]}"
+        local conf_repo="${plugin_section_details[repo]}"
+        local conf_commit="${plugin_section_details[commit]}"
         local plugin_desc="${plugin_section_details[desc]}"
         local run_mode="${plugin_section_details[run-mode]:-direct}"
 
-        if [[ -z "$ini_commit" ]]; then
-            ini_commit="$default_commit"
+        if [[ -z "$conf_commit" ]]; then
+            conf_commit="$default_commit"
         fi
         
-        if [[ -z "$ini_repo" ]]; then
-            _warn "Plugin '$current_plugin_name' from '$current_ini_file' has incomplete configuration (repo). Skipping."
+        if [[ -z "$conf_repo" ]]; then
+            _warn "Plugin '$current_plugin_name' from '$current_conf_file' has incomplete configuration (repo). Skipping."
             return
         fi
 
         # make the details from the config file available
-        plugin_details[repo]="$ini_repo"
-        plugin_details[commit]="$ini_commit"
-        plugin_details[branch]="$ini_commit"
+        plugin_details[repo]="$conf_repo"
+        plugin_details[commit]="$conf_commit"
+        plugin_details[branch]="$conf_commit"
         plugin_details[desc]="$plugin_desc"
         plugin_details[run_mode]="$run_mode"
         
-        _trace "Calling callback '$callback_func' for: '${plugin_details[qname]}' (dir: '${plugin_details[install_dir]}', repo: $ini_repo, commit: $ini_commit, desc: $plugin_desc)"
+        _trace "Calling callback '$callback_func' for: '${plugin_details[qname]}' (dir: '${plugin_details[install_dir]}', repo: $conf_repo, commit: $conf_commit, desc: $plugin_desc)"
         "$callback_func" plugin_details
     }
 
     local found_match=0
-    for ini_file in "${plugin_files[@]}"; do
-        _debug "Processing INI file: $ini_file"
-        if [[ ! -f "$ini_file" || ! -r "$ini_file" ]]; then
-            _warn "INI file not found or not readable: '$ini_file'. Skipping."
+    for conf_file in "${plugin_files[@]}"; do
+        _debug "Processing INI file: $conf_file"
+        if [[ ! -f "$conf_file" || ! -r "$conf_file" ]]; then
+            _warn "INI file not found or not readable: '$conf_file'. Skipping."
             continue
         fi
 
         if [[ -n "$match_name" ]]; then
-            if _tm::file::ini::has_section "$ini_file" "$match_name"; then
-                _debug "Found matched plugin '$match_name' in '$ini_file'."
-                __process_plugin_from_file "$ini_file" "$match_name" 
+            if _tm::file::ini::has_section "$conf_file" "$match_name"; then
+                _debug "Found matched plugin '$match_name' in '$conf_file'."
+                __process_plugin_from_file "$conf_file" "$match_name" 
                 found_match=1
                 break # Stop after first match
             else
-                _debug "No match for '$match_name' in '$ini_file'."
+                _debug "No match for '$match_name' in '$conf_file'."
             fi
         else
             # No match name, process all plugins in this file
             declare -a all_plugin_names_in_file
-            _tm::file::ini::read_sections all_plugin_names_in_file "$ini_file" 
-            _debug "Found ${#all_plugin_names_in_file[@]} plugins in '$ini_file'."
+            _tm::file::ini::read_sections all_plugin_names_in_file "$conf_file" 
+            _debug "Found ${#all_plugin_names_in_file[@]} plugins in '$conf_file'."
             for name_in_file in "${all_plugin_names_in_file[@]}"; do
-                __process_plugin_from_file "$ini_file" "$name_in_file"
+                __process_plugin_from_file "$conf_file" "$name_in_file"
             done
         fi
     done
