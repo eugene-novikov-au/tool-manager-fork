@@ -55,6 +55,8 @@ main(){
           done
       fi
   fi
+
+  tm-reload
 }
 
 main "$@"
