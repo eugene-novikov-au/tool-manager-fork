@@ -187,4 +187,19 @@ _trap_error(){
   _tm::trap::error
 }
 
+
+# TODO:
+#
+# user facing function
+#
+# Ensures a specific plugin is loaded.
+# Args:
+#   $1 - The name of the plugin (expects it to be in $TM_PLUGINS_INSTALL_DIR).
+_require_plugin() {
+  _debug "require plugin:$1"
+  local -A require_plugin
+  _tm::parse::plugin require_plugin "$1"
+  _tm::plugin::load require_plugin
+}
+
 _tm::boot::init

@@ -50,7 +50,7 @@ main(){
       else
           declare -A plugin
           for plugin_name in "${plugin_names[@]}"; do
-              _tm::util::parse::plugin plugin "${all_prefix}${vendor_prefix}${plugin_name}"
+              _tm::parse::plugin plugin "${all_prefix}${vendor_prefix}${plugin_name}"
               _tm::plugin::disable plugin
           done
       fi

@@ -96,7 +96,7 @@ _tm::cfg2::plugin_init(){
 #
 _tm::cfg2::plugin_generate_sh_cfg_file(){
   local -A plugin_details
-  _tm::util::parse::plugin plugin_details "$1"
+  _tm::parse::plugin plugin_details "$1"
 
   # TODO: only if changed?
   _tm::cfg2::__generate_sh_from_plugin_yaml "${plugin_details[cfg_spec]}" "${plugin_details[cfg_sh]}"

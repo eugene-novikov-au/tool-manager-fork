@@ -7,7 +7,7 @@
 #   - Enabling and disabling plugins (_tm::plugin::enable, _tm::plugin::__disable).
 #   - Discovering scripts within plugins (_tm::plugin::__find_scripts_in).
 #   - Generating command wrapper scripts for plugins (_tm::plugin::__generate_wrapper_scripts).
-#   - Parsing qualified plugin names with prefixs (_tm::util::parse::plugin_name).
+#   - Parsing qualified plugin names with prefixs (_tm::parse::plugin_name).
 #
 
 
@@ -24,7 +24,7 @@
 #  $2 - (optional) auto_yes, if '1' then prompts are automatically yes
 # Usage:
 #   declare -A my_plugin
-#   _tm::util::parse::plugin my_plugin "myplugin"
+#   _tm::parse::plugin my_plugin "myplugin"
 #   _tm::plugin::reload my_plugin
 #
 _tm::plugin::reload(){
@@ -219,7 +219,7 @@ _tm::plugin::__find_scripts_in() {
 #
 # Usage:
 #   declare -A my_plugin
-#   _tm::util::parse::plugin my_plugin "myvendor/myplugin"
+#   _tm::parse::plugin my_plugin "myvendor/myplugin"
 #   _tm::plugin::enable my_plugin
 #
 _tm::plugin::enable() {
@@ -338,7 +338,7 @@ _tm::plugin::enable() {
 #
 # Usage:
 #   declare -A my_plugin
-#   _tm::util::parse::plugin my_plugin "myvendor/myplugin"
+#   _tm::parse::plugin my_plugin "myvendor/myplugin"
 #   _tm::plugin::disable my_plugin
 #
 _tm::plugin::disable() {

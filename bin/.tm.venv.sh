@@ -1,3 +1,12 @@
+
+#
+# Run a script in a given env
+#
+# Arguments:
+# $1 - the interpreter or runner to use (e.g. bash, java, python etc). Empty if no runner, so run script directly
+# $2 - the script to run
+# $3.. - the args to pass to the script
+#
 __tm::venv::run(){
     local script_runner="$1" # eg. python, bash etc
     local script_path="$2"
@@ -219,7 +228,7 @@ __tm::venv::__calc_venv_dir(){
     local script_rel_path="${script_path#$remove_prefix}"
     local plugin_dir_name="${script_rel_path%%/*}"
     local -A plugin=()
-    _tm::util::parse::plugin_name plugin "$plugin_dir_name"
+    _tm::parse::plugin_name plugin "$plugin_dir_name"
     echo -n "${TM_PLUGINS_VENV_DIR}/plugin-${plugin['key']}"
   }
 
@@ -330,7 +339,7 @@ __tm::venv::__invoke_in_docker(){
 
   local plugin_id="${TM_PLUGIN_ID:-${__TM_PLUGIN_ID}}"
   local -A plugin
-  _tm::util::parse:plugin_id plugin
+  _tm::parse::plugin_id plugin
 
   mkdir -p "${venv_path}"
   if [[ -n "${docker_file}" ]]; then

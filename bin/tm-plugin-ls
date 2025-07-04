@@ -393,7 +393,7 @@ __list_plugins() {
     local -n plugin_ids="$1"
     local -A plugin
     for plugin_id in "${plugin_ids[@]}"; do
-        _tm::util::parse::plugin_id plugin "${plugin_id}"
+        _tm::parse::plugin_id plugin "${plugin_id}"
 
         if ! _match plugin; then
             continue

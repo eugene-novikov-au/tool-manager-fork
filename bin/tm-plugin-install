@@ -47,7 +47,7 @@ main(){
               _reload=1
           else
             local -A plugin
-            _tm::util::parse::plugin plugin "${plugin_name}"
+            _tm::parse::plugin plugin "${plugin_name}"
             local github_url="git@github.com:${plugin[vendor]}/${plugin[name]}.git#${plugin[version]}"
             if [[ ! "${plugin_name}" =~ *"git.com"* ]] && _confirm "The plugin was not found in the plugin registry, try to install from github directly? ($github_url)"; then
               if _tm::plugins::install "${github_url}"; then

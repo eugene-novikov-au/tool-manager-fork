@@ -35,16 +35,16 @@ _parse_args \
 plugin_name="${args[plugin]}"
 declare -A plugin=()
 if [[ -n "$plugin_name" ]]; then
-  _tm::util::parse::plugin_name plugin "$plugin_name"
+  _tm::parse::plugin_name plugin "$plugin_name"
 elif [[ "${args[tm]}" ]]; then
-    _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
+    _tm::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 elif [[ "${args[this]}" ]]; then
     if [[ -z "${TM_PLUGIN_ID:-}" ]]; then
         _fail "Set flag '--this', but no env variable 'TM_PLUGIN_ID' has been set. Ensure you are calling this via the wrapper scripts"
     fi
-    _tm::util::parse::plugin_id plugin "$TM_PLUGIN_ID"
+    _tm::parse::plugin_id plugin "$TM_PLUGIN_ID"
 else
-    _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
+    _tm::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 fi
 value="${args['*']}"
 

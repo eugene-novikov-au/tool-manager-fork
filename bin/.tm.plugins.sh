@@ -33,7 +33,7 @@ _tm::plugins::regenerate_all_wrapper_scripts(){
   local -A parsed_plugin
   for plugin_id in "${plugin_ids[@]}"; do
     #_info "plugin_id=$plugin_id"
-    _tm::util::parse::plugin_id parsed_plugin "$plugin_id"
+    _tm::parse::plugin_id parsed_plugin "$plugin_id"
     _tm::plugin::regenerate_wrapper_scripts parsed_plugin
   done
 
@@ -65,7 +65,7 @@ _tm::plugins::load_all_enabled() {
   local -A enabled_plugin
   for enabled_dir in "${plugins_enabled_dirs[@]}"; do
     _trace "loading from enabled dir: '${enabled_dir}'"
-    _tm::util::parse::plugin_enabled_dir enabled_plugin "$(basename "$enabled_dir")"
+    _tm::parse::plugin_enabled_dir enabled_plugin "$(basename "$enabled_dir")"
     _tm::plugin::load enabled_plugin || _warn "Couldn't load plugin '${enabled_plugin[qname]}'"
   done
   export PATH
@@ -141,7 +141,7 @@ _tm::plugins::find_all_enabled_plugin_ids() {
   local enabled_dir
   local -A plugin_details
   for enabled_dir in "${plugins_enabled_dirs[@]}"; do
-    _tm::util::parse::plugin_enabled_dir plugin_details "$(basename "$enabled_dir")"
+    _tm::parse::plugin_enabled_dir plugin_details "$(basename "$enabled_dir")"
     echo "${plugin_details[id]}"
   done
 }
@@ -165,7 +165,7 @@ _tm::plugins::find_all_installed_plugin_ids() {
     IFS="/" read -r -a parts <<< "$(echo "$dir")"
     vendor="${parts[-2]}"
     name="${parts[-1]}"
-    _tm::util::parse::plugin_name plugin_details "${vendor}/${name}"
+    _tm::parse::plugin_name plugin_details "${vendor}/${name}"
     echo "${plugin_details[id]}"
   done
 }
@@ -209,7 +209,7 @@ _tm::plugins::find_all_available_plugin_ids() {
           plugin_details=() # Clear for each section
           _tm::file::ini::read_section plugin_details "$conf_file" "$vendor_slash_name"
           if [[ -n "${plugin_details[repo]}" ]]; then
-              _tm::util::parse::plugin_name plugin "$vendor_slash_name"
+              _tm::parse::plugin_name plugin "$vendor_slash_name"
               echo "${plugin[id]}"
           else
               _warn "Plugin '$vendor_slash_name' in '$conf_file' is missing the 'repo' attribute. Skipping"
@@ -323,7 +323,7 @@ _tm::plugins::uninstall() {
 
   _info "Uninstalling plugin '$plugin'"
   local -A plugin_to_disable
-  _tm::util::parse::plugin plugin_to_disable "$plugin"
+  _tm::parse::plugin plugin_to_disable "$plugin"
 
   local qname="${plugin_to_disable[qname]}"
   local plugin_dir="${plugin_to_disable[install_dir]}"
@@ -392,21 +392,22 @@ _tm::plugins::install() {
 }
 
 _tm::plugins::install_from_git() {
-  local git_repo="$1" 
+  local git_repo="$1"
+   _trace "Installing from raw repo '$git_repo'"
+
+  local -A repo
+  _tm::parse::github_url repo "${git_repo}"
+
   # extract out the vendor path and use the package name as the plugin name
-  _trace "Installing from raw repo '$git_repo'"
-  local path="$(echo "$git_repo" | sed -E 's|.*github.com[:/]?||' | sed 's|.git||')"
-  local plugin_name prefix vendor version
-  IFS="/" read -r vendor plugin_name <<< "$path"
-  IFS="#" read -r plugin_name version <<< "$plugin_name" # maybe ends with a some_repo.git#<version>
-  if [[ -z "$version" ]]; then # maybe it ended with a 'some_repo.git#<version>'
-    IFS="#" read -r plugin_name version <<< "$plugin_name"
-  fi
-  git_repo="git@github.com:${vendor}/${plugin_name}"
+  local plugin_name="${repo[name]}"
+  local vendor="${repo[owner]}"
+  local version="${repo[version]}"
+  git_repo="${repo[url]}"
+
   _debug "extracted plugin details: vendor '$vendor' plugin_name '$plugin_name' version '$version' repo '$git_repo'"
 
   local -A plugin_details
-  _tm::util::parse::plugin_name plugin_details "${vendor}/${plugin_name}@${version}"
+  _tm::parse::plugin_name plugin_details "${vendor}/${plugin_name}@${version}"
 
   local qname="${plugin_details[qname]}"
   local install_dir="${plugin_details[install_dir]}"
@@ -439,7 +440,7 @@ _tm::plugins::install_from_registry(){
   fi
 
   local -A plugin=()
-  _tm::util::parse::plugin plugin "$qualified_name"
+  _tm::parse::plugin plugin "$qualified_name"
   local plugin_name="${plugin[name]}"
   local prefix="${plugin[prefix]}"
   local vendor="${plugin[vendor]}"
@@ -607,7 +608,7 @@ _tm::plugins::foreach_available_callback() {
         local current_conf_file="$1"
         local current_plugin_name="$2"
 
-        _tm::util::parse::plugin_name plugin_details "$current_plugin_name"
+        _tm::parse::plugin_name plugin_details "$current_plugin_name"
         _tm::file::ini::read_section plugin_section_details "$current_conf_file" "$current_plugin_name"
 
         local conf_repo="${plugin_section_details[repo]}"

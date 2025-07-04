@@ -33,14 +33,14 @@ plugin_name="${args[plugin]}"
 
 declare -A plugin=()
 if [[ -n "${plugin_name}" ]]; then # plugin name provided
-    _tm::util::parse::plugin plugin "${plugin_name}"
+    _tm::parse::plugin plugin "${plugin_name}"
 elif [[ -n "${args[this]}" ]]; then # plugin name provided
     if [[ -z "${TM_PLUGIN_ID:-}" ]]; then
         _fail "Set flag '--this', but no env variable 'TM_PLUGIN_ID' has been set. Ensure you are calling this via the wrapper scripts"
     fi
-    _tm::util::parse::plugin_id plugin "${TM_PLUGIN_ID}"
+    _tm::parse::plugin_id plugin "${TM_PLUGIN_ID}"
 else # fallback to the tool-manager itself
-  _tm::util::parse::plugin_id plugin "$__TM_PLUGIN_ID"
+  _tm::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 fi
 
 

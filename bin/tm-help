@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+
+cat << EOF
+tm-help-commands                      # all available commands.
+tm-help-commands  something           # all available commands starting with 'something'
+tm-help-commands  something  --gui    # all available commands starting with 'something', show in browser
+tm-help-commands-gui    # show a guid of all available commands in a browser
+
+# the following commands all take a '-h' or '--help' option
+
+tm-plugin-install             # install a plugin from the registry or direct from github
+tm-plugin-enable              # enable an installed plugin(s)
+tm-plugin-disable             # disabled an installed plugin(s)
+tm-plugin-delete              # disable and delete a plugin. The config remains
+
+tm-cfg-edit                   # open up an editor to edit all the config
+tm-cfg-backup                 # push the current config to the configured config git repo
+
+
+
+EOF

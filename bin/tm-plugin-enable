@@ -37,14 +37,14 @@ main(){
   IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
   declare -A plugin
   for plugin_qname in "${plugin_names[@]}"; do
-      _tm::util::parse::plugin plugin "$all_prefix$vendor_prefix$plugin_qname"
+      _tm::parse::plugin plugin "$all_prefix$vendor_prefix$plugin_qname"
       if [[ -z "${plugin[prefix]}" ]]; then
         if _confirm "Did you want to add a prefix to all the plugin's scripts? (e.g. 'my-')"; then
           while [[ -z "${plugin[prefix]}" ]]; do
               declare prefix
               _read "What prefix? (e.g. 'my', 'acme')" prefix
               if [[ -n "${prefix}" ]]; then
-                  _tm::util::parse::plugin plugin "$prefix:$vendor_prefix$plugin_qname"
+                  _tm::parse::plugin plugin "$prefix:$vendor_prefix$plugin_qname"
               fi
           done
         fi

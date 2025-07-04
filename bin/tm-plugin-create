@@ -52,7 +52,7 @@ main(){
             _error "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number."
             plugin_name="" # Clear to re-prompt
         else 
-            if ! _tm::util::parse::plugin_name plugin "${plugin_name}"; then
+            if ! _tm::parse::plugin_name plugin "${plugin_name}"; then
                 plugin_name="" # Clear to re-prompt
             fi
             local install_dir="${plugin[install_dir]}"
@@ -66,7 +66,7 @@ main(){
         plugin_name="${vendor}/${plugin_name}"
     fi
     while [[ -z "$plugin_repo" ]]; do
-        _tm::util::parse::plugin_name plugin "${plugin_name}"
+        _tm::parse::plugin_name plugin "${plugin_name}"
 
         local name="${plugin[name]}"
         local vendor="${plugin[vendor]}"
@@ -82,7 +82,7 @@ main(){
     done
     _read_not_empty "Brief description of what this plugin provides" plugin_desc
 
-    _tm::util::parse::plugin_name plugin "${plugin_name}"
+    _tm::parse::plugin_name plugin "${plugin_name}"
 
     plugin_dir="${plugin[install_dir]}"
     _info "creating new plugin '$plugin_name' in '$plugin_dir'"

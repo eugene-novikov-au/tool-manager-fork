@@ -53,6 +53,27 @@ _tm::cfg::__process() {
         fi
         return # skip if no options supplied, we're just loading
     fi
+    # first pass, quick and dirty check if the key is already available, then avoid all the other parsing
+    for (( i=1; i<=$#; i++ )); do
+        case "${!i}" in
+            --key|-k)
+                local next_arg_index=$((i+1))
+                if [[ -n "${!next_arg_index}" ]]; then
+                    key="${!next_arg_index}"
+                    value="${!key:-}"
+                    if [[ -n "${value:-}" ]]; then
+                      if [[ $is_get == 1 ]]; then
+                        echo "$value"
+                      fi
+                      return $_true
+                    fi
+                fi
+                break
+                ;;
+        esac
+    done
+
+
     declare -A args
     # Using --opts-* to capture the command and its arguments after '--'
     _tm::args::parse \
@@ -110,7 +131,7 @@ _tm::cfg::__process() {
     fi
 
     declare -A plugin=()
-    _tm::util::parse::plugin_id plugin "$plugin_id"
+    _tm::parse::plugin_id plugin "$plugin_id"
 
     local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${plugin[qpath]}/config.sh"
     for key in "${missing_keys[@]}"; do
@@ -188,7 +209,7 @@ _tm::cfg::get_config_files() {
     fi
 
     local -A parts=()
-    _tm::util::parse::plugin_name parts "$qualified_name"
+    _tm::parse::plugin_name parts "$qualified_name"
     
     local files=()
     _tm::cfg::_tm::cfg::__add_config_files_to files "${parts[name]}" "${parts[qpath]}"
@@ -230,7 +251,7 @@ _tm::cfg::set_value(){
     fi
 
     local -A parts=()
-    _tm::util::parse::plugin_name parts "$qualified_name"
+    _tm::parse::plugin_name parts "$qualified_name"
     local plugin_name="${parts[name]}"
     local prefix="${parts[prefix]}"
     local qpath="${parts[qpath]}"
@@ -335,7 +356,7 @@ _tm::cfg::__load_cfg_once(){
 _tm::cfg::__load_cfg(){
     local plugin_id="$1"
     local -A plugin=()
-    _tm::util::parse::plugin_id plugin "$plugin_id"
+    _tm::parse::plugin_id plugin "$plugin_id"
      
     local qpath="${plugin[key]}"
     local plugin_config_yaml="${plugin[install_dir]}/plugin.config.yaml"

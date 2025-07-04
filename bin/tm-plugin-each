@@ -83,7 +83,7 @@ main(){
 
   declare -A plugin
   for plugin_id in "${plugin_ids_to_process[@]}"; do
-      _tm::util::parse::plugin_id plugin "$plugin_id"
+      _tm::parse::plugin_id plugin "$plugin_id"
 
       actual_plugin_dir="${plugin[install_dir]}"
       if [[ ! -d "$actual_plugin_dir" ]]; then

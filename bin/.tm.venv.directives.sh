@@ -1,5 +1,12 @@
 source "$TM_LIB_BASH/lib.log.sh"
 
+#
+# Parse a text file for directives
+#
+# Arguments
+# $1 - path to file to parse
+# $2 - (optional) the file to output the directives to. If not given, print to stdout
+#
 _tm::venv::extract_directives(){
   local file="${1:-}"
   local directives_file="${2:-}"

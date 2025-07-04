@@ -35,7 +35,7 @@ IFS=' ' read -r -a plugin_names <<< "${args[plugins]:-}"
 if [[ ${#plugin_names[@]} -gt 0 ]]; then   # reload just the given plugin(s)
     declare -A plugin_details
     for plugin_name in "${plugin_names[@]}"; do
-        _tm::util::parse::plugin plugin_details "${vendor_prefix}${plugin_name}"
+        _tm::parse::plugin plugin_details "${vendor_prefix}${plugin_name}"
         if [[ $scripts == 1 ]]; then
             _tm::plugin::regenerate_wrapper_scripts plugin_details
         else
