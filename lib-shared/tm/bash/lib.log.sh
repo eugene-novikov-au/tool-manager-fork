@@ -149,7 +149,7 @@ _tm::log::set_opts(){
         __tm_log_filters+=("${logger}")
         ;;
       *)
-        >&2 echo "WARN [_tm::log::opt_level] unknown log option '$opt', ignoring. Options are comma seperated. Include 'help' in the TM_LOG for all options. [finest,trace,debug,info,warn,help,all,caller,cfile,cfunc,datestamp,epoch,pid,timestamp,duration,user,stack]'"
+        >&2 echo "WARN [_tm::log::opt_level] unknown log option '$opt', ignoring. Options are comma separated. Include 'help' in the TM_LOG for all options. [finest,trace,debug,info,warn,help,all,caller,cfile,cfunc,datestamp,epoch,pid,timestamp,duration,user,stack]'"
         ;;
     esac
   done
@@ -158,7 +158,7 @@ _tm::log::set_opts(){
     >&2 cat << EOF
 _tm::log::set_opts \$TM_LOG (provided: $TM_LOG)
 
-Log options are comma seperated options. E.g. 'trace,all,stack,@foo*,@*bar*'
+Log options are comma separated options. E.g. 'trace,all,stack,@foo*,@*bar*'
 
 LEVEL OPTIONS:
  - finest|f
@@ -166,7 +166,7 @@ LEVEL OPTIONS:
  - debug|d
  - info|i   (default)
  - warn|w
- 
+
 INCLUDE OPTIONS:  (by default, all are off)
   - all          : shortcut for 'datestamp,pid,caller,user,duration'
   - cfile        : include the caller file
@@ -231,7 +231,7 @@ EOF
   if [[ $log_pid == true ]]; then
     log_details+=("p\$BASHPID")
   fi
-  
+
   if [[ ${#log_details[@]} -ne 0 ]]; then
     local details="${log_details[@]}"
     local func_def="_tm::log::__details() {
@@ -241,15 +241,15 @@ EOF
   else # no-op
     _tm::log::__details(){ :; }
   fi
-  
-  if [[ $level -le $LEV_FINEST  ]] then
+
+  if [[ $level -le $LEV_FINEST  ]]; then
     _finest(){ _tm::log::finest "$*"; }
     _is_finest(){ true; }
   else
     _finest(){ :; }
     _is_finest(){ false; }
   fi
-  if [[ $level -le $LEV_TRACE  ]] then
+  if [[ $level -le $LEV_TRACE  ]]; then
     _trace(){ _tm::log::trace "$*"; }
     _is_trace(){ true; }
   else
@@ -296,7 +296,7 @@ EOF
   }
   fi
   if [[ -n "$TM_LOG_FILE" ]]; then
-      mdkir -p "$(dirname "$TM_LOG_FILE")"
+      mkdir -p "$(dirname "$TM_LOG_FILE")"
       touch "$TM_LOG_FILE"
   fi
 }
@@ -645,7 +645,7 @@ _tm::log::__caller_file(){
   local line file func
   while IFS=' ' read -r line func file < <(caller $i); do         
     if [[ "$file" != *"/lib.log.sh" ]] && ([[ "$file" != *"/lib.util.sh" ]] && [[ "$func" != "_fail" ]]); then # first non logger file
-      echo -n "($(_tm::log::__safe_basename"${file}"):${line})"
+      echo -n "($(_tm::log::__safe_basename "${file}"):${line})"
       return
     fi
     ((i++))
@@ -675,4 +675,3 @@ _tm::log::__safe_basename(){
 
 
 _tm::log::init
-

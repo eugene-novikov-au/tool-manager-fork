@@ -25,10 +25,10 @@ main(){
   plugin_basename="${args[plugin]:-}"
   editor_cmd="${args[editor]:-"$(_tm::cfg::get_editor)"}"
 
-  if [[ -z "$plugin_basename" ]] && [[ -n "${args[tm]}" ]] then
+  if [[ -z "$plugin_basename" ]] && [[ -n "${args[tm]}" ]]; then
       plugin_basename="$__TM_NAME"
   fi
-  if [[ "$plugin_basename" == "$__TM_NAME" ]] then
+  if [[ "$plugin_basename" == "$__TM_NAME" ]]; then
       _info "Opening editor in Tool Manager home: $TM_HOME"
       if ! cd "$TM_HOME"; then
         _fail "Could not cd to $TM_HOME"

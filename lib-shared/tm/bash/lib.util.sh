@@ -260,7 +260,7 @@ _realpath() {
   else
     # _warn "realpath command not found, using fallback implementation"
     local path="$1"
-    
+
     # On macOS, use python as fallback
     if [[ "$OSTYPE" == "darwin"* ]]; then
       _warn "For better performance on macOS, install realpath using: brew install coreutils"
@@ -367,7 +367,7 @@ _tm::util::add_to_path() {
     return
   fi
   _debug "adding paths $*"
-  # TODO: handle differnt seperator in different OS's?
+  # TODO: handle different separator in different OS's?
   IFS=':' read -ra current_paths <<< "$PATH"
   local path_exists
   for new_path in "$@"; do

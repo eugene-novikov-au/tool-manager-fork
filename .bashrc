@@ -1,6 +1,6 @@
 
 #
-# INitialise the tool-manager (tm)
+# Initialise the tool-manager (tm)
 #
 
 __tm_bashrc_init(){

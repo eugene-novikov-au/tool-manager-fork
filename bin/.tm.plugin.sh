@@ -7,7 +7,7 @@
 #   - Enabling and disabling plugins (_tm::plugin::enable, _tm::plugin::__disable).
 #   - Discovering scripts within plugins (_tm::plugin::__find_scripts_in).
 #   - Generating command wrapper scripts for plugins (_tm::plugin::__generate_wrapper_scripts).
-#   - Parsing qualified plugin names with prefixs (_tm::parse::plugin_name).
+#   - Parsing qualified plugin names with prefixes (_tm::parse::plugin_name).
 #
 
 
@@ -73,7 +73,7 @@ _tm::plugin::load() {
     _error "plugin '$plugin_dir' is not enabled as there is no '$enabled_dir' symlink"
     _fail "no plugin '$qname' (from $plugin_dir)"
   fi
-  
+
   _debug "loading plugin ${qname} from '$plugin_dir' ..."
   _pushd "$plugin_dir" || { _error "Failed to pushd to '$plugin_dir'"; return 1; }
   _tm::log::push_child "plugin/$(basename "$plugin_dir")"
@@ -119,7 +119,7 @@ _tm::plugin::load() {
         local service_name
         service_name=$(basename "$file" .sh)
         local pid_file="$TM_PLUGINS_PID_DIR/$plugin_name/${service_name}.pid"
-        
+
         "$file" &
         local pid="$!"
         echo "$pid" > "$pid_file"
@@ -128,7 +128,7 @@ _tm::plugin::load() {
     done
   fi
   _popd
-  
+
   if [[ ! "$original_path" == "$PATH" ]]; then
     _info "PATH was updated by $plugin_dir"
   fi
@@ -236,7 +236,7 @@ _tm::plugin::enable() {
   local is_tool_manager=${plugin_enable[tm]}
 
   if [[ $is_tool_manager == true ]]; then
-    _info "Skipping 'enabling' the tool-manager plugin as it's allways enabled"
+    _info "Skipping 'enabling' the tool-manager plugin as it's always enabled"
     return $_true
   fi
 
@@ -348,7 +348,7 @@ _tm::plugin::disable() {
   local prefix="${plugin_arr[prefix]}"
   local plugin_dir="${plugin_arr[install_dir]}"
   local plugin_enabled_link="${plugin_arr[enabled_dir]}"
-  
+
   _info "Disabling plugin '${qname}'"
 
   if [[ -L "$plugin_enabled_link" ]]; then

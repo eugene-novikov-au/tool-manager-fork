@@ -60,7 +60,7 @@ _tm::venv::extract_directives(){
       __append "$directive"
     done
 
-    if [[ "venv_provider_included" != '1' ]] then
+    if [[ "$venv_provider_included" != '1' ]]; then
       __append "$venv_provider"
     fi
 

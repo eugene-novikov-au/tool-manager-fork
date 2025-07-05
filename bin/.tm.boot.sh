@@ -10,7 +10,7 @@
 [[ -n "${__TM_BOOTSTRAP_SH_INITED:-}" ]] && return || __TM_BOOTSTRAP_SH_INITED=1;
 
 if [[ ! "$(echo "${BASH_VERSION:-0}" | grep -e '^[5-9]\..*' )" ]]; then
-  echo "ERROR!: Incompatible bash version, expect bash version 5 or later, installed is '${BASH_VERSION:-0}'"  
+  echo "ERROR: Incompatible bash version, expect bash version 5 or later, installed is '${BASH_VERSION:-0}'"  
   return 1 # If this script is meant to be sourced, 'return 1' is appropriate.
 fi
 
@@ -24,7 +24,7 @@ readonly __TM_CONF_EXT="conf"
 readonly __TM_NAME="tool-manager" # Internal name for the tool manager.
 readonly __TM_PLUGIN_ID="tm:plugin:::tool-manager::"
 readonly __TM_NO_VENDOR="default"
-readonly __TM_SEP_PREFIX_NAME=":" # prefix seperator for plugin names
+readonly __TM_SEP_PREFIX_NAME=":" # prefix separator for plugin names
 readonly __TM_SEP_PREFIX_DIR="__" # for dirs (as we can't use the above)
 
 export TM_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}" )/.." && pwd)"
@@ -114,25 +114,25 @@ _tm::boot::init() {
 
   local user_config_dir="${XDG_CONFIG_HOME:-"$HOME/.config"}"
   local user_state_dir="${XDG_STATE_HOME:-"$HOME/.local/share"}"
-  
+
   # --- Variable Data and Runtime Paths ---
   # Base directory for tool-manager's variable data (PIDs, etc.).
   TM_STATE_DIR="$user_state_dir/tool-manager"
   TM_CACHE_DIR="${TM_CACHE_DIR:-"${XDG_CACHE_HOME:-$HOME/.cache}/tool-manager"}"
-  
+
   # Directory for storing Process ID (PID) files of background plugin services.
   TM_PLUGINS_PID_DIR="$TM_STATE_DIR/plugins/pid"
-  # --- Plugin Structure Paths ---  
+  # --- Plugin Structure Paths ---
   TM_PLUGINS_BIN_DIR="$TM_STATE_DIR/plugins/bin" # Directory where wrapper scripts for plugin commands are generated. This dir is added to PATH.
-  TM_PLUGINS_INSTALL_DIR="$TM_HOME/plugins" # Base directory where plugin repositories are cloned.  
+  TM_PLUGINS_INSTALL_DIR="$TM_HOME/plugins" # Base directory where plugin repositories are cloned.
   TM_PLUGINS_VENV_DIR="$TM_STATE_DIR/plugins/tm-venv" # where plugin virtual environments are placed (pip/uv/conda etc)
   # Directory containing symbolic links to currently enabled plugins.
   TM_PLUGINS_ENABLED_DIR="$TM_STATE_DIR/plugins/enabled"
   # Directory where plugin provided libs are stored. They are stored under a plugins vendor name
-  TM_PLUGINS_LIB_DIR="$TM_STATE_DIR/plugins/lib"  
+  TM_PLUGINS_LIB_DIR="$TM_STATE_DIR/plugins/lib"
   TM_PLUGINS_STATE_DIR="$TM_STATE_DIR/plugins/state" # where plugins store their state
   # Directory for user-specific plugin configurations (e.g., <plugin_name>.bashrc files).
-  TM_PLUGINS_CFG_DIR="$user_config_dir/tool-manager"  
+  TM_PLUGINS_CFG_DIR="$user_config_dir/tool-manager"
   TM_SPACE_DIR="${TM_SPACE_DIR:-$HOME/space}" # where spaces are stored
   # --- Docker Integration (Placeholder) ---
   # Flag to control if plugins (if supported) should run in Docker. Currently minimal use in core.
@@ -152,10 +152,10 @@ _tm::boot::init() {
             "$TM_PLUGINS_BIN_DIR" \
             "$TM_PLUGINS_CFG_DIR" \
             "$TM_PLUGINS_PID_DIR"
-  
-  # the tool-manager bins dirs. 
-  _tm::util::add_to_path "$TM_BIN" "$TM_PLUGINS_BIN_DIR" "$TM_BIN_DEFAULTS" 
-  
+
+  # the tool-manager bins dirs.
+  _tm::util::add_to_path "$TM_BIN" "$TM_PLUGINS_BIN_DIR" "$TM_BIN_DEFAULTS"
+
   _debug "TM initialized. TM_HOME: $TM_HOME, Plugin install dir: $TM_PLUGINS_INSTALL_DIR"
   _tm::log::pop
 }
