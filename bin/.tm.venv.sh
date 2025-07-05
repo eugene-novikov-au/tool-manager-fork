@@ -156,8 +156,8 @@ __tm::venv::__invoke(){
     local -n env_details="$1" #associative array
     shift # remaining args are script args
 
-    local venv_type="${env[venv_type]}"
-    local script_runner="${env[script_runner]:-}"
+    local venv_type="${env_details[venv_type]}"
+    local script_runner="${env_details[script_runner]:-}"
 
     if [[ "$venv_type" == "none" ]]; then
         # run directly
@@ -169,9 +169,9 @@ __tm::venv::__invoke(){
           *) "$@";;
         esac
     else
-      local venv_path="${env[venv_path]}"
-      local venv_provider="${env[venv_provider]}"
-      local pip_requirements_file="${env[pip_requirements_file]:-}"
+      local venv_path="${env_details[venv_path]}"
+      local venv_provider="${env_details[venv_provider]}"
+      local pip_requirements_file="${env_details[pip_requirements_file]:-}"
 
       _debug "Target venv path: ${venv_path}"
       # Ensure the parent directory for the venv exists
@@ -252,7 +252,7 @@ __tm::venv::__invoke_in_uv_env(){
   local venv_path="${uv_env[venv_path]}"
   local venv_provider="${uv_env[venv_provider]}"
   local pip_requirements_file="${uv_env[pip_requirements_file]:-}"
-  local python_version="${python_version}"
+  local python_version="${uv_env[python_version]}"
 
   # Create/update the virtual environment using uv
   _fail_if_not_installed uv 'Please install uv (https://github.com/astral-sh/uv)"'
@@ -319,7 +319,7 @@ __tm::venv::__invoke_in_python_venv(){
     fi
   fi
   _debug "invoking in python venv: $*"
- "$@"
+  "$@"
 }
 
 __tm::venv::__invoke_in_docker(){
@@ -378,8 +378,8 @@ __tm::venv::__invoke_in_docker(){
   # what to run
   docker_args+=" ${docker_container} ${script_runner} /run/script $@"
 
-  _trace "Running '${docker_args}'"
-  "${docker_args}"
+  _trace "Running docker ${docker_args}"
+  eval "docker ${docker_args}"
 }
 
 __tm::venv::__invoke_in_docker_venv(){

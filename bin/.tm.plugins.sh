@@ -96,7 +96,7 @@ _tm::plugins::remove_all_wrappers() {
 _tm::plugins::find_all_scripts() {
   local plugin_dirs
   plugin_dirs="$(_tm::plugins::find_all_enabled_dirs)"
-  
+
   local scripts
   local file
   local plugin_dir
@@ -470,9 +470,9 @@ _tm::plugins::install_from_registry(){
       _debug "Plugin section '$plugin_name' not found in '$plugin_conf_file'."
       continue # next file
     fi
-    
+
     _debug "Plugin section '$vendor_and_name' found in '$plugin_conf_file'."
-    
+
     # Read plugin details from the INI file
     declare -A plugin_details
     if _tm::file::ini::read_section plugin_details "$plugin_conf_file" "$vendor_and_name"; then
@@ -482,7 +482,7 @@ _tm::plugins::install_from_registry(){
       _error "could not find plugin details in '$plugin_conf_file'"
       return $_false
     fi
-      
+
     # If a version was specified in the input, it overrides the commit from INI
     if [[ -n "$version" ]]; then
       _debug "Using specified version '$version' to override INI commit ('${plugin_cfg_commit:-none}')."
@@ -571,7 +571,7 @@ _tm::plugins::foreach_available_callback() {
     # --- Argument Parsing ---
   local -A args
   _parse_args \
-      --help                    "$FUNCNAME: For each avaliable plugin, invoke the given function with the plugin associative array"\
+      --help                    "$FUNCNAME: For each available plugin, invoke the given function with the plugin associative array"\
       --opt-match               "|short=m|desc=the plugin name match" \
       --opt-default-commit     "|short=c|default=main|desc=the default commit/branch to use if none provided" \
       --opt-function            "|short=f|required|remainder|desc=the callback function" \
@@ -619,7 +619,7 @@ _tm::plugins::foreach_available_callback() {
         if [[ -z "$conf_commit" ]]; then
             conf_commit="$default_commit"
         fi
-        
+
         if [[ -z "$conf_repo" ]]; then
             _warn "Plugin '$current_plugin_name' from '$current_conf_file' has incomplete configuration (repo). Skipping."
             return
@@ -631,7 +631,7 @@ _tm::plugins::foreach_available_callback() {
         plugin_details[branch]="$conf_commit"
         plugin_details[desc]="$plugin_desc"
         plugin_details[run_mode]="$run_mode"
-        
+
         _trace "Calling callback '$callback_func' for: '${plugin_details[qname]}' (dir: '${plugin_details[install_dir]}', repo: $conf_repo, commit: $conf_commit, desc: $plugin_desc)"
         "$callback_func" plugin_details
     }
@@ -663,7 +663,7 @@ _tm::plugins::foreach_available_callback() {
             done
         fi
     done
-    
+
     if [[ -n "$match_name" && "$found_match" -eq 0 ]]; then
          _warn "Matched plugin '$match_name' not found in any of the specified configuration files."
     fi
