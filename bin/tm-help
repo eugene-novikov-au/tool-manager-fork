@@ -14,7 +14,7 @@ tm-plugin-enable              # enable an installed plugin(s)
 tm-plugin-disable             # disabled an installed plugin(s)
 tm-plugin-delete              # disable and delete a plugin. The config remains
 
-tm-cfg-edit                   # open up an editor to edit all the config
+tm-edit-cfg                   # open up an editor to edit all the config
 tm-cfg-backup                 # push the current config to the configured config git repo
 
 

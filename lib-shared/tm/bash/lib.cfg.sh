@@ -371,7 +371,7 @@ _tm::cfg::__load_cfg(){
       mkdir -p "${base_config_dir}"
     fi
 
-    while [[ true ]]; do
+    while true; do
 
       # make the hash part of the generated path so it's easy to check if things have changed
       local merged_bashrc_file="$base_config_dir/${qpath}.config.sh.${hash}"

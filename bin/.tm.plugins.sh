@@ -38,7 +38,6 @@ _tm::plugins::regenerate_all_wrapper_scripts(){
   done
 
   _info "...wrapper scripts regenerated"
-
 }
 
 # Reloads all enabled plugins by resetting the loaded flag,
@@ -670,4 +669,62 @@ _tm::plugins::foreach_available_callback() {
 
     _debug "...finished reading plugins."
     return 0
+}
+
+#
+# Find a plugin by name or match. An exact match is performed first, if nothing found, it will search
+# for plugins with a matching name. Success if only one with the given name found, error if none, and user
+# is prompted to choose if multiple matches
+#
+# Fails if no plugin could be found
+#
+# Arguments
+# $1 - the plugin name (simple, qname, partial match)
+#
+# Returns the qname
+#
+_tm::plugins::installed::get_by_name(){
+  local name="${1}"
+
+  local -A plugin
+  _tm::parse::plugin plugin "$name"
+  plugin_dir="${plugin[install_dir]}"
+  if [[ ! -d "$plugin_dir" ]]; then
+      local matches
+      mapfile -t matches < <(tm-plugin-ls --installed --name --match "${name}")
+
+      num_matches="${#matches[@]}"
+      case "${num_matches}" in
+        "0")
+          _fail "Could not find plugin matching *${name}*"
+        ;;
+        "1")
+          _info "Found plugin  '${matches[*]}'"
+          _tm::parse::plugin plugin "${matches[*]}"
+          echo "${plugin[qname]}"
+        ;;
+        *)
+          _error "Multiple plugins matching name *${name}*. Found ${matches[*]}:"
+          local num=0
+          for match in "${matches[@]}"; do
+            num=$((num+1))
+            >&2 echo "${num}. ${match}"
+          done
+
+          local max_num=$num
+          while true; do
+            local choice
+            _read_not_empty "Which plugin? [1-${max_num}]" choice
+            match="${matches[$((choice-1))]:-}" || true
+            if [[ "${choice}" -gt 0 ]] && [[ "${choice}" -le "$max_num" ]] && [[ -n "${match}" ]]; then
+                echo "${match}"
+                return $_true
+            else
+                >&2 echo "invalid choice"
+                choice=''
+            fi
+          done
+        ;;
+    esac
+  fi
 }

@@ -62,7 +62,7 @@ if [[ -n "${args[match]}" ]]; then
     _match(){
         local -n plugin_match="$1"
         local qname="${plugin_match[qname]:-}"
-        if [[ "${qname}" ==  $match ]]; then
+        if [[ "${qname}" == *$match* ]]; then
             return 0
         else
             return 1
@@ -237,6 +237,11 @@ __callback_format_json() {
     _format_with "$1" 'json'
 }
 
+#
+# $1 - the plugin associative array with the plugin details
+# $2 - the formatter to use
+# $3 - the filed separator to use (defaults to tab '\t'). Only for text plain output
+#
 _format_with() {
     local -n plug_details="$1"
     local format="$2"
@@ -266,8 +271,6 @@ _format_with() {
     elif [[ "$is_installed" ==  true ]]; then 
         status_string="installed"; 
     fi
-
-
 
     if [[ "$format" == "json" ]]; then
           sep="\""

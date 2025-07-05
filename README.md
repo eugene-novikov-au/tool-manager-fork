@@ -35,7 +35,7 @@ For all the tool commands installed, run 'tm-help-commands' or 'tm-help-commands
 # Installing plugins
 
 ```bash
-tm-plugin-install <name-of-plugin>                #(you can pass -h or --help for options)
+tm-plugin-install <name-of-plugin>                # you can pass -h or --help for options.
 tm-plugin-install --vendor codemucker git-tools
 tm-plugin-install codemucker/git-tools            # same as above
 tm-plugin-install my:codemucker/git-tools         # will prefix 'my-' on all the git tools scripts
@@ -74,13 +74,13 @@ tm-plugin-ls --enabled --format plain
 If you are developing plugins, you can call:
 
 ```bash
-tm-plugin-edit <plugin-name> #(you can pass -h or --help for options)
+tm-edit <plugin-name> #(you can pass -h or --help for options)
 ```
 
 or
 
 ```bash
-tm-plugin-edit 
+tm-edit 
 ```
 to get to the top plugin install dir
 

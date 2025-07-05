@@ -1,0 +1,64 @@
+#!/usr/bin/env tm-env-bash
+#
+# Opens an editor in the specified plugin's installation directory,
+# or in the Tool Manager's home directory if no plugin is specified.
+# Usage: tm-edit [plugin_basename] [editor_command]
+#
+# Arguments:
+#  $1 - plugin_basename: You can provide a partial plugin name and ths script will find the plugin
+#  $2 -  editor_command: Optional. The editor command to use (e.g., "vi", "nano", "code").
+#                   Defaults to $EDITOR, then 'vi', then 'nano'.
+#
+_tm::source::include .tm.script.sh .tm.cfg.sh .tm.plugins.sh
+
+# --- Argument Parsing ---
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-tm        "|flag|long=tm|short=t|desc=When set, edit tool-manager" \
+    --opt-plugin    "|remainder|short=p|value=PLUGIN-NAME|desc=The plugin to edit. Partial matches supported|example='some-plugin','tm-install'" \
+    --opt-editor    "|short=e|desc=The editor to use|multi" \
+    --opt-console   "|short=c|flag|desc=Use the console" \
+    --result args \
+    -- "$@"
+
+name="${args[plugin]:-}"
+editor_cmd="${args[editor]:-"$(_tm::cfg::get_editor)"}"
+console="${args[console]}"
+if [[ "${console}" == "1" ]]; then
+    editor_cmd="bash"
+fi
+
+main(){
+  if [[ -z "$name" ]] && [[ -n "${args[tm]}" ]] then
+      name="$__TM_NAME"
+  fi
+  if [[ "$name" == "$__TM_NAME" ]] || [[ -z "$name" ]] then
+      _info "Opening editor in Tool Manager home: $TM_HOME"
+      if ! cd "$TM_HOME"; then
+        _fail "Could not cd to $TM_HOME"
+      fi
+      __open "$TM_HOME"
+  else
+      local qname="$(_tm::plugins::installed::get_by_name "${name}")"
+      local -A plugin
+      _tm::parse::plugin plugin "$qname"
+      plugin_dir="${plugin[install_dir]}"
+      __open "$plugin_dir"
+  fi
+}
+
+__open(){
+  local dir="$1"
+    if ! cd "$dir"; then
+      _fail "Could not cd to $plugin_dir"
+    fi
+    _info "Opening directory '$dir' using editor '$editor_cmd'"
+    if [[ "$editor_cmd" == 'bash' ]]; then
+        "$editor_cmd"
+    else
+        "$editor_cmd" . # Open current directory
+    fi
+}
+
+main "$@"

@@ -2,13 +2,13 @@
 #
 # Edit the given plugin, or if none-given, edit the tool-manager,
 # using a preferred IDE command.
-# Usage: tm-plugin-edit-ide [plugin_basename]
+# Usage: tm-edit-ide [plugin_basename]
 #
 # The IDE command is determined as follows:
 # 1. Environment variable $TM_IDE_CMD
 # 2. Tool Manager configuration: tm-cfg-get CORE_IDE_CMD
 # 3. Auto-detection: 'code', then 'kate'
-# If no IDE is found, it falls back to tm-plugin-edit's default editor resolution.
+# If no IDE is found, it falls back to tm-edit's default editor resolution.
 #
 
 _tm::source::include .tm.script.sh
@@ -35,11 +35,11 @@ if [[ -z "$ide_command" ]]; then
     fi
 fi
 
-# If an IDE command is resolved, use it. Otherwise, tm-plugin-edit will use its own defaults.
+# If an IDE command is resolved, use it. Otherwise, tm-edit will use its own defaults.
 if [[ -n "$ide_command" ]]; then
     _info "Attempting to use IDE command: '$ide_command'"
-    tm-plugin-edit --editor "$ide_command" --plugin "$plugin_basename"
+    tm-edit --editor "$ide_command" --plugin "$plugin_basename"
 else
     _info "No specific IDE command resolved, falling back to tm-edit default editor resolution."
-    tm-plugin-edit --plugin  "$plugin_basename" # Let tm-plugin-edit handle editor resolution ($EDITOR, vi, nano)
+    tm-edit --plugin  "$plugin_basename" # Let tm-edit handle editor resolution ($EDITOR, vi, nano)
 fi

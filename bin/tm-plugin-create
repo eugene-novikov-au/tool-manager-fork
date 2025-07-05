@@ -157,7 +157,7 @@ main(){
     done
 
     _info "to edit this plugin run 'tm-edit ${qname}' or 'tm-edit-ide ${qname}'"
-    _info "to edit this plugin's config, run 'tm-cfg-edit ${qname}'"
+    _info "to edit this plugin's config, run 'tm-edit-cfg ${qname}'"
     _info "You will need to tun 'tm-reload' to pick up changes (or when adding new script files)"
 }
 
@@ -176,7 +176,7 @@ This plugin provides $plugin_desc
 
 - to enable this plugin run 'tm-plugin-enable ${qname}'
 - To edit this plugin run 'tm-edit ${qname}' or 'tm-edit-ide ${qname}'
-- To edit this plugin's config, run 'tm-cfg-edit ${qname}'
+- To edit this plugin's config, run 'tm-edit-cfg ${qname}'
 - You will need to tun 'tm-reload' to pick up changes (or when adding new script files)
 
 # debugging

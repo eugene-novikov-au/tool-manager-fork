@@ -35,8 +35,10 @@ main(){
   if [[ -n "${plugins}" ]]; then
       IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
       declare -A plugin
-      for plugin in "${plugin_names[@]}"; do
-          if _tm::plugins::uninstall "${vendor_prefix}${plugin}"; then
+      for name in "${plugin_names[@]}"; do
+          local qname="$(_tm::plugins::installed::get_by_name "${vendor_prefix}${name}")"
+          _tm::parse::plugin plugin "$qname"
+          if _tm::plugins::uninstall "${plugin[qname]}"; then
               _reload=1
           fi
       done

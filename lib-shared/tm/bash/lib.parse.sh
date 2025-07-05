@@ -227,9 +227,7 @@ _tm::parse::plugin_id(){
 
   _tm::parse::__set_plugin_derived_vars result_id
 
-  if _is_finest; then
-    _finest "$(_tm::util::print_array result_id)"
-  fi
+  _is_finest && _finest "$(_tm::util::print_array result_id)" || true
 }
 
 
@@ -257,9 +255,7 @@ _tm::parse::plugin_enabled_dir(){
 
   _tm::parse::__set_plugin_derived_vars result
 
-  if _is_finest; then
-    _finest "$(_tm::util::print_array result)"
-  fi
+  _is_finest && _finest "$(_tm::util::print_array result)" || true
 }
 
 #
