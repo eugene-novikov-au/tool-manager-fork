@@ -10,7 +10,7 @@ fi
 #   _parse_args <options_string> <array_name>  <helpf_func> <args...>
 #
 # Parameters:
-#   --opt-<key> name/value pairs: '|name=value|name2=value2'. First chars is the value seperator (non alpha-numeric, e.g '|' or ';' etc)
+#   --opt-<key> name/value pairs: '|name=value|name2=value2'. First chars is the value separator (non alpha-numeric, e.g '|' or ';' etc)
 #                    - short         (optional) short option (e.g., "p"). Can be provided multiple times
 #                    - long          (optional) long option (e.g., "plain"). Defaults to the '<key>' if no short option provided. Can be provided multiple times
 #                    - flag          (optional) (flag) if no value to be taken, false by default (0)
@@ -22,11 +22,11 @@ fi
 #                    - desc          (optional) help text
 #                    - example       (optional) example text
 #                    - default       (optional) default value. Default is an empty string
-#                    - allowed       (optional) allowed values. First char is the value seperator if non alpha-numeric. Default is ','
+#                    - allowed       (optional) allowed values. First char is the value separator if non alpha-numeric. Default is ','
 #                    - validators|validator    (optional) comma separated validators
 #                                                     (+alphanumeric,+numbers,+letters,+nowhitespace,+noslash,+re:<pattern>,plugin-vendor,plugin-name,plugin-prefix).
 #                                                     If prefixed with  a '+', must pass (default), if prefixed with a '-', must fail validator
-#             If there are semi colons in any of the values, you can specify a different seperator, by setting the first char to the seperator (non alpahumeric)
+#             If there are semi colons in any of the values, you can specify a different separator, by setting the first char to the separator (non alphanumeric)
 #                      e.g. '|short=x|desc=The value for 'x', with a semicolon; This is also part of the the desc now'
 #   
 #   --result                  : (required) Name of the associative array to populate (passed by reference)
@@ -171,7 +171,7 @@ _tm::args::parse() {
               multi)
                   ref_array[multi]=1
                   ;;
-              multi_sep) # seperator to use when passing back multiple values
+              multi_sep) # separator to use when passing back multiple values
                   ref_array['multi-sep']="$value"
                   ;;
               remainder) # if set, then this key takes all the remainings args

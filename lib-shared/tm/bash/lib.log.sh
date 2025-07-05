@@ -149,7 +149,7 @@ _tm::log::set_opts(){
         __tm_log_filters+=("${logger}")
         ;;
       *)
-        >&2 echo "WARN [_tm::log::opt_level] unknown log option '$opt', ignoring. Options are comma seperated. Include 'help' in the TM_LOG for all options. [finest,trace,debug,info,warn,help,all,caller,cfile,cfunc,datestamp,epoch,pid,timestamp,duration,user,stack]'"
+        >&2 echo "WARN [_tm::log::opt_level] unknown log option '$opt', ignoring. Options are comma separated. Include 'help' in the TM_LOG for all options. [finest,trace,debug,info,warn,help,all,caller,cfile,cfunc,datestamp,epoch,pid,timestamp,duration,user,stack]'"
         ;;
     esac
   done
@@ -158,7 +158,7 @@ _tm::log::set_opts(){
     >&2 cat << EOF
 _tm::log::set_opts \$TM_LOG (provided: $TM_LOG)
 
-Log options are comma seperated options. E.g. 'trace,all,stack,@foo*,@*bar*'
+Log options are comma separated options. E.g. 'trace,all,stack,@foo*,@*bar*'
 
 LEVEL OPTIONS:
  - finest|f

@@ -691,7 +691,7 @@ _tm::util::add_to_path() {
     return
   fi
   _debug "adding paths $*"
-  # TODO: handle differnt seperator in different OS's?
+  # TODO: handle different separator in different OS's?
   IFS=':' read -ra current_paths <<< "$PATH"
   local path_exists
   for new_path in "$@"; do

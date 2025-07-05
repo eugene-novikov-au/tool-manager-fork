@@ -7,7 +7,7 @@
 #   - Enabling and disabling plugins (_tm::plugin::enable, _tm::plugin::__disable).
 #   - Discovering scripts within plugins (_tm::plugin::__find_scripts_in).
 #   - Generating command wrapper scripts for plugins (_tm::plugin::__generate_wrapper_scripts).
-#   - Parsing qualified plugin names with prefixs (_tm::util::parse::plugin_name).
+#   - Parsing qualified plugin names with prefixes (_tm::util::parse::plugin_name).
 #
 
 
@@ -406,7 +406,7 @@ _tm::plugin::__generate_wrapper_scripts() {
     return
   fi
 
-  # prefixs allows us to have a single plugin install, but multiple representations of it with different config
+  # prefixes allow us to have a single plugin install, but multiple representations of it with different config
   local prefix="${plugin_generate[prefix]}"
   local vendor="${plugin_generate[vendor]}"
   local plugin_name="${plugin_generate[name]}"

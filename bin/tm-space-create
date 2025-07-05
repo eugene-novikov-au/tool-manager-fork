@@ -9,7 +9,7 @@ declare -A args
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
     --help-tip \
-    --opt-key "|remainder|short=k|value=NAME|desc=The space key (namespace, dot seperated, no spaces)|validators=space-key" \
+    --opt-key "|remainder|short=k|value=NAME|desc=The space key (namespace, dot separated, no spaces)|validators=space-key" \
     --opt-guid "|short=g|value=GUID|desc=The space guid" \
     --opt-label "|short=l|value=LABEL|desc=The human friendly space label" \
     --opt-parent-key "|multi|short=pk|value=KEY|desc=The parent key|validators=space-key" \
