@@ -10,7 +10,7 @@
 
 # --- Helper Functions ---
 _err() {
-  echo "[ERROR] [install.sh] $@" >&2
+  echo "[ERROR] [install.sh] $*" >&2
 }
 
 # --- Configuration ---
@@ -21,7 +21,7 @@ git_clone=1
 
 # --- Bash Version Check ---
 if [[ ! "$(echo "${BASH_VERSION:-0}" | grep -e '^[5-9]\..*' )" ]]; then
-  _err "ERROR: Incompatible bash version, expect bash version 5 or later, installed is '${BASH_VERSION:-0}'"
+  _err "Incompatible bash version, expect bash version 5 or later, installed is '${BASH_VERSION:-0}'"
   _err "On mac you can install bash(5) or later via homebrew"
   exit 1
 fi
@@ -65,6 +65,3 @@ fi
 EOF
   echo "${log_prefix}tool-manager (tm) installed and configured at '$tm_home'"
 fi
-
-
-
