@@ -1,8 +1,18 @@
 
-
 #
-# $1 - associative array
-# $2 - the github url
+# Parse github url. Support urls of the form 'git@github.com...' and 'http[s]://github.com....' The version can be set
+# via appending an '#<version>' to the end, e.g. '#main'
+#
+# Arguments
+#  $1 - associative array to put the results in
+#  $2 - the github url
+#
+# Populates the associative with the following keys:
+#   - `url`: The cleaned 'git@github.com....' url.
+#   - `web_url`: The cleaned 'https://github.com....' url.
+#   - `owner`: The repo owner.
+#   - `name`: The repo name.
+#   - `version`: The version to checkout. Blank if not set or to use the default.
 #
 _tm::parse::github_url(){
   local -n github_ref="$1"
@@ -35,7 +45,7 @@ _tm::parse::github_url(){
 # This function acts as a dispatcher, calling either `_tm::parse::plugin_id`
 # or `_tm::parse::plugin_name` based on the format of the input string.
 #
-# Args:
+# Arguments:
 #   $1 - result_array_name: The name of the associative array to populate with parsed plugin details.
 #   $2 - plugin_identifier: The string to parse. This can be:
 #                           - A full plugin ID (e.g., "tm:plugin:<vendor>:<name>:<version>:<prefix>")
@@ -74,6 +84,7 @@ _tm::parse::plugin(){
 #
 # Parse a qualified plugin name into an associative array
 #
+# Arguments:
 # $1 - the name of the associative array to put the results in
 # $2 - the plugin name
 #
@@ -84,8 +95,8 @@ _tm::parse::plugin(){
 
 #
 _tm::parse::plugin_name(){
-  local -n result_name="$1" # expect it to be an associative array
-  result_name=()
+  local -n result_ref="$1" # expect it to be an associative array
+  result_ref=()
   local parse_name="$2"
   _finest "_tm::parse::plugin_name: '$parse_name'"
 
@@ -158,14 +169,14 @@ _tm::parse::plugin_name(){
     _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hypens, dots. Start with letter/number. Instead got '${version}' from input '${parse_name}'"
   fi
 
-  result_name[vendor]="$vendor"
-  result_name[name]="$name"
-  result_name[version]="$version"
-  result_name[prefix]="$prefix"
+  result_ref[vendor]="$vendor"
+  result_ref[name]="$name"
+  result_ref[version]="$version"
+  result_ref[prefix]="$prefix"
 
-  _tm::parse::__set_plugin_derived_vars result_name
+  _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "parsed to: $(_tm::util::print_array result_name)" || true
+  _is_finest && _finest "parsed to: $(_tm::util::print_array result_ref)" || true
 
   return 0
 }
@@ -173,6 +184,7 @@ _tm::parse::plugin_name(){
 
 # Parses a plugin id string into an associative array
 #
+# Arguments:
 # $1 - the name of the associative array to put the results in
 # $2 - the plugin id
 #
@@ -183,8 +195,8 @@ _tm::parse::plugin_name(){
 #  _tm::parse::plugin_id parts "tm:plugin:<space>:<vendor>:<name>:<version>:<prefix>"
 #
 _tm::parse::plugin_id(){
-  local -n result_id="$1" # expect it to be an associative array
-  result_id=()
+  local -n result_ref="$1" # expect it to be an associative array
+  result_ref=()
   local parse_id="$2"
   _finest "_tm::parse::plugin_id: '$parse_id'"
   # Read the id into an array, respecting empty fields
@@ -220,26 +232,27 @@ _tm::parse::plugin_id(){
   fi
 
 
-  result_id[vendor]="$vendor"
-  result_id[name]="$name"
-  result_id[version]="$version"
-  result_id[prefix]="$prefix"
+  result_ref[vendor]="$vendor"
+  result_ref[name]="$name"
+  result_ref[version]="$version"
+  result_ref[prefix]="$prefix"
 
-  _tm::parse::__set_plugin_derived_vars result_id
+  _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "$(_tm::util::print_array result_id)" || true
+  _is_finest && _finest "$(_tm::util::print_array result_ref)" || true
 }
 
 
 #
 # Parse the qpath into a plugin associative array
 #
+# Arguments:
 # $1 - the plugin associative array
 # $2 - the qpath (qualified path)
 #
 _tm::parse::plugin_enabled_dir(){
-  local -n result="$1" # expect it to be an associative array
-  result=()
+  local -n result_ref="$1" # expect it to be an associative array
+  result_ref=()
 
   local dir_name="$2"
   # IFD can't do multiple chars, so convert '__' to newlines and then parse
@@ -248,28 +261,29 @@ _tm::parse::plugin_enabled_dir(){
 
   local version="${id_parts[4]:-}"
 
-  result[vendor]="$vendor"
-  result[name]="$name"
-  result[version]=""
-  result[prefix]="$prefix"
+  result_ref[vendor]="$vendor"
+  result_ref[name]="$name"
+  result_ref[version]=""
+  result_ref[prefix]="$prefix"
 
-  _tm::parse::__set_plugin_derived_vars result
+  _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "$(_tm::util::print_array result)" || true
+  _is_finest && _finest "$(_tm::util::print_array result_ref)" || true
 }
 
 #
 # Set the calculated derived array variables
 #
+# Arguments:
 # $1 - the plugin associative array
 #
 _tm::parse::__set_plugin_derived_vars(){
-  local -n result_derived="$1" # expect it to be an associative array
+  local -n result_ref_derived="$1" # expect it to be an associative array
 
-  local name="${result_derived[name]}"
-  local prefix="${result_derived[prefix]}"
-  local vendor="${result_derived[vendor]}"
-  local space="${result_derived[space]:-}"
+  local name="${result_ref_derived[name]}"
+  local prefix="${result_ref_derived[prefix]}"
+  local vendor="${result_ref_derived[vendor]}"
+  local space="${result_ref_derived[space]:-}"
 
     # qname (qualified name)
   local qname=""
@@ -283,19 +297,19 @@ _tm::parse::__set_plugin_derived_vars(){
   if [[ -n "$version" ]]; then
     qname+="@${version}"
   fi
-  result_derived[qname]="$qname"
+  result_ref_derived[qname]="$qname"
 
   # qpath (qualified file system path)
   local qpath
   if [[ "${name}" == "$__TM_NAME" ]] && [[ -z "${vendor:-}" ]]; then
-    result_derived[tm]=true
-    result_derived[qname]="$__TM_NAME"
-    result_derived[key]="$__TM_NAME"
-    result_derived[enabled_dir]="$TM_HOME"
-    result_derived[install_dir]="$TM_HOME"
+    result_ref_derived[tm]=true
+    result_ref_derived[qname]="$__TM_NAME"
+    result_ref_derived[key]="$__TM_NAME"
+    result_ref_derived[enabled_dir]="$TM_HOME"
+    result_ref_derived[install_dir]="$TM_HOME"
     qpath="$__TM_NAME"
   else
-    result_derived[tm]=false
+    result_ref_derived[tm]=false
     qpath="${vendor:-${__TM_NO_VENDOR}}/${name}"
     if [[ -n "${prefix}" ]]; then
       qpath+="__${prefix}"
@@ -304,10 +318,10 @@ _tm::parse::__set_plugin_derived_vars(){
     if [[ -n "${prefix}" ]]; then
       qpath_flat+="__${prefix}"
     fi
-    result_derived[enabled_dir]="$TM_PLUGINS_ENABLED_DIR/${qpath_flat}"
-    result_derived[install_dir]="$TM_PLUGINS_INSTALL_DIR/${vendor:-${__TM_NO_VENDOR}}/${name}"
+    result_ref_derived[enabled_dir]="$TM_PLUGINS_ENABLED_DIR/${qpath_flat}"
+    result_ref_derived[install_dir]="$TM_PLUGINS_INSTALL_DIR/${vendor:-${__TM_NO_VENDOR}}/${name}"
   fi
-  result_derived[qpath]="$qpath"
+  result_ref_derived[qpath]="$qpath"
 
     # a key which can be used for caching things
   local key=""
@@ -325,9 +339,9 @@ _tm::parse::__set_plugin_derived_vars(){
   if [[ -n "$prefix" ]]; then
     key+="__${prefix}"
   fi
-  result_derived[key]="$key"
-  result_derived[id]="tm:plugin:$space:$vendor:$name:$version:$prefix"
-  result_derived[cfg_spec]="${result_derived[install_dir]}/plugin.cfg.yaml"
-  result_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
-  result_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh"
+  result_ref_derived[key]="$key"
+  result_ref_derived[id]="tm:plugin:$space:$vendor:$name:$version:$prefix"
+  result_ref_derived[cfg_spec]="${result_ref_derived[install_dir]}/plugin.cfg.yaml"
+  result_ref_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
+  result_ref_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh"
 }
