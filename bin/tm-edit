@@ -94,7 +94,7 @@ cat << EOF > "${output_file}"
     },
     {
       "name": "TM/CONFIG",
-      "path": "${plugin_ref[cfg_dir]}"
+      "path": "${TM_CFG_DIR}"
     },
     {
       "name": "TM/STATE",
@@ -102,7 +102,7 @@ cat << EOF > "${output_file}"
     },
     {
       "name": "TM/CACHE",
-      "path": "${plugin_ref[cache_dir]}"
+      "path": "${TM_CACHE_DIR}"
     },
     {
       "name": "PLUGINS",
@@ -123,6 +123,11 @@ cat << EOF > "${output_file}"
   ],
   "settings": {
     "search.useIgnoreFiles": false
+  },
+  "search.exclude": {
+    "${plugin_ref[state_dir]}": true,
+    "${TM_BASE_CACHE_DIR}": true,
+    "${TM_BASE_STATE_DIR}": true,
   }
 }
 EOF
@@ -157,6 +162,12 @@ cat << EOF > "${output_file}"
   ],
   "settings": {
     "search.useIgnoreFiles": false
+  },
+  "search.exclude": {
+    "${plugin_ref[state_dir]}": true,
+    "${plugin_ref[cache_dir]}": true,
+    "${TM_BASE_CACHE_DIR}": true,
+    "${TM_BASE_STATE_DIR}": true,
   }
 }
 EOF

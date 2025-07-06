@@ -127,6 +127,7 @@ _tm::boot::init() {
   TM_CACHE_DIR="${TM_BASE_CACHE_DIR}/${__TM_NAME}"
   TM_STATE_DIR="${TM_BASE_STATE_DIR}/${__TM_NAME}"
   TM_SPACE_DIR="${TM_SPACE_DIR:-$TM_STATE_DIR/space}" # where spaces are stored
+  TM_CFG_DIR="${TM_BASE_CFG_DIR}/${__TM_NAME}"
 
   TM_PLUGINS_PID_DIR="$TM_CACHE_DIR/plugins/pid"  # Directory for storing Process ID (PID) files of background plugin services.
   # --- Plugin Structure Paths ---
