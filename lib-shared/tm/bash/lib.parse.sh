@@ -156,7 +156,7 @@ _tm::parse::plugin_name(){
   fi
 
   if [[ -z "$name" ]]; then
-    _fail "Invalid plugin name format.Is empty. From input '${parse_name}'"
+    _fail "Invalid plugin name format.Is empty. From input name'${parse_name}'"
   fi
 
   if [[ -n "$name" && ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
@@ -178,7 +178,7 @@ _tm::parse::plugin_name(){
 
   _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "parsed to: $(_tm::util::print_array result_ref)" || true
+  _is_finest && _finest "parsed to $(_tm::util::print_array result_ref)" || true
 
   return 0
 }
