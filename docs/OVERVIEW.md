@@ -1,14 +1,80 @@
-# Tool Manager (`tm`) Codebase Analysis
+# Tool Manager (`tm`) Overview
 
-## 1. Purpose of the Tool Manager (`tm`)
+## Introduction
 
-The Tool Manager (`tm`) is a Bash-based framework designed to manage a collection of command-line tools, referred to as "plugins." It provides a structured way to:
+The Tool Manager (`tm`) is a Bash-based framework designed to manage a collection of command-line tools, referred to as "plugins." It provides a structured way to organize, install, and manage various command-line tools in a consistent manner.
+
+## Key Features
+
+* **Plugin Management**: Easily install, enable, disable, and update individual plugins
+* **Consistent Interface**: Access all tools through a unified command structure
+* **Configuration Management**: Maintain separate configurations for the same plugin
+* **Environment Isolation**: Run plugins in isolated environments
+* **Dependency Management**: Automatic handling of dependencies for plugins
+
+## Getting Started
+
+### Installation
+
+```bash
+curl -s "https://raw.githubusercontent.com/codemucker/tool-manager/refs/heads/main/install.sh" | bash
+```
+
+Or for a specific version:
+
+```bash
+curl -s https://raw.githubusercontent.com/codemucker/tool-manager/refs/tags/0.0.1/install.sh | bash
+```
+
+Alternatively, clone the repository and add it to your `.bashrc`:
+
+```bash
+if [[ -f "$HOME/.tool-manager/.bashrc" ]]; then
+  source "$HOME/.tool-manager/.bashrc"
+fi
+```
+
+### Basic Usage
+
+All Tool Manager commands start with `tm-`. You can use tab completion to see available commands.
+
+* `tm-help-commands`: List all available commands
+* `tm-help-commands-gui`: GUI version of command help
+* `tm-plugin-ls --available`: List available plugins
+* `tm-plugin-ls --installed`: List installed plugins
+* `tm-plugin-ls --enabled`: List enabled plugins
+
+### Managing Plugins
+
+Install plugins:
+```bash
+tm-plugin-install <name-of-plugin>
+tm-plugin-install --vendor codemucker git-tools
+tm-plugin-install codemucker/git-tools
+tm-plugin-install my:codemucker/git-tools  # with prefix
+```
+
+Configure plugins:
+```bash
+tm-plugin-cfg # base config dir
+tm-plugin-cfg codemucker/git-tools # config for specific plugin
+```
+
+Reload plugins after changes:
+```bash
+tm-reload  # reload all plugins
+tm-reload <my-plugin>  # reload specific plugin
+```
+
+## Purpose of the Tool Manager (`tm`)
+
+The Tool Manager (`tm`) is designed to:
 *   Install and manage the tool manager itself.
 *   Discover, install, enable, disable, and update individual plugins.
 *   Run plugin commands, potentially with different configurations.
 *   Organize tools into a coherent system, accessible via `tm-*` prefixed commands and commands provided by the plugins.
 
-## 2. Core Components and Their Roles
+## Core Components and Their Roles
 
 *   **Installation Script (`install.sh`)**:
     *   Handles the initial setup of the Tool Manager.
@@ -60,7 +126,7 @@ The Tool Manager (`tm`) is a Bash-based framework designed to manage a collectio
     *   `TM_PLUGINS_BIN_DIR`: Contains the generated wrapper scripts for plugin commands, which is added to `PATH` (`$TM_VAR_DIR/plugins-bin`).
     *   `TM_PLUGINS_CFG_DIR`: Directory for user-specific plugin configurations (e.g., `$HOME/.config/tool-manager`). Scripts like `$TM_PLUGINS_CFG_DIR/<plugin_name>.bashrc` are sourced during plugin loading.
 
-## 3. Main Functions/Workflows
+## Main Functions/Workflows
 
 *   **Installation of Tool Manager**:
     1.  User runs `install.sh` (e.g., via `curl | bash`).
@@ -109,7 +175,7 @@ The Tool Manager (`tm`) is a Bash-based framework designed to manage a collectio
     *   `tm-reload` (likely calls `_tm::boot::reload` from bootstrap): Clears caches, removes plugin scripts from `$TM_PLUGINS_BIN_DIR`, re-runs `__tm_boot_init`, regenerates enabled plugin wrappers, and calls `__tm_boot_load`.
     *   `tm-update-self`: Likely performs a `git pull` in `$TM_HOME` and might trigger a reload.
 
-## 4. Key Design Principles
+## Key Design Principles
 
 *   **Modularity**: The entire system is built around plugins.
 *   **Convention over Configuration**: Standardized naming and directory structures.
@@ -122,55 +188,65 @@ The Tool Manager (`tm`) is a Bash-based framework designed to manage a collectio
 *   **Explicit Enable/Disable**: Plugins must be actively enabled.
 *   **Git-based Distribution**: Core and plugins are Git repositories.
 
-## 5. System Overview Diagram
+## System Overview Diagram
 
 ```mermaid
 graph TD
-    subgraph User Shell
-        A[~/.bashrc] --> B{TM .bashrc};
+    %% ---------- USER SHELL ----------
+    subgraph UserShell["User Shell"]
+        A[~/.bashrc] --> B{TM .bashrc}
     end
 
-    subgraph Tool Manager Core [$TM_HOME]
-        B --> C[bin/.tm.boot.sh];
-        C --> D{_tm::boot::init};
-        C --> E{_tm::boot::load};
-        D -- sources --> F[bin/.tm.common.sh];
-        D -- sources --> G[bin/.tm.plugin.sh];
-        D -- sources --> H[bin/.tm.plugins.sh];
-        H -- sources --> I[bin/.tm.util.sh];
-        E -- adds to PATH --> J[$TM_BIN (tm-* scripts)];
-        E -- adds to PATH --> K[$TM_PLUGINS_BIN_DIR (Wrapper Scripts)];
-        E -- calls --> L[_tm::plugins::load_all_enabled];
+    %% ---------- TOOL MANAGER CORE ----------
+    subgraph ToolManagerCore["Tool Manager Core<br/>[$TM_HOME]"]
+        B --> C[bin/.tm.boot.sh]
+        C --> D{{_tm::boot::init}}
+        C --> E{{_tm::boot::load}}
+        D -- sources --> F[bin/.tm.common.sh]
+        D -- sources --> G[bin/.tm.plugin.sh]
+        D -- sources --> H[bin/.tm.plugins.sh]
+        H -- sources --> I[bin/.tm.util.sh]
+        E -- adds to PATH --> J["$TM_BIN (tm-* scripts)"]
+        E -- adds to PATH --> K["$TM_PLUGINS_BIN_DIR (Wrapper Scripts)"]
+        E -- calls --> L[_tm::plugins::load_all_enabled]
 
-        subgraph Core Commands [bin/]
-            J --> tm_install[tm-plugin-install];
-            J --> tm_enable[tm-plugin-enable];
-            J --> tm_disable[tm-plugin-disable];
-            J --> tm_ls[tm-plugin-ls];
-            J --> tm_other[...other tm-* scripts];
+        subgraph CoreCommands["Core Commands<br/>(bin/)"]
+            J --> tm_install[tm-plugin-install]
+            J --> tm_enable[tm-plugin-enable]
+            J --> tm_disable[tm-plugin-disable]
+            J --> tm_ls[tm-plugin-ls]
+            J --> tm_other[…other tm-* scripts]
         end
     end
 
-    subgraph Plugin Management
-        L -- reads --> M[$TM_PLUGINS_ENABLED_DIR (Symlinks)];
-        M -- points to --> N[$TM_PLUGINS_INSTALL_DIR/pluginA];
-        N --> PABin[pluginA/bin/cmd1];
-        L -- for each enabled plugin --> O[_tm::plugin::load];
-        O -- sources --> PA_bashrc[pluginA/.bashrc];
-        
-        tm_install -- uses --> H;
-        H -- reads --> Q[plugins.ini];
-        Q -- defines --> R{Plugin Metadata (repo, dir, commit)};
-        tm_install -- clones git repo to --> N;
-        
-        tm_enable -- uses --> G;
-        G -- creates symlink in --> M;
-        G -- creates wrapper in --> K;
-        K -- wrapper for cmd1 --> PABin;
-    end
-    
-    UserCommand[User executes 'pluginA-cmd1'] --> K;
+    %% ---------- PLUGIN MANAGEMENT ----------
+    subgraph PluginManagement["Plugin Management"]
+        L -- reads --> M["$TM_PLUGINS_ENABLED_DIR (Symlinks)"]
+        M -- points to --> N["$TM_PLUGINS_INSTALL_DIR/pluginA"]
+        N --> PABin[pluginA/bin/cmd1]
+        L -- for each enabled plugin --> O[_tm::plugin::load]
+        O -- sources --> PA_bashrc[pluginA/.bashrc]
 
-    style UserShell fill:#f9f,stroke:#333,stroke-width:2px
-    style ToolManagerCore fill:#ccf,stroke:#333,stroke-width:2px
-    style PluginManagement fill:#cfc,stroke:#333,stroke-width:2px
+        tm_install -- uses --> H
+        H -- reads --> Q[plugins.ini]
+        Q -- defines --> R{"Plugin metadata (repo, dir, commit)"}
+        tm_install -- clones repo to --> N
+
+        tm_enable -- uses --> G
+        G -- creates symlink in --> M
+        G -- creates wrapper in --> K
+        K -- wrapper for cmd1 --> PABin
+    end
+
+    %% ---------- USER COMMAND FLOW ----------
+    UserCommand["User runs 'pluginA-cmd1'"] --> K
+
+    %% ---------- COLOUR THEMES ----------
+    classDef user fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef core fill:#ccf,stroke:#333,stroke-width:2px;
+    classDef plugin fill:#cfc,stroke:#333,stroke-width:2px;
+
+    class UserShell user;
+    class ToolManagerCore core;
+    class PluginManagement plugin;
+
