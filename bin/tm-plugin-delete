@@ -36,11 +36,14 @@ main(){
       IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
       declare -A plugin
       for name in "${plugin_names[@]}"; do
-          local qname="$(_tm::plugins::installed::get_by_name "${vendor_prefix}${name}")"
-          _tm::parse::plugin plugin "$qname"
-          if _tm::plugins::uninstall "${plugin[qname]}"; then
-              _reload=1
-          fi
+        local qname="$(_tm::plugins::installed::get_by_name "${vendor_prefix}${name}")"
+        if [[ -z "$qname" ]]; then
+          _fail "Couldn't find plugin"
+        fi
+        _tm::parse::plugin plugin "$qname"
+        if _tm::plugins::uninstall "${plugin[qname]}"; then
+            _reload=1
+        fi
       done
   else
       plugins_to_remove=""

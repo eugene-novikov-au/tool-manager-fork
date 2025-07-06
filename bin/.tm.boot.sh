@@ -121,19 +121,19 @@ _tm::boot::init() {
   TM_CACHE_DIR="${TM_CACHE_DIR:-"${XDG_CACHE_HOME:-$HOME/.cache}/tool-manager"}"
 
   # Directory for storing Process ID (PID) files of background plugin services.
-  TM_PLUGINS_PID_DIR="$TM_STATE_DIR/plugins/pid"
+  TM_PLUGINS_PID_DIR="$TM_CACHE_DIR/tool-manager/plugins/pid"
   # --- Plugin Structure Paths ---
-  TM_PLUGINS_BIN_DIR="$TM_STATE_DIR/plugins/bin" # Directory where wrapper scripts for plugin commands are generated. This dir is added to PATH.
+  TM_PLUGINS_BIN_DIR="$TM_CACHE_DIR/tool-manager/plugins/bin" # Directory where wrapper scripts for plugin commands are generated. This dir is added to PATH.
   TM_PLUGINS_INSTALL_DIR="$TM_HOME/plugins" # Base directory where plugin repositories are cloned.
-  TM_PLUGINS_VENV_DIR="$TM_STATE_DIR/plugins/tm-venv" # where plugin virtual environments are placed (pip/uv/conda etc)
+  TM_PLUGINS_VENV_DIR="$TM_STATE_DIR/tool-manager/tm-venv" # where plugin virtual environments are placed (pip/uv/conda etc)
   # Directory containing symbolic links to currently enabled plugins.
-  TM_PLUGINS_ENABLED_DIR="$TM_STATE_DIR/plugins/enabled"
+  TM_PLUGINS_ENABLED_DIR="$TM_STATE_DIR/tool-manager/plugins/enabled"
   # Directory where plugin provided libs are stored. They are stored under a plugins vendor name
-  TM_PLUGINS_LIB_DIR="$TM_STATE_DIR/plugins/lib"
-  TM_PLUGINS_STATE_DIR="$TM_STATE_DIR/plugins/state" # where plugins store their state
+  TM_PLUGINS_LIB_DIR="$TM_STATE_DIR/tool-manager/plugins/lib"
+  TM_PLUGINS_STATE_DIR="$TM_STATE_DIR" # where plugins store their state
   # Directory for user-specific plugin configurations (e.g., <plugin_name>.bashrc files).
   TM_PLUGINS_CFG_DIR="$user_config_dir/tool-manager"
-  TM_PLUGINS_CACHE_DIR="$TM_CACHE_DIR/plugins"
+  TM_PLUGINS_CACHE_DIR="$TM_CACHE_DIR"
   TM_SPACE_DIR="${TM_SPACE_DIR:-$HOME/space}" # where spaces are stored
   # --- Docker Integration (Placeholder) ---
   # Flag to control if plugins (if supported) should run in Docker. Currently minimal use in core.

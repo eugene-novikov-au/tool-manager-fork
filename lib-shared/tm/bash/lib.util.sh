@@ -337,23 +337,16 @@ _fail_if_not_installed(){
 
 # print normal or associative array
 _tm::util::print_array(){
-  local -n array="$1"
+  local -n array_ref="$1"
+  if [[ -z "${array_ref:-}" ]]; then
+    return
+  fi
 
-  #if declare -p "$1" 2>/dev/null | grep -q 'declare -A'; then
-       # It is an associative array
-      echo -n "$1( "
-      for key in "${!array[@]}"; do
-        echo -n "[$key]='${array[$key]}' "
-      done
-      echo ")"
-    # else
-    #     # normal array?
-    #     echo -n "$1( "
-    #     for key in "${array[@]}"; do
-    #       echo -n "'$key' "
-    #     done
-    #     echo ")"
-    # fi
+  echo -n "${array_ref:-}( "
+  for key in "${!array_ref[@]}"; do
+    echo -n "['$key']='${array_ref["$key"]:-}' "
+  done
+  echo ")"
 }
 
 #

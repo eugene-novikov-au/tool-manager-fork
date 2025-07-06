@@ -38,7 +38,7 @@ main(){
   if [[ "$name" == "$__TM_NAME" ]] || [[ -z "$name" ]] then
       _tm::parse::plugin plugin "$__TM_PLUGIN_ID"
   else
-      local qname="$(_tm::plugins::installed::get_by_name "${name}")"
+      local qname="$(_tm::plugins::enabled::get_by_name "${name}")"
       _tm::parse::plugin plugin "$qname"
   fi
   # go to the the tool's home dir
@@ -53,7 +53,7 @@ main(){
         # use a workpace file (or disable?
         _tm::cfg::load --tm --key "TM_VSCODE_EDIT_USING_WORKSPACE" --default "1" --prompt
         if [[ "${TM_VSCODE_EDIT_USING_WORKSPACE}" == "1" ]]; then
-          local workspace_file="${TM_CACHE_DIR}/${plugin[qpath]}/${plugin[vendor]}_${plugin[name]}"
+          local workspace_file="${TM_CACHE_DIR}/tool-manager/workspace/${plugin[qpath]}/${plugin[vendor]}_${plugin[name]}"
           if [[ -n "${plugin[prefix]}" ]]; then
              workspace_file+="__${plugin[prefix]}"
           fi
@@ -102,20 +102,24 @@ cat << EOF > "${output_file}"
     },
     {
       "name": "TM-CACHE",
-      "path": "${TM_CACHE_DIR}"
+      "path": "${TM_CACHE_DIR}/tool-manager"
     },
     {
-      "name": "ALL-PLUGINS",
+      "name": "ROOT-PLUGINS",
       "path": "${TM_PLUGINS_INSTALL_DIR}"
     }
     {
-      "name": "ALL-CONFIG",
+      "name": "CONFIG-ROOT",
       "path": "${TM_PLUGINS_CFG_DIR}"
     },
     {
-      "name": "ALL-STATE",
-      "path": "${TM_PLUGINS_STATE_DIR}"
-    }
+      "name": "STATE-ROOT",
+      "path": "${TM_STATE_DIR}"
+    },
+    {
+      "name": "CACHE-ROOT",
+      "path": "${TM_CACHE_DIR}"
+    },
   ],
   "settings": {
     "search.useIgnoreFiles": false
@@ -143,12 +147,12 @@ cat << EOF > "${output_file}"
       "path": "${plugin_ref[cache_dir]}"
     },
     {
-      "name": "ALL-CONFIG",
+      "name": "CONFIG-ROOT",
       "path": "${TM_PLUGINS_CFG_DIR}"
     },
     {
-      "name": "ALL-STATE",
-      "path": "${TM_PLUGINS_STATE_DIR}"
+      "name": "STATE-ROOT",
+      "path": "${TM_STATE_DIR}"
     }
   ],
   "settings": {

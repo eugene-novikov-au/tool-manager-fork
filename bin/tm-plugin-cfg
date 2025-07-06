@@ -45,7 +45,10 @@ main(){
 
   local -A plugin=()
   if [[ -n "${plugin_name}" ]]; then # plugin name provided
-      local qname="$(_tm::plugins::installed::get_by_name "$prefix$vendor_prefix$plugin_name")"
+      local qname="$(_tm::plugins::enabled::get_by_name "$prefix$vendor_prefix$plugin_name")"
+      if [[ -z "$qname" ]]; then
+          _fail "Couldn't find plugin"
+      fi
       _tm::parse::plugin plugin "$qname"
   elif [[ -n "${args[this]}" ]]; then # plugin name provided
       if [[ -z "${TM_PLUGIN_ID:-}" ]]; then

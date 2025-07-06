@@ -684,14 +684,23 @@ _tm::plugins::foreach_available_callback() {
 # Returns the qname
 #
 _tm::plugins::installed::get_by_name(){
+  _tm::plugins::__get_by_name "${1}" --installed
+}
+
+_tm::plugins::enabled::get_by_name(){
+  _tm::plugins::__get_by_name "${1}" --enabled
+}
+
+_tm::plugins::__get_by_name(){
   local name="${1}"
+  local find_args="${2}"
 
   local -A plugin
   _tm::parse::plugin plugin "$name"
   plugin_dir="${plugin[install_dir]}"
   if [[ ! -d "$plugin_dir" ]]; then
       local matches
-      mapfile -t matches < <(tm-plugin-ls --installed --name --match "${name}")
+      mapfile -t matches < <(tm-plugin-ls "${find_args}" --name --match "${name}" || true)
 
       num_matches="${#matches[@]}"
       case "${num_matches}" in
@@ -699,9 +708,12 @@ _tm::plugins::installed::get_by_name(){
           _fail "Could not find plugin matching *${name}*"
         ;;
         "1")
-          _info "Found plugin  '${matches[*]}'"
           _tm::parse::plugin plugin "${matches[*]}"
-          echo "${plugin[qname]}"
+          if _confirm "Found plugin '${plugin[qname]}', is this correct?"; then
+            echo "${plugin[qname]}"          
+          else
+            _fail "Could not find plugin matching *${name}*"
+          fi
         ;;
         *)
           _error "Multiple plugins matching name *${name}*. Found ${matches[*]}:"
@@ -726,5 +738,8 @@ _tm::plugins::installed::get_by_name(){
           done
         ;;
     esac
+  else
+    echo "${plugin[qname]}"
   fi
 }
+

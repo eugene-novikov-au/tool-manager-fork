@@ -50,7 +50,7 @@ main(){
       else
           declare -A plugin
           for name in "${plugin_names[@]}"; do
-              local qname="$(_tm::plugins::installed::get_by_name "${all_prefix}${vendor_prefix}${name}")"
+              local qname="$(_tm::plugins::enabled::get_by_name "${all_prefix}${vendor_prefix}${name}")"
               local -A plugin
               _tm::parse::plugin plugin "$qname"
               _tm::plugin::disable plugin

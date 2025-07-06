@@ -37,20 +37,23 @@ main(){
   IFS=' ' read -r -a plugin_names <<< "${args[plugins]}"
   declare -A plugin
   for name in "${plugin_names[@]}"; do
-      local qname="$(_tm::plugins::installed::get_by_name "$all_prefix$vendor_prefix$name")"
-      local -A plugin
-      _tm::parse::plugin plugin "$qname"
-      if [[ -z "${plugin[prefix]}" ]]; then
-          declare prefix
-          _read "Prefix to add to all the plugin's scripts (optional, leave blank if none) (e.g. 'my', 'acme') : " prefix
-          if [[ -n "${prefix}" ]]; then
-              _tm::parse::plugin plugin "$prefix:$qname"
-          fi
-      fi
-      if [[ "$reload" == '1' ]]; then
-        _tm::plugin::disable plugin || true
-      fi
-      _tm::plugin::enable plugin
+    local qname="$(_tm::plugins::installed::get_by_name "$all_prefix$vendor_prefix$name")"
+    if [[ -z "$qname" ]]; then
+       _fail "Couldn't find plugin"
+    fi
+    local -A plugin
+    _tm::parse::plugin plugin "$qname"
+    if [[ -z "${plugin[prefix]}" ]]; then
+        declare prefix
+        _read "Prefix to add to all the plugin's scripts (optional, leave blank if none) (e.g. 'my', 'acme') : " prefix
+        if [[ -n "${prefix}" ]]; then
+            _tm::parse::plugin plugin "$prefix:$qname"
+        fi
+    fi
+    if [[ "$reload" == '1' ]]; then
+    _tm::plugin::disable plugin || true
+    fi
+    _tm::plugin::enable plugin
   done
   #_tm::plugins::reload_all_enabled
 

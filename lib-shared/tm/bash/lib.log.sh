@@ -243,35 +243,35 @@ EOF
   fi
 
   if [[ $level -le $LEV_FINEST  ]]; then
-    _finest(){ _tm::log::finest "$*"; }
+    _finest(){ _tm::log::finest "$@"; }
     _is_finest(){ true; }
   else
     _finest(){ :; }
     _is_finest(){ false; }
   fi
   if [[ $level -le $LEV_TRACE  ]]; then
-    _trace(){ _tm::log::trace "$*"; }
+    _trace(){ _tm::log::trace "$@"; }
     _is_trace(){ true; }
   else
     _trace(){ :; }
     _is_trace(){ false; }
   fi
   if [[ $level -le $LEV_DEBUG  ]]; then
-    _debug(){ _tm::log::debug "$*" ; }
+    _debug(){ _tm::log::debug "$@" ; }
     _is_debug(){ true; }
   else
     _debug(){ :; }
     _is_debug(){ false; }
   fi
   if [[ $level -le $LEV_INFO  ]]; then
-    _info(){ _tm::log::info "$*"; }
+    _info(){ _tm::log::info "$@"; }
     _is_info(){ true; }
   else
     _info(){ :; }
     _is_info(){ false; }
   fi
   if [[ $level -le $LEV_WARN  ]]; then
-    _warn(){ _tm::log::warn "$*"; }
+    _warn(){ _tm::log::warn "$@"; }
     _is_warn(){ true; }
   else
     _warn(){ :; }
@@ -399,7 +399,7 @@ _log() {
 
 
 _tm::log::error() {
-    _tm::log::__msg "ERR" "$COLOR_RED_BOLD" "$COLOR_RED" "$*"
+    _tm::log::__msg "ERR" "$COLOR_RED_BOLD" "$COLOR_RED" "$@"
 }
 
 # Log a warning message (red text)
@@ -414,7 +414,7 @@ _tm::log::error() {
 #   _warn "This might cause issues"
 #
 _tm::log::warn() {
-  _tm::log::__msg "WRN" "$COLOR_ORANGE_BOLD" "$COLOR_ORANGE_BOLD" "$*"
+  _tm::log::__msg "WRN" "$COLOR_ORANGE_BOLD" "$COLOR_ORANGE_BOLD" "$@"
 }
 
 
@@ -430,7 +430,7 @@ _tm::log::warn() {
 #   _info "Operation completed successfully"
 #
 _tm::log::info() {
-  _tm::log::__msg "INF" "$COLOR_BLACK_BOLD" "$COLOR_BLACK" "$*"
+  _tm::log::__msg "INF" "" "" "$@"
 }
 
 # Log a debug message (grey text) if debug mode is enabled
@@ -445,7 +445,7 @@ _tm::log::info() {
 #   _debug "Debug information"
 #
 _tm::log::debug() {
-  _tm::log::__msg "DBG" "$COLOR_GREEN_BOLD" "$COLOR_GREEN" "$*"
+  _tm::log::__msg "DBG" "$COLOR_GREEN_BOLD" "$COLOR_GREEN" "$@"
 }
 
 #
@@ -456,7 +456,7 @@ _tm::log::debug() {
 # }
 
 _tm::log::trace() {
-  _tm::log::__msg "TRC" "$COLOR_GREY_BOLD" "$COLOR_GREY" "$*"
+  _tm::log::__msg "TRC" "$COLOR_GREY_BOLD" "$COLOR_GREY" "$@"
 }
 
 #
@@ -467,7 +467,7 @@ _tm::log::trace() {
 # }
 
 _tm::log::finest() {
-  _tm::log::__msg "FINEST" "$COLOR_GREY" "$COLOR_GREY" "$*"
+  _tm::log::__msg "FINEST" "$COLOR_GREY" "$COLOR_GREY" "$@"
 }
 
 # _is_finest(){

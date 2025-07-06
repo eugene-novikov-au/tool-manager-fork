@@ -292,7 +292,8 @@ _tm::plugin::enable() {
         if _confirm "Make this available to other plugins via '_include @${vendor}/<lib-name>.sh'?" yn; then
             _info "Linking '${TM_PLUGINS_LIB_DIR}/${vendor}' to '${lib_dir}'"
             mkdir -p "${TM_PLUGINS_LIB_DIR}"
-            ln -sf "${lib_dir}" "${TM_PLUGINS_LIB_DIR}/${vendor}"
+            rm "${TM_PLUGINS_LIB_DIR}/${vendor}" || true
+            ln -sf "${lib_dir}" "${TM_PLUGINS_LIB_DIR}/${vendor}" 
             _info "plugin libs available under '_include @${vendor}/<lib-name>.sh'"
           else
             _info "Not making '${lib_dir}' available to other plugins"
