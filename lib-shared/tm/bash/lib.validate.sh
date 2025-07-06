@@ -47,58 +47,36 @@ _tm::validate::key_value(){
         continue
       fi
 
-      # parse the 'validator_string' and extract the regxp (anything before the last '|'), and the validator desc (anything after the the last '|') ai!
-      
+      local regexp=""
+      local description=""
+      IFS='|' read -r regexp description <<< "${validator_string}"
 
       case "${validator}" in
         nowhitespace)
-          [[ $match == 1 && "$value" =~ " " ]] && _fail "arg '${key}' with value '${value}' cannot contain whitespace (nowhitespace)" || true
-          [[ $match == 0 && ! "$value" =~ " " ]] && _fail "arg '${key}' with value '${value}' must contain whitespace (-nowhitespace)" || true
+          [[ $match == 1 && "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' cannot ${description} (${validator})" || true
+          [[ $match == 0 && ! "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' must ${description} (-${validator})" || true
           ;;
         noslashes)
-          [[ $match == 1 ]] && { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  }  && _fail "arg '${key}' with value '${value}' cannot contain forward or back slashes (noslashes)" || true
-          [[ $match == 0 ]] && ! { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  }  && _fail "arg '${key}' with value '${value}' must contain forward or back slashes (-noslashes)" || true
-          ;;
-        alphanumeric)
-          [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must be alphanumeric (alphanumeric)" || true
-          [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must not be alphanumeric (-alphanumeric)" || true
-          ;;
-        letters)
-          [[ $match == 1 && ! "$value" =~ ^[a-zA-Z]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only letters (letters)" || true
-          [[ $match == 0 && "$value" =~ ^[a-zA-Z]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only letters (-letters)" || true
-          ;;
-        numbers)
-          [[ $match == 1 && ! "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only numbers (numbers)" || true
-          [[ $match == 0 && "$value" =~ ^[0-9]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only numbers (-numbers)" || true
-          ;;
-        plugin-vendor)
-          [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9\-]*[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes or dots (plugin-vendor)" || true
-          [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-]*[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must not contain  alphanumeric, dashes or dots (-plugin-vendor)" || true
+          # Specific logic for slashes, as the regex in __tm_validators_by_name is not directly usable with =~
+          [[ $match == 1 ]] && { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  }  && _fail "arg '${key}' with value '${value}' cannot ${description} (${validator})" || true
+          [[ $match == 0 ]] && ! { [[ "$value" =~ "/" ]] || [[ "$value" =~ "\\" ]]  }  && _fail "arg '${key}' with value '${value}' must ${description} (-${validator})" || true
           ;;
         plugin-name)
 #              [[ $match == 1 && ! "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (plugin-name)" || true
 #              [[ $match == 0 && "$value" =~ ^(?:([a-zA-Z0-9-]+):)?(?:([a-zA-Z0-9-]+)\/)?([a-zA-Z0-9-]+)(?:@([a-zA-Z0-9-.]+))?$ ]] && _fail "arg '${key}' with value '${value}' must not be a valid plugin name: 'name', 'prefix:name' 'prefix:vendor/name', where these can only contains 'a-zA-Z0-9' and '-'. Name may have a '@version' added (-plugin-name)" || true
           ;;
-        plugin-prefix)
-          [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric or dashes (plugin-prefix)" || true
-          [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must not contain only alphanumeric or dashes (-plugin-prefix)" || true
-          ;;
-        space-key)
-          [[ $match == 1 && ! "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-]+[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots. Mut start with a alphanumeric (space-key)" || true
-          [[ $match == 0 && "$value" =~ ^[a-zA-Z0-9][\.a-zA-Z0-9-].+[a-zA-Z0-9]$ ]] && _fail "arg '${key}' with value '${value}' must not contain alphanumeric, dashes, or dots (-space-key)" || true
-          ;;
-        name) # generic name field
-          [[ $match == 1 && ! "$value" =~ ^[\.a-zA-Z0-9-]+$ ]] && _fail "arg '${key}' with value '${value}' must contain only alphanumeric, dashes, or dots (name)" || true
-          [[ $match == 0 && "$value" =~ ^[\.a-zA-Z0-9-].+$ ]] && _fail "arg '${key}' with value '${value}' must not contain alphanumeric, dashes, or dots (-name)" || true
-          ;;
         re:*)
-          local regexp="^${validator#re:}+$"
-          _finest "using re:${regexp}"
-          [[ $match == 1 && ! "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' does not match pattern '${regexp}' (re)" || true
-          [[ $match == 0 && "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' must not match pattern '${regexp}' (re)" || true
+          local custom_regexp="^${validator#re:}+$"
+          _finest "using re:${custom_regexp}"
+          [[ $match == 1 && ! "$value" =~ ${custom_regexp} ]] && _fail "arg '${key}' with value '${value}' does not match pattern '${custom_regexp}' (re)" || true
+          [[ $match == 0 && "$value" =~ ${custom_regexp} ]] && _fail "arg '${key}' with value '${value}' must not match pattern '${custom_regexp}' (re)" || true
           ;;
         *)
-          _warn "Unknown validator '${validator}', skipping"
+          # Generic regex validation for alphanumeric, letters, numbers, plugin-vendor, plugin-prefix, space-key, name
+          # Using the extracted 'regexp' and 'description' from __tm_validators_by_name for these
+          [[ $match == 1 && ! "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' must ${description} (${validator})" || true
+          [[ $match == 0 && "$value" =~ ${regexp} ]] && _fail "arg '${key}' with value '${value}' must not ${description} (-${validator})" || true
+          ;;
       esac
 
     done
