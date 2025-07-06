@@ -9,31 +9,31 @@ Think of it as a *package manager for your shell scripts*: it installs, updates,
 Developers often accumulate many shell scripts or small CLI tools over time. Tool Manager helps by addressing several common pain points:
 
 - **Centralized Installation**  
-  Instead of manually cloning repositories or copying scripts, you can install new tools with a single command. 
+  Instead of manually cloning repositories or copying scripts, you can install new tools with a single command.
   For example, running `tm-plugin-install <vendor>/<tool-name>` will fetch and set up a tool plugin for you.
   This saves time and ensures a consistent install process for any machine.
 
 
 - **Easy Enable/Disable**  
-  Tool Manager lets you enable or disable plugins on demand. This means your shell isn’t cluttered with 
-  commands you don’t need – you can turn tools on only when needed and keep others disabled. 
+  Tool Manager lets you enable or disable plugins on demand. This means your shell isn’t cluttered with
+  commands you don’t need – you can turn tools on only when needed and keep others disabled.
   The system **manages plugins** and can quickly toggle them without manual PATH juggling.
 
- 
+
 - **Isolated Environments**  
-  To avoid conflicts between tools, Tool Manager can (now or in the future) run plugins in isolated contexts (like separate containers or virtual environments). 
+  To avoid conflicts between tools, Tool Manager can (now or in the future) run plugins in isolated contexts (like separate containers or virtual environments).
   This isolation ensures that one tool’s requirements won’t break another’s environment.
 
 
 - **Multiple Contexts (Prefixes)**  
   If you need the same tool in different configurations (for example, a personal vs. work setup),
-  you can install it under distinct prefixes. Tool Manager supports prefixing plugin names (e.g. `my:git-tools` vs `work:git-tools`) 
+  you can install it under distinct prefixes. Tool Manager supports prefixing plugin names (e.g. `my:git-tools` vs `work:git-tools`)
   so that each has its own config but shares the same code base.
   This solves the issue of **conflicting configurations** by cleanly separating contexts.
 
 
 - **Dependency Management**  
-  A major headache with scripts is managing their dependencies (like Python packages or other binaries). Tool Manager automates this. 
+  A major headache with scripts is managing their dependencies (like Python packages or other binaries). Tool Manager automates this.
   You can declare dependencies in your script (using special `@require` comments), and Tool Manager will automatically set up a Python virtual environment and install those packages when the tool is run.
   This means no more “it works on my machine” problems due to missing libraries – the required packages are pulled in for you.
 
@@ -57,14 +57,14 @@ Tool Manager provides a number of features that deliver the above benefits:
 
 
 - **Plugin Life-Cycle Commands**  
-  It offers an array of commands to manage plugin *life cycle*. You can install plugins from remote sources (GitHub by default) using `tm-plugin-install`, 
+  It offers an array of commands to manage plugin *life cycle*. You can install plugins from remote sources (GitHub by default) using `tm-plugin-install`,
   edit plugin files (`tm-plugin-edit` opens the installation directory), reload plugins (`tm-reload` regenerates the shell wrappers for tools), and configure plugins (`tm-plugin-cfg` opens their config).
   These commands abstract the fiddly steps of managing script files and shell initialization. For instance, after adding a new script to a plugin, running tm-reload will regenerate wrapper scripts so that the tool is immediately available in your PATH with the correct environment.
 
 
 - **Flexible Installation Sources**  
   Pull plugins from the public registry, GitHub (`user/repo`), or any Git URL.
-  If the tool you want isn’t in the default registry, that’s fine – Tool Manager will try to fetch it from GitHub by convention, or you can point it to any Git repository URL. 
+  If the tool you want isn’t in the default registry, that’s fine – Tool Manager will try to fetch it from GitHub by convention, or you can point it to any Git repository URL.
   The tool infers the plugin name and vendor from the URL, so you aren’t limited to a predefined list of plugins. This flexibility means you can install any script repository as a plugin, whether it’s one of the officially known plugins or your own custom repo.
 
 
@@ -81,42 +81,46 @@ All these features work together so that adding a new bash tool or sharing your 
 
 ---
 
-## Typical Usage Scenarios
+## Example Use Cases
 
-### 1. Installing an Open-Source Toolkit
-```bash
-# Add a set of Git helper scripts published on GitHub
-tm-plugin-install codemucker/git-tools
-# Now commands like `git-each` are ready to use
-```
+To illustrate how Tool Manager can be used in practice, here are a few scenarios:
 
-### 2. Separating Work & Personal Configs
-```bash
-# Install the same plugin twice with different prefixes
-tm-plugin-install work:codemucker/git-tools
-tm-plugin-install personal:codemucker/git-tools
+- **Installing a Toolkit from GitHub**  
+  Imagine you want to use a set of helpful Git-related scripts someone published. If those scripts are packaged as a Tool Manager plugin (for example, a plugin named **git-tools** by user *codemucker*),
+  you can install them by running `tm-plugin-install codemucker/git-tools`. This single command will retrieve the plugin from GitHub and make all its commands available in your shell.
+  Without Tool Manager, you might have had to manually clone the repo, move scripts into your PATH, and deal with dependencies.
+  With Tool Manager, it’s one-step and you’re ready to go. If you later decide to tweak these tools or use your own fork, you could use `tm-plugin-edit codemucker/git-tools` to jump to its installation directory, or install your fork by pointing `tm-plugin-install` at your repository URL.
 
-# Use work-scoped commands
-work-git-each ...
 
-# Use personal-scoped commands
-personal-git-each ...
-```
+- **Managing Personal vs Work Scripts**  
+  Let’s say you have a script called `git-each` that you use at work, but with different settings for personal projects.
+  Using Tool Manager’s prefix feature, you can install two instances of the same plugin – one as `my:codemucker/git-tools`
+  for personal use and another as `work:codemucker/git-tools` for work.
+  This will create two sets of commands (e.g., `my-git-each` and `work-git-each`), each with its own configuration files, even though they share the same underlying code.
+  It cleanly separates contexts so you don’t mix up configurations. At any time, you can enable or disable one set if you only want to use the other, ensuring no interference between your personal and work environments.
 
-### 3. Sharing Internal Dev Tools
-```bash
-# Teammate onboarding
-tm-plugin-install yourcompany/internal-dev-tools
-# Dependencies are auto-installed; everyone has the same setup
-```
 
-### 4. Automatic Python Env for a Script
-Inside myscript.sh:
-```bash
-# @require:python 3.12
-# @require:pip requests
-```
-Run myscript — Tool Manager silently provisions Python 3.12 + requests in an isolated virtualenv.
+- **Automatic Environment Setup for a Script**  
+  Suppose you write a Bash tool that internally uses Python (perhaps to leverage a library like `tkinter` for a GUI or some data processing).
+  Distributing this tool to others can be tricky if they need certain Python packages.
+  With Tool Manager, you simply include lines in your script such as `# @require:python 3.12` and `# @require:pip tk` (for the Tk library).
+  When someone installs and runs your plugin, Tool Manager will automatically create a Python 3.12 virtual environment for that script
+  and install the **tk** package into it. The user doesn’t have to manually set up anything – it "just works."
+  This ensures consistency across systems and saves developers from troubleshooting dependency issues.
+
+
+- **Sharing and Collaborating on Tools**  
+  In a team setting, you might have a repository of internal dev tools (shell scripts) that everyone uses.
+  With Tool Manager, onboarding a new team member or setting up a new machine becomes much simpler.
+  You can host your internal tools on a Git server (GitHub or elsewhere). A new developer just needs to install Tool Manager and
+  run `tm-plugin-install yourcompany/your-tools` (or even provide the repository URL directly).
+  The Tool Manager will clone the repo, register all the tools, and handle any declared dependencies.
+  **This solves the "it works on my machine" problem** by codifying the setup in the plugin itself. Everyone ends up with the same set of tools configured the same way, improving reproducibility. Additionally, updates to the tools can be distributed by updating the plugin repository and having team members pull the latest version via Tool Manager commands.
+
+In all these scenarios, Tool Manager acts as a facilitator – it reduces the manual effort needed to manage your shell tools.
+Whether you are a solo developer keeping your dotfiles and scripts organized, or part of a team sharing utilities,
+Tool Manager provides a high-level, benefits-focused solution. By **centralizing plugin management, automating environment setup, and offering easy commands**,
+it lets you spend more time using or writing useful tools and less time configuring them.
 
 # Installation
 
@@ -153,7 +157,7 @@ tm-plugin-install my:codemucker/git-tools         # will prefix 'my-' on all the
 tm-plugin-install --prefix my --vendor codemucker --name git-tools # same as above
 tm-plugin-install my:codemucker/git-tools@main    # will install from the main branch
 ```
-The 'prefix' is so that you can have the same plugin used in different contexts, say a 'my-git-each' and 'work-git-each', 
+The 'prefix' is so that you can have the same plugin used in different contexts, say a 'my-git-each' and 'work-git-each',
 with separate config, but the same codebase
 
 If there is no plugin with the name in any of the plugin registry files, it will default with trying to install from github, using the form:
@@ -195,7 +199,7 @@ tm-edit
 ```
 to get to the top plugin install dir
 
-If you add any new plugin scripts, you will need to call 
+If you add any new plugin scripts, you will need to call
 
 ```bash
 tm-reload     # reloads all plugins
