@@ -370,7 +370,7 @@ _tm::cfg::__load_cfg(){
     
     local hash="$(_tm::cfg::__generate_hash_for "${conf_files[@]}" "${plugin_config_yaml}" )"
 
-    local base_config_dir="$TM_CACHE_DIR/tool-manager/merged-config"
+    local base_config_dir="$TM_CACHE_DIR/merged-config"
     if [[ ! -d "${base_config_dir}" ]]; then
       mkdir -p "${base_config_dir}"
     fi

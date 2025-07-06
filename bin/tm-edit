@@ -53,7 +53,7 @@ main(){
         # use a workpace file (or disable?
         _tm::cfg::load --tm --key "TM_VSCODE_EDIT_USING_WORKSPACE" --default "1" --prompt
         if [[ "${TM_VSCODE_EDIT_USING_WORKSPACE}" == "1" ]]; then
-          local workspace_file="${TM_CACHE_DIR}/tool-manager/workspace/${plugin[qpath]}/${plugin[vendor]}_${plugin[name]}"
+          local workspace_file="${TM_CACHE_DIR}/workspace/${plugin[qpath]}/${plugin[vendor]}_${plugin[name]}"
           if [[ -n "${plugin[prefix]}" ]]; then
              workspace_file+="__${plugin[prefix]}"
           fi
@@ -89,36 +89,36 @@ cat << EOF > "${output_file}"
 {
   "folders": [
     {
-      "name": "TM-HOME",
+      "name": "TM/HOME",
       "path": "${TM_HOME}"
     },
     {
-      "name": "TM-CONFIG",
+      "name": "TM/CONFIG",
       "path": "${plugin_ref[cfg_dir]}"
     },
     {
-      "name": "TM-STATE",
+      "name": "TM/STATE",
       "path": "${plugin_ref[state_dir]}"
     },
     {
-      "name": "TM-CACHE",
-      "path": "${TM_CACHE_DIR}/tool-manager"
+      "name": "TM/CACHE",
+      "path": "${plugin_ref[cache_dir]}"
     },
     {
-      "name": "ROOT-PLUGINS",
+      "name": "PLUGINS",
       "path": "${TM_PLUGINS_INSTALL_DIR}"
     }
     {
-      "name": "CONFIG-ROOT",
-      "path": "${TM_PLUGINS_CFG_DIR}"
+      "name": "ROOT/CONFIG",
+      "path": "${TM_BASE_CFG_DIR}"
     },
     {
-      "name": "STATE-ROOT",
-      "path": "${TM_STATE_DIR}"
+      "name": "ROOT/STATE",
+      "path": "${TM_BASE_STATE_DIR}"
     },
     {
-      "name": "CACHE-ROOT",
-      "path": "${TM_CACHE_DIR}"
+      "name": "ROOT/CACHE",
+      "path": "${TM_BASE_CACHE_DIR}"
     },
   ],
   "settings": {
@@ -131,28 +131,28 @@ cat << EOF > "${output_file}"
 {
   "folders": [
     {
-      "name": "PLUGIN-HOME",
+      "name": "PLUGIN/HOME",
       "path": "${plugin_ref[install_dir]}"
     },
     {
-      "name": "PLUGIN-CONFIG",
+      "name": "PLUGIN/CONFIG",
       "path": "${plugin_ref[cfg_dir]}"
     },
     {
-      "name": "PLUGIN-STATE",
+      "name": "PLUGIN/STATE",
       "path": "${plugin_ref[state_dir]}"
     },
     {
-      "name": "PLUGIN-CACHE",
+      "name": "PLUGIN/CACHE",
       "path": "${plugin_ref[cache_dir]}"
     },
     {
-      "name": "CONFIG-ROOT",
-      "path": "${TM_PLUGINS_CFG_DIR}"
+      "name": "ROOT/CONFIG",
+      "path": "${TM_BASE_CFG_DIR}"
     },
     {
-      "name": "STATE-ROOT",
-      "path": "${TM_STATE_DIR}"
+      "name": "ROOT/STATE",
+      "path": "${TM_BASE_STATE_DIR}"
     }
   ],
   "settings": {

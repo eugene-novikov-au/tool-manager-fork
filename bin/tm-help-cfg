@@ -19,7 +19,7 @@ echo "   home-dir         : ${TM_HOME}$spacer(TM_HOME)"
 # TM_BIN: The directory where tool-manager's executable scripts are located.
 echo "   bin-dir          : ${TM_BIN}$spacer(TM_BIN)"
 # TM_STATE_DIR: The directory for tool-manager's variable data and runtime files.
-echo "   state-dir        : ${TM_STATE_DIR}$spacer(TM_STATE_DIR)"
+echo "   base-state-dir   : ${TM_BASE_STATE_DIR}$spacer(TM_BASE_STATE_DIR)"
 echo "   config:"
 # __TM_NAME: The name of the current tool-manager plugin.
 echo "      plugin-name   : ${__TM_NAME}"
