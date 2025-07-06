@@ -64,7 +64,9 @@ _tm::parse::github_url(){
 #   - `enabled_dir`: The absolute path to the plugin's enabled symlink directory.
 #   - `cfg_spec`: Path to the plugin's configuration specification file.
 #   - `cfg_dir`: Path to the plugin's configuration directory.
-#   - `cfg_sh`: Path to the plugin's shell configuration file.
+#   - `cfg_sh`: Path to the plugin's merged shell configuration file (to apply all the config)
+#   - `state_dir`: Path to the plugin's state dir (where it can save persistent state)
+#   - `cache_dir`: Path to the plugin's cache dir (where it can save cached data)
 #   - `tm`: Boolean, true if this is the tool-manager plugin itself.
 #
 # Usage:
@@ -231,7 +233,6 @@ _tm::parse::plugin_id(){
     _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hypens, dots. Start with letter/number. Instead got '${version}' from id '${parse_id}'"
   fi
 
-
   result_ref[vendor]="$vendor"
   result_ref[name]="$name"
   result_ref[version]="$version"
@@ -344,4 +345,6 @@ _tm::parse::__set_plugin_derived_vars(){
   result_ref_derived[cfg_spec]="${result_ref_derived[install_dir]}/plugin.cfg.yaml"
   result_ref_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
   result_ref_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh"
+  result_ref_derived[state_dir]="$TM_PLUGINS_STATE_DIR/${qpath}"
+  result_ref_derived[cache_dir]="$TM_PLUGINS_CACHE_DIR/${qpath}"
 }

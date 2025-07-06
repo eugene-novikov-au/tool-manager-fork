@@ -42,6 +42,10 @@ _tm::cfg::load() {
 #
 # $1 - 0/1 whether to echo the value, or just load it as a variable. Default is 0 (load as variable)
 #
+# TODO: improve the performance of this. Maybe skip the args parser and write a custom one for this, as this
+# method is called often by scripts setting up their own config
+# Alternatively, maybe we can change the config approach to using the plugin's yaml file to set everything up at once?
+#
 _tm::cfg::__process() {
     local is_get=${1:-0}
     shift
@@ -201,7 +205,7 @@ _tm::cfg::__prompt_for_key() {
 #
 # List the plugin config files, in order, with last winning
 #
-_tm::cfg::get_config_files() {
+_tm::cfg::plugin::get_config_files() {
     local qualified_name="$1"
 
     if [[ -z "$qualified_name" ]]; then
@@ -211,9 +215,9 @@ _tm::cfg::get_config_files() {
     local -A parts=()
     _tm::parse::plugin_name parts "$qualified_name"
     
-    local files=()
-    _tm::cfg::_tm::cfg::__add_config_files_to files "${parts[name]}" "${parts[qpath]}"
-    echo "${files[@]}"
+    local conf_files=()
+    _tm::cfg::_tm::cfg::__add_config_files_to conf_files "${parts[install_dir]}" "${parts[qpath]}"
+    echo "${conf_files[@]}"
 }
 
 # --- Set a configuration value for a plugin ---
@@ -361,10 +365,10 @@ _tm::cfg::__load_cfg(){
     local qpath="${plugin[key]}"
     local plugin_config_yaml="${plugin[install_dir]}/plugin.config.yaml"
     
-    local env_files=() # config files bashrc is generated from
-    _tm::cfg::_tm::cfg::__add_config_files_to env_files "${plugin[name]}" "${plugin[qpath]}"
+    local conf_files=() # config files bashrc is generated from
+    _tm::cfg::_tm::cfg::__add_config_files_to conf_files "${plugin[install_dir]}" "${plugin[qpath]}"
     
-    local hash="$(_tm::cfg::__generate_hash_for "${env_files[@]}" "${plugin_config_yaml}" )"
+    local hash="$(_tm::cfg::__generate_hash_for "${conf_files[@]}" "${plugin_config_yaml}" )"
 
     local base_config_dir="$TM_CACHE_DIR/merged-config"
     if [[ ! -d "${base_config_dir}" ]]; then
@@ -372,7 +376,6 @@ _tm::cfg::__load_cfg(){
     fi
 
     while true; do
-
       # make the hash part of the generated path so it's easy to check if things have changed
       local merged_bashrc_file="$base_config_dir/${qpath}.config.sh.${hash}"
       _debug "using merged config '$merged_bashrc_file'"
@@ -385,7 +388,7 @@ _tm::cfg::__load_cfg(){
       local -a previous_bashrcs=() # collect old config
       mapfile -t previous_bashrcs < <(find "$base_config_dir" -type f \( -name "${qpath}.config.sh.*" -prune -o -print \))
 
-      _tm::cfg::env::__generate_cfg_bashrc "$merged_bashrc_file" "${env_files[@]}"
+      _tm::cfg::env::__generate_merged_sh_file "$merged_bashrc_file" "${conf_files[@]}"
       # remove the old merged config files
       for file in "${previous_bashrcs[@]}"; do
       _trace "removing previous merged config:'$file'"
@@ -402,18 +405,23 @@ _tm::cfg::__load_cfg(){
 
 }
 
+#
+# Add the ordered set of config files for the given plugin, to the given array
+#
+# Arguments:
+# $1 - the array to add the files to
+# $2 - the plugin's home dir
+# $2 - the plugin's qualified path
+#
 _tm::cfg::_tm::cfg::__add_config_files_to() {
-    local -n array_config_files="$1"
-    local plugin_name="$2"
+    local -n config_files_ref="$1" # passed by reference
+    local plugin_home="$2"
     local qpath="$3"
 
-    #array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.env") # plugin provided
-    array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/plugin.config.sh") # plugin provided
-    array_config_files+=("$TM_PLUGINS_INSTALL_DIR/${plugin_name}/.bashrc") # plugin provided .bashrc
-    #array_config_files+=("$TM_PLUGINS_CFG_DIR/.env") # shared between all the plugins
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/config.sh") # shared between all the plugins
-    #array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/.env") # config for this plugin instance
-    array_config_files+=("$TM_PLUGINS_CFG_DIR/${qpath}/config.sh") # config for this plugin instance    
+    config_files_ref+=("${plugin_home}/plugin.config.sh") # plugin provided
+    config_files_ref+=("${plugin_home}/.bashrc") # plugin provided .bashrc
+    config_files_ref+=("$TM_PLUGINS_CFG_DIR/config.sh") # shared between all the plugins
+    config_files_ref+=("$TM_PLUGINS_CFG_DIR/${qpath}/config.sh") # config for this plugin instance
 }
 
 _tm::cfg::__ensure_config_has_required_values(){
@@ -442,21 +450,21 @@ _tm::cfg::__generate_hash_for(){
   echo "$hash" | md5sum | awk '{print $1}' # Hash concatenated mtimes
 }
 #
-# This function encapsulates the logic for parsing .env files and generating
-# the output bashrc file. It does *not* perform checksum checks itself.
-# It expects the output file path as $1 and the list of env files as "$@" (shifted).
+# Generates a bashrc file from a list of conf files.
 #
-# Usage: _cfg::env::generate_core <output_file> <env_file1> [<env_file2> ...]
+# This function generates a single output bashrc file. It does *not* perform checksum checks itself.
 #
-# Generates a bashrc file from a list of .env files.
+# Arguments
+# $1 - sh file to generate to
+# $2... the list of config files to include. This can be sh, or conf files
 #
-# @param output_file The path to the output bashrc file.
-# @param env_files The list of .env files to read.
-_tm::cfg::env::__generate_cfg_bashrc() {
+# Usage: _tm::cfg::env::__generate_merged_sh_file <output_file> <env_file1> [<env_file2> ...]
+#
+_tm::cfg::env::__generate_merged_sh_file() {
   local output_file="$1"
   shift # Remove output_file from arguments
-  local env_files=("$@") # Remaining arguments are the .env files
-  _debug "generating '$output_file' from ${env_files[*]}"
+  local config_files=("$@") # Remaining arguments are the .env files
+  _debug "generating '$output_file' from ${config_files[*]}"
 
   mkdir -p "$(dirname "$output_file")"
   # Start a subshell for isolation during generation.
@@ -464,24 +472,24 @@ _tm::cfg::env::__generate_cfg_bashrc() {
   # preventing them from affecting the main shell's environment.
   (
     # write header
-    for env_file in "${env_files[@]}"; do
-        echo "# include file $env_file"
+    for config_file in "${config_files[@]}"; do
+        echo "# include file $config_file"
     done
     # Loop through each .env file in the specified order
     local -A map=() # key/values found
     local -a keys=() # order keys found
     local key
     local value
-    for env_file in "${env_files[@]}"; do
-      if [[ ! -f "$env_file" ]]; then
-        _debug "config file not found: $env_file (skipping)"
+    for config_file in "${config_files[@]}"; do
+      if [[ ! -f "$config_file" ]]; then
+        _debug "config file not found: $config_file (skipping)"
         continue
       fi
-      _debug "reading: $env_file"
-      if [[ "$env_file" == *".bashrc" ]] || [[ "$env_file" == *".sh" ]]; then
+      _debug "reading: $config_file"
+      if [[ "$config_file" == *".bashrc" ]] || [[ "$config_file" == *".sh" ]]; then
           # then just source it
-          echo "source '$env_file'"
-      else
+          echo "source '$config_file'"
+      else # an '.env' or '.conf' file perhaps
           # Read the file line by line, filtering out comments and empty lines efficiently
           while IFS= read -r line; do
             # Skip lines that are empty or comments
@@ -515,7 +523,7 @@ _tm::cfg::env::__generate_cfg_bashrc() {
                 # Key already exists, update the value if needed (or handle as desired)
                 map[$key]="$value"
             fi
-          done < <(grep -vE '^\s*#|^\s*$' "$env_file")
+          done < <(grep -vE '^\s*#|^\s*$' "$config_file")
       fi
     done
 
@@ -530,5 +538,4 @@ _tm::cfg::env::__generate_cfg_bashrc() {
   ) > "${output_file}" # Redirect all stdout from the subshell to the bashrc file
   
   _debug "successfully generated '$output_file'"
-  return 0
 }

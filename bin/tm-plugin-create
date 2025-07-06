@@ -277,10 +277,23 @@ _debug "a debug statement. Options are _finest _trace _debug _info _warn _error"
 if _is_finest; then # a logging conditional. Exists for all the log levels up till warn
     _finest logging at the finest level if you really want everything
 fi
+# or
+_is_finest && _finest "or a one liner conditional" || true # to prevent 'false' being returned, potentially causing issue
+
 _log debug "can provide a log level to '_log'. Slower than the direct method"
 
-_read "Do you really want a pie? [yn]: " yn
-_info "user selected pie : \${yn}"
+if _confirm "Do you really want a pie?: "; then
+  echo "you wanted pie"
+fi
+
+declare choice
+_read_not_empty "What do you want on your pie?" choice
+_info "user selected topping : \${choice}"
+
+choice=''
+_read "Eat more... (empty if no more)" choice
+_info "user ate more : \${choice}"
+
 
 # my_value="\$(tm-cfg-get --this --key SOME_KEY --default "some/default/value" --prompt)"
 

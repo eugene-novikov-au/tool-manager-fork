@@ -30,35 +30,133 @@ if [[ "${console}" == "1" ]]; then
 fi
 
 main(){
+  local -A plugin
+
   if [[ -z "$name" ]] && [[ -n "${args[tm]}" ]] then
       name="$__TM_NAME"
   fi
   if [[ "$name" == "$__TM_NAME" ]] || [[ -z "$name" ]] then
-      _info "Opening editor in Tool Manager home: $TM_HOME"
-      if ! cd "$TM_HOME"; then
-        _fail "Could not cd to $TM_HOME"
-      fi
-      __open "$TM_HOME"
+      _tm::parse::plugin plugin "$__TM_PLUGIN_ID"
   else
       local qname="$(_tm::plugins::installed::get_by_name "${name}")"
-      local -A plugin
       _tm::parse::plugin plugin "$qname"
-      plugin_dir="${plugin[install_dir]}"
-      __open "$plugin_dir"
   fi
+  # go to the the tool's home dir
+  local dir="${plugin[install_dir]}"
+  if ! cd "$dir"; then
+    _fail "Could not cd to $dir"
+  fi
+  if [[ "$editor_cmd" == 'bash' ]]; then
+      _info "Opening directory '$dir' using editor '$editor_cmd'"
+      "$editor_cmd"
+  elif [[ "$editor_cmd" == 'code' ]]; then
+        # use a workpace file (or disable?
+        _tm::cfg::load --tm --key "TM_VSCODE_EDIT_USING_WORKSPACE" --default "1" --prompt
+        if [[ "${TM_VSCODE_EDIT_USING_WORKSPACE}" == "1" ]]; then
+          local workspace_file="${TM_CACHE_DIR}/${plugin[qpath]}/${plugin[vendor]}_${plugin[name]}"
+          if [[ -n "${plugin[prefix]}" ]]; then
+             workspace_file+="__${plugin[prefix]}"
+          fi
+          workspace_file+=".code-workspace"
+          _info "Opening directory '$dir' using editor '$editor_cmd' and workspace file '${workspace_file}'"
+          __generate_vscode_workspace_file plugin "${workspace_file}"
+          "$editor_cmd" "${workspace_file}"
+        else
+            _info "Opening directory '$dir' using editor '$editor_cmd'"
+          "$editor_cmd" .
+        fi
+  else
+      _info "Opening directory '$dir' using editor '$editor_cmd'"
+      "$editor_cmd" . # Open current directory
+  fi
+
 }
 
-__open(){
-  local dir="$1"
-    if ! cd "$dir"; then
-      _fail "Could not cd to $plugin_dir"
-    fi
-    _info "Opening directory '$dir' using editor '$editor_cmd'"
-    if [[ "$editor_cmd" == 'bash' ]]; then
-        "$editor_cmd"
-    else
-        "$editor_cmd" . # Open current directory
-    fi
+#
+# Generate a vscode workspace file to easily edit a plugin
+#
+# Arguments:
+# $1 - the plugin data array
+# $2 - the workspace file
+#
+__generate_vscode_workspace_file(){
+  local -n plugin_ref="$1"
+  local output_file="$2"
+  mkdir -p "$(dirname "${output_file}")"
+
+  if [[ "${plugin_ref[install_dir]}"  == "${TM_HOME}" ]]; then
+cat << EOF > "${output_file}"
+{
+  "folders": [
+    {
+      "name": "TM-HOME",
+      "path": "${TM_HOME}"
+    },
+    {
+      "name": "TM-CONFIG",
+      "path": "${plugin_ref[cfg_dir]}"
+    },
+    {
+      "name": "TM-STATE",
+      "path": "${plugin_ref[state_dir]}"
+    },
+    {
+      "name": "TM-CACHE",
+      "path": "${TM_CACHE_DIR}"
+    },
+    {
+      "name": "ALL-PLUGINS",
+      "path": "${TM_PLUGINS_INSTALL_DIR}"
+    }
+    {
+      "name": "ALL-CONFIG",
+      "path": "${TM_PLUGINS_CFG_DIR}"
+    },
+    {
+      "name": "ALL-STATE",
+      "path": "${TM_PLUGINS_STATE_DIR}"
+    }
+  ],
+  "settings": {
+    "search.useIgnoreFiles": false
+  }
+}
+EOF
+  else
+cat << EOF > "${output_file}"
+{
+  "folders": [
+    {
+      "name": "PLUGIN-HOME",
+      "path": "${plugin_ref[install_dir]}"
+    },
+    {
+      "name": "PLUGIN-CONFIG",
+      "path": "${plugin_ref[cfg_dir]}"
+    },
+    {
+      "name": "PLUGIN-STATE",
+      "path": "${plugin_ref[state_dir]}"
+    },
+    {
+      "name": "PLUGIN-CACHE",
+      "path": "${plugin_ref[cache_dir]}"
+    },
+    {
+      "name": "ALL-CONFIG",
+      "path": "${TM_PLUGINS_CFG_DIR}"
+    },
+    {
+      "name": "ALL-STATE",
+      "path": "${TM_PLUGINS_STATE_DIR}"
+    }
+  ],
+  "settings": {
+    "search.useIgnoreFiles": false
+  }
+}
+EOF
+  fi
 }
 
 main "$@"

@@ -133,6 +133,7 @@ _tm::boot::init() {
   TM_PLUGINS_STATE_DIR="$TM_STATE_DIR/plugins/state" # where plugins store their state
   # Directory for user-specific plugin configurations (e.g., <plugin_name>.bashrc files).
   TM_PLUGINS_CFG_DIR="$user_config_dir/tool-manager"
+  TM_PLUGINS_CACHE_DIR="$TM_CACHE_DIR/plugins"
   TM_SPACE_DIR="${TM_SPACE_DIR:-$HOME/space}" # where spaces are stored
   # --- Docker Integration (Placeholder) ---
   # Flag to control if plugins (if supported) should run in Docker. Currently minimal use in core.

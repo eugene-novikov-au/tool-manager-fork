@@ -58,31 +58,39 @@ main(){
 
   if [[ "${plugin[name]}" == "$__TM_NAME" ]]; then
       # Edit the root plugin configuration directory
-      target_path="$TM_PLUGINS_CFG_DIR"
-      _info "Opening editor '$editor_to_use' for plugin configuration directory: $target_path"
       # For a directory, it's common to just open it, or a specific file if the editor supports it well.
       # Most terminal editors will list files or open a file browser. GUI editors handle dirs well.
-      "$editor_to_use" "$target_path"
+      __edit "$editor_to_use" "$TM_PLUGINS_CFG_DIR"
   else
       # Edit a specific plugin's config file
       plugin_name="${plugin[name]}"
       plugin_cfg_dir="${plugin[cfg_dir]}"
-      target_path="${plugin[cfg_sh]}"
-
-      # Ensure the directory exists
-      if [[ ! -d "$plugin_cfg_dir" ]]; then
-          _info "Plugin configuration directory '$plugin_cfg_dir' does not exist. Creating it."
-          if ! mkdir -p "$plugin_cfg_dir"; then
-            _error "Could not create directory '$plugin_cfg_dir'."
-          fi
-      fi
-
-      # Touch the file to ensure it exists before opening, helpful for some editors
-      touch "$target_path" || _warn "Could not touch file '$target_path', editor might create it."
-
-      _info "Opening editor '$editor_to_use' for plugin configuration file: $target_path"
-      "$editor_to_use" "$target_path"
+      plugin_cfg_file="${plugin[cfg_sh]}"
+      __edit "$editor_to_use" "$plugin_cfg_file"
   fi
+}
+
+__edit(){
+  local editor="$1"
+  local cfg_file="$2"
+  _info "Opening editor '$editor' for configuration directory: $cfg_file"
+
+  local cfg_dir="$(basename "${cfg_file}")"
+  # Ensure the directory exists
+  if [[ ! -d "$cfg_dir" ]]; then
+      _info "Configuration directory '$cfg_dir' does not exist. Creating it."
+      if ! mkdir -p "$cfg_dir"; then
+        _error "Could not create directory '$cfg_dir'."
+      fi
+  fi
+
+  # Touch the file to ensure it exists before opening, helpful for some editors
+  touch "$cfg_file" || _warn "Could not touch file '$cfg_file', editor might create it."
+
+
+  # For a directory, it's common to just open it, or a specific file if the editor supports it well.
+  # Most terminal editors will list files or open a file browser. GUI editors handle dirs well.
+  "$editor" "$cfg_file"
 }
 
 main "$@"
