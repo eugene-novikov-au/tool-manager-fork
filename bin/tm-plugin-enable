@@ -41,15 +41,11 @@ main(){
       local -A plugin
       _tm::parse::plugin plugin "$qname"
       if [[ -z "${plugin[prefix]}" ]]; then
-        if _confirm "Did you want to add a prefix to all the plugin's scripts? (e.g. 'my-')"; then
-          while [[ -z "${plugin[prefix]}" ]]; do
-              declare prefix
-              _read "What prefix? (e.g. 'my', 'acme')" prefix
-              if [[ -n "${prefix}" ]]; then
-                  _tm::parse::plugin plugin "$prefix:$qname"
-              fi
-          done
-        fi
+          declare prefix
+          _read "Prefix to add to all the plugin's scripts (optional, leave blank if none) (e.g. 'my', 'acme') : " prefix
+          if [[ -n "${prefix}" ]]; then
+              _tm::parse::plugin plugin "$prefix:$qname"
+          fi
       fi
       if [[ "$reload" == '1' ]]; then
         _tm::plugin::disable plugin || true

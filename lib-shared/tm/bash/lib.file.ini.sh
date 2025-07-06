@@ -110,7 +110,7 @@ _tm::file::ini::read_section() {
         return 1
     fi
 
-    local -n target_array_ref="$1"
+    local -n section_array_ref="$1"
     local ini_file="$2"
     local target_section_name="$3"
 
@@ -119,7 +119,7 @@ _tm::file::ini::read_section() {
         return 1
     fi
 
-    target_array_ref=() # Clear the array
+    section_array_ref=() # Clear the array
 
     local current_section=""
     local in_target_section=0
@@ -148,7 +148,7 @@ _tm::file::ini::read_section() {
         if [[ "$in_target_section" -eq 1 && "$line" =~ ^([^=]+)=(.*)$ ]]; then # Key-value pair
             key="$(_tm::file::ini::__trim_string "${BASH_REMATCH[1]}")"
             value="$(_tm::file::ini::__trim_string "${BASH_REMATCH[2]}")"
-            target_array_ref["$key"]="$value"
+            section_array_ref["$key"]="$value"
         fi
     done < "$ini_file"
     return 0
