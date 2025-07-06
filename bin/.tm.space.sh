@@ -92,6 +92,9 @@ _tm::space::file::read_array(){
     space_details_ref[id]="${space_details_ref[guid]}"
     space_details_ref[space_file]="${space_file}"
     space_details_ref[space_zip]="${space_details_ref[guid]}.zip"
+    if [[ -z "${space_details_ref[dir]:-}" ]]; then
+      space_details_ref[dir]="${TM_SPACE_DIR}/${space_details_ref[key]}"
+    fi
 }
 
 _tm::space::print_info(){

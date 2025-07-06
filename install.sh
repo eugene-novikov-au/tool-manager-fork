@@ -41,7 +41,35 @@ if [[ -f "$tm_bashrc" ]]; then
 fi
 
 # --- Clone repository ---
-if [[ "$git_clone" == 1 ]]; then # String comparison for clarity, though numeric would work
+if [[ "$git_clone" == "1" ]]; then 
+  # Fetch tags and branches
+  echo "retreiving available versions..."
+  git fetch --all --tags > /dev/null 2>&1
+  available_tags=$(git tag --sort=-creatordate)
+  available_branches="main\ndevelop"
+
+  # Combine tags and branches, limit to top 9 tags & branches
+  combined_options="$available_tags\n$available_branches"
+  options_array=($(echo -e "$combined_options" | head -n 9))
+
+  # Set default version to the latest tag
+  default_version=${options_array[0]}
+
+  # Display options to the user
+  PS3="Select a version (default: $default_version): "
+  select version in "${options_array[@]}"; do
+    if [[ -n "$version" ]]; then
+      break
+    else
+      version=$default_version
+      break
+    fi
+  done
+
+  # Checkout the selected version
+  echo "Checking out version: $version"
+  git checkout "$version" || { _err "Failed to checkout version '$version'. Aborting."; exit 1; }
+  
   echo "${log_prefix}Cloning Tool Manager from '$tm_git_repo' to '$tm_home'..."
   git clone "$tm_git_repo" "$tm_home" || { _err "Failed to clone repository from '$tm_git_repo' to '$tm_home'. Aborting."; exit 1; }
   echo "${log_prefix}Clone successful."

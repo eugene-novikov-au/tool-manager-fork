@@ -6,15 +6,16 @@
 _tm::source::include .tm.script.sh .tm.space.sh
 
 declare -A args
+# TODO
 _parse_args \
     --file "${BASH_SOURCE[0]}" \
     --opt-active "|flag|short=a|desc=Select the active space" \
     --opt-all "|flag|desc=Select all the spaces" \
+    --opt-match "|desc=Match against space keys or guid" \
     --result args \
     -- "$@"
 
-
-
+_todo "add filerting support"
 
 main(){
     local -A space

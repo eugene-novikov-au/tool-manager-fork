@@ -24,6 +24,7 @@ COLOR_RED='\033[0;31m'
 COLOR_RED_BOLD='\033[1;31m'
 COLOR_YELLOW='\033[0;33m'
 COLOR_NONE='\033[0m' # No Color
+BOLD=$(tput bold)
 
 TM_LOG_NAME="${TM_LOG_NAME:-$(basename ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]})}"
 if ([[ "$TM_LOG_NAME" == ".bashrc" ]] || [[ "$TM_LOG_NAME" == "bash" ]]); then
@@ -430,7 +431,7 @@ _tm::log::warn() {
 #   _info "Operation completed successfully"
 #
 _tm::log::info() {
-  _tm::log::__msg "INF" "" "" "$@"
+  _tm::log::__msg "INF" "$BOLD" "" "$@"
 }
 
 # Log a debug message (grey text) if debug mode is enabled

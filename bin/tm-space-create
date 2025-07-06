@@ -31,7 +31,7 @@ main(){
   local space_uuid="${args[guid]:-$(uuidgen)}"
   local space_file="$TM_SPACE_DIR/.space.${space_key}.${__TM_CONF_EXT}"
   # todo: look in space file for custom dir
-  local space_dir="$TM_SPACE_DIR/${space_key}/"
+  local space_dir="$TM_SPACE_DIR/${space_key}"
 
   if [[ -f "$space_file" ]]; then
       if _confirm "space already exists ('$space_file'), delete existing?"; then
