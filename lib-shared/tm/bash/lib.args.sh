@@ -3,6 +3,8 @@ if command -v _tm::args::parse &>/dev/null; then
   return
 fi
 
+_tm::source::include_once @tm/lib.validate.sh
+
 #
 # Parses command-line arguments according to a specified options string and populates an associative array.
 #

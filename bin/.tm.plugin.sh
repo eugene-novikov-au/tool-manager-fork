@@ -231,6 +231,8 @@ _tm::plugin::enable() {
   local enabled_dir="${plugin_enable[enabled_dir]}"
   local vendor="${plugin_enable[vendor]}"
   local plugin_cfg_sh="${plugin_enable[cfg_sh]}"
+  local plugin_enabled_conf_file="${plugin_enable[enabled_conf]}"
+  local plugin_id="${plugin_enable[id]}"
 
   #_trace "enabling plugin: '${qname}'"
   local is_tool_manager=${plugin_enable[tm]}
@@ -255,6 +257,10 @@ _tm::plugin::enable() {
         _tm::plugins::reload_all_enabled
         return $_false
       }
+      mkdir -p "$(dirname "${plugin_enabled_conf_file}")"
+      echo "enabled_date='$(date +'%Y-%m-%d.%H:%M:%S.%3N')'" > "${plugin_enabled_conf_file}"
+      echo "plugin_id='$plugin_id" >> "${plugin_enabled_conf_file}"
+      echo "plugin_home='$plugin_id" >> "${plugin_enabled_conf_file}"
 
       _tm::plugin::__generate_wrapper_scripts plugin_enable 
 
@@ -349,7 +355,8 @@ _tm::plugin::disable() {
   local prefix="${plugin_arr[prefix]}"
   local plugin_dir="${plugin_arr[install_dir]}"
   local plugin_enabled_link="${plugin_arr[enabled_dir]}"
-
+  local plugin_enabled_conf_file="${plugin_arr[enabled_conf]}"
+      
   _info "Disabling plugin '${qname}'"
 
   if [[ -L "$plugin_enabled_link" ]]; then
@@ -358,6 +365,9 @@ _tm::plugin::disable() {
         _debug "running plugin disable script: '$disable_script'"
         chmod a+x "$disable_script" || true
         ("$disable_script") || _warn "Error running disable script: '$disable_script'"
+      fi
+      if [[ -f "$plugin_enabled_conf_file" ]]; then
+        rm "${plugin_enabled_conf_file}" || _warn "couldn't remove '${plugin_enabled_conf_file}'"
       fi
       _debug "removing symlink '$plugin_enabled_link'"
       if rm -f "$plugin_enabled_link"; then

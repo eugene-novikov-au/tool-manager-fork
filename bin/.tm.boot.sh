@@ -137,6 +137,7 @@ _tm::boot::init() {
   TM_PLUGINS_INSTALL_DIR="$TM_HOME/plugins" # Base directory where plugin repositories are cloned.
   # Directory containing symbolic links to currently enabled plugins.
   TM_PLUGINS_ENABLED_DIR="$TM_STATE_DIR/plugins/enabled"
+  TM_PLUGINS_INSTALLED_CONF_DIR="$TM_STATE_DIR/plugins/installed"
   # Directory where plugin provided libs are stored. They are stored under a plugins vendor name
   TM_PLUGINS_LIB_DIR="$TM_STATE_DIR/plugins/lib"
   TM_PLUGINS_STATE_DIR="$TM_BASE_STATE_DIR" # root dir where plugins store their state

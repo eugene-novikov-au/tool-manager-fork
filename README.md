@@ -1,16 +1,24 @@
 # Tool Manager (tm)
 
 **Tool Manager (tm)** is a lightweight framework for managing collections of Bash shell tools and plugins.  
-Think of it as a *package manager for your shell scripts*: it installs, updates, and isolates command-line tools so you can focus on using them—not setting them up.
+Think of it as a *package manager for your shell scripts*: it installs, updates, and isolates command-line tools so you can focus on using them—not setting them up. 
+
+It is not limited to running just bash scripts, the goal is to provide script support for as many different languages as possible (typscript, java, kotlin, c#, js, go, perl...). The tool-manager would provide as much of the environment, isolation,
+dependency management as possible, in an easy way, so your focus can be on just writing scripts.
 
 ---
 
 ## Why Use Tool Manager?
-Developers often accumulate many shell scripts or small CLI tools over time. Tool Manager helps by addressing several common pain points:
+Developers often accumulate many shell scripts or small CLI tools over time. 
+
+We basically got bored trying to remember where our scripts were, managing dependencies, having to choose a particular language, configuration, hooking in to our bashrc, deciding how to back them up, share them etc. The focus shoud be on what we want the scripts to do, not the fluffing around. We also wanted to be able to choose the language best suited for the problem at hand, and be able to change our mind later. Also, as time went on, our small
+bash script started to grow, and we wanted a way to cater for that growth.
+
+Tool Manager helps by addressing several common pain points:
 
 - **Centralized Installation**  
-  Instead of manually cloning repositories or copying scripts, you can install new tools with a single command.
-  For example, running `tm-plugin-install <vendor>/<tool-name>` will fetch and set up a tool plugin for you.
+  Instead of manually cloning repositories or copying scripts, then dumping them somewhere randomly, you can instead install new tools with a single command.
+  For example, running `tm-plugin-install <vendor>/<tool-name>` will fetch and set up a tool plugin for you, in a consistent location.
   This saves time and ensures a consistent install process for any machine.
 
 
@@ -42,6 +50,50 @@ Developers often accumulate many shell scripts or small CLI tools over time. Too
   Tool Manager keeps track of what plugins are available, installed, or enabled. You can list all available plugins (from its plugin registry or known sources) or see which ones you’ve installed with simple commands.
   This makes it easy to discover new tools and ensure your toolkit is up to date. It also streamlines updates (you could update a plugin by reinstalling or pulling latest changes in its directory, under Tool Manager’s control).
 
+
+- **Imports**
+  In the bash world, there isn't a consistent way to import other people libraries (or your own from various places), over and
+  above the humble 'source' command. While this works, you still have to deal with path issues depending on where your script was called from, or end up with a bunch of annoying boilerplate at the top of each script file. There is also the issue or importing a file multiple times if your scripts get complicated and start referencing each other. The tool-manager solves this via:
+
+```bash
+  #!/usr/bin/env tm-env-bash
+  _include_once @tm/lib.args.sh .my.common.sh @some-vendor/some-plugin/lib.foo.sh
+````
+
+   or
+```bash
+  _include @tm/lib.args.sh .my.common.sh @some-vendor/some-plugin/lib.foo.sh
+```
+
+or
+
+```bash
+  _include_once @tm/lib.args.sh
+  _include_once @some-vendor/some-plugin/lib.foo.sh
+  _include_once .my.common.sh  
+```  
+
+  This will source the shared '@tm/lib.args.sh' library (@tm is the toolmanager namespace), the '.my.common.sh' (which is relative to your current script), and a thirdparty plugins exported lib '@some-vendor/some-plugin/lib.foo.sh'. The current
+  script directory issues are automatically taken care of.
+
+
+  You can also include your own plugins exported lib (in folder <plugin-home>/lib-shared) using a '@this'
+
+```bash
+  _include_once @this/lib.something.sh
+``` 
+
+  This then better supports forking a repo and publishing under a different name
+
+  There are a number of libs that are provided out of the box. Use '@tm/lib....'
+
+  - lib.args.sh     - make it easy to parse commands line args, along with validation, help message generation etc
+  - lib.logs.sh     - provide logging for scripts
+  - lib.cfg.sh      - provide script configutation management
+  - lib.util.sh     - common bash enhancements (probably should be called lib.lang.sh)
+  - lib.validate.sh - argument validation support 
+  - lib.file.*.sh   - read/write various file formats
+  - and more...
 
 By solving these issues, Tool Manager makes it much easier to maintain a robust set of shell tools, share them with others, and keep your environment clean and consistent.
 
@@ -156,7 +208,9 @@ tm-plugin-install codemucker/git-tools            # same as above
 tm-plugin-install my:codemucker/git-tools         # will prefix 'my-' on all the git tools scripts
 tm-plugin-install --prefix my --vendor codemucker --name git-tools # same as above
 tm-plugin-install my:codemucker/git-tools@main    # will install from the main branch
+tm-plugin-install my:codemucker/git-tools@0.1.0   # will install the 0.1.0 version
 ```
+
 The 'prefix' is so that you can have the same plugin used in different contexts, say a 'my-git-each' and 'work-git-each',
 with separate config, but the same codebase
 

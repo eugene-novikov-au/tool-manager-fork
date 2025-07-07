@@ -308,6 +308,9 @@ _tm::parse::__set_plugin_derived_vars(){
     result_ref_derived[key]="$__TM_NAME"
     result_ref_derived[enabled_dir]="$TM_HOME"
     result_ref_derived[install_dir]="$TM_HOME"
+    result_ref_derived[enabled_conf]="$TM_STATE_DIR/tool-manager/self.enabled.conf" # something, not used
+    result_ref_derived[install_conf]="$TM_STATE_DIR/tool-manager/self.installed.conf" # something, not used
+    result_ref_derived[qpath_flat]="tool-manager"
     qpath="$__TM_NAME"
   else
     result_ref_derived[tm]=false
@@ -319,7 +322,10 @@ _tm::parse::__set_plugin_derived_vars(){
     if [[ -n "${prefix}" ]]; then
       qpath_flat+="__${prefix}"
     fi
+    result_ref_derived[qpath_flat]="${qpath_flat}"
     result_ref_derived[enabled_dir]="$TM_PLUGINS_ENABLED_DIR/${qpath_flat}"
+    result_ref_derived[enabled_conf]="$TM_PLUGINS_ENABLED_DIR/${qpath_flat}.conf"
+    result_ref_derived[install_conf]="$TM_PLUGINS_INSTALLED_CONF_DIR/${qpath_flat}.conf"
     result_ref_derived[install_dir]="$TM_PLUGINS_INSTALL_DIR/${vendor:-${__TM_NO_VENDOR}}/${name}"
   fi
   result_ref_derived[qpath]="$qpath"
