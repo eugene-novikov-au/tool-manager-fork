@@ -190,6 +190,9 @@ If you are developing plugins, you can call:
 
 ```bash
 tm-edit <plugin-name> #(you can pass -h or --help for options)
+
+# note: you can also pass in partial plugin names, such as 'git', and if there are multiple matches, it 
+# will show a plugin selector prompt
 ```
 
 or
@@ -197,7 +200,9 @@ or
 ```bash
 tm-edit 
 ```
-to get to the top plugin install dir
+to get to the top plugin install dir.
+
+If you have configured 'code' as your editor, it will auto generate a workspace file, which includes links to the plugin config/state/cache
 
 If you add any new plugin scripts, you will need to call
 
@@ -214,8 +219,12 @@ To edit the plugin config, run:
 
 ```bash
 tm-plugin-cfg # base config dir
-tm-plugin-cfg codemucker/git-tools # config for the given plugin
+tm-plugin-cfg codemucker/git-tools # config for the given plugin (partial name match supported)
 tm-plugin-cfg my:codemucker/git-tools # config for the given plugin
+
+# or the shorthand:
+
+tm-edit-cfg # takes the same options as above)
 ```
 
 # Dependencies

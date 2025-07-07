@@ -709,7 +709,7 @@ _tm::plugins::__get_by_name(){
         ;;
         "1")
           _tm::parse::plugin plugin "${matches[*]}"
-          if _confirm "Found plugin '${plugin[qname]}', is this correct?"; then
+          if _confirm "Found plugin '${plugin[qname]}', is this correct?" 'y'; then
             echo "${plugin[qname]}"          
           else
             _fail "Could not find plugin matching *${name}*"
