@@ -79,7 +79,7 @@ fi
 # Check if tm_bashrc is already sourced.
 # This pattern looks for a line starting with "source" followed by a path ending with "/tool-manager/.bashrc"
 # or the specific $tm_bashrc path.
-if grep -q "source \".*\/tool-manager\/\.bashrc\"" "$home_bashrc" || grep -qFx "source \"$tm_bashrc\"" "$home_bashrc"; then
+if grep -q "source \".*\/\.tool-manager\/\.bashrc\"" "$home_bashrc" || grep -qFx "source \"$tm_bashrc\"" "$home_bashrc"; then
     echo "${log_prefix}tool-manager already sourced in '$home_bashrc'. Skipping update"
 else
   echo "${log_prefix}Adding tool-manager source to '$home_bashrc'..."
