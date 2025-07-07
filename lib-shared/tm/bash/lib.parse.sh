@@ -350,7 +350,9 @@ _tm::parse::__set_plugin_derived_vars(){
   result_ref_derived[id]="tm:plugin:$space:$vendor:$name:$version:$prefix"
   result_ref_derived[cfg_spec]="${result_ref_derived[install_dir]}/plugin.cfg.yaml"
   result_ref_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
-  result_ref_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh"
-  result_ref_derived[state_dir]="$TM_PLUGINS_STATE_DIR/${qpath}"
-  result_ref_derived[cache_dir]="$TM_PLUGINS_CACHE_DIR/${qpath}"
+  result_ref_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh" # plugin specific main config file
+  result_ref_derived[state_dir]="$TM_PLUGINS_STATE_DIR/${qpath}" # where the plugin should store persistant stae
+  result_ref_derived[cache_dir]="$TM_PLUGINS_CACHE_DIR/${qpath}" # the plugins cache dir, for data that can be lost and regenerated
+  result_ref_derived[packages_dir]="$TM_PLUGINS_PACKAGES_DIR/${qpath}" # where to install plugin specific deps/progs
+
 }

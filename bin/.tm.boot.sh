@@ -112,8 +112,8 @@ _tm::boot::init() {
 
   _tm::log::push_name "$__TM_NAME"
 
-  local user_config_dir="${XDG_CONFIG_HOME:-"$HOME/.config"}"
-  local user_state_dir="${XDG_STATE_HOME:-"$HOME/.local/share"}"
+  local user_config_dir="${XDG_CONFIG_HOME:-"$HOME/.config"}" # git backup up
+  local user_state_dir="${XDG_STATE_HOME:-"$HOME/.local/share"}" # git backup up?
   local user_cache_dir="${XDG_CACHE_HOME:-"$HOME/.cache"}"
 
   # --- Variable Data and Runtime Paths ---
@@ -122,6 +122,7 @@ _tm::boot::init() {
   TM_BASE_CACHE_DIR="${TM_BASE_CACHE_DIR:-"${user_cache_dir}/tool-manager"}"
   TM_BASE_CFG_DIR="${TM_BASE_CFG_DIR:-"$user_config_dir/tool-manager"}"
   TM_BASE_STATE_DIR="${TM_BASE_STATE_DIR:-"$user_state_dir/tool-manager"}"
+  TM_BASE_PACKAGES_DIR="${TM_BASE_PACKAGES_DIR:-"$user_state_dir/tool-manager/packages"}"
 
   # for the tool-manager itself
   TM_CACHE_DIR="${TM_BASE_CACHE_DIR}/${__TM_NAME}"
@@ -129,6 +130,7 @@ _tm::boot::init() {
   #TM_SPACE_DIR="${TM_SPACE_DIR:-$TM_STATE_DIR/space}" # where spaces are stored
   TM_SPACE_DIR="${TM_SPACE_DIR:-$HOME/space}" # where spaces are stored
   TM_CFG_DIR="${TM_BASE_CFG_DIR}/${__TM_NAME}"
+  TM_PACKAGES_DIR="${TM_BASE_PACKAGES_DIR}/${__TM_NAME}" # where to put installed packages
 
   TM_PLUGINS_PID_DIR="$TM_CACHE_DIR/plugins/pid"  # Directory for storing Process ID (PID) files of background plugin services.
   # --- Plugin Structure Paths ---
@@ -141,6 +143,7 @@ _tm::boot::init() {
   # Directory where plugin provided libs are stored. They are stored under a plugins vendor name
   TM_PLUGINS_LIB_DIR="$TM_STATE_DIR/plugins/lib"
   TM_PLUGINS_STATE_DIR="$TM_BASE_STATE_DIR" # root dir where plugins store their state
+  TM_PLUGINS_PACKAGES_DIR="$TM_PACKAGES_DIR" # root dir where plugins store their installed packages/progs (prefixed by plugin name)
   # root directory for user-specific plugin configurations (e.g., $BASE/<plugin_name>/config.sh files).
   TM_PLUGINS_CFG_DIR="$TM_BASE_CFG_DIR"
   # root dir for per plugin caches
@@ -163,6 +166,7 @@ _tm::boot::init() {
             "$TM_PLUGINS_INSTALL_DIR" \
             "$TM_PLUGINS_ENABLED_DIR" \
             "$TM_PLUGINS_BIN_DIR" \
+            "$TM_PLUGINS_PACKAGES_DIR" \
             "$TM_PLUGINS_CFG_DIR" \
             "$TM_PLUGINS_PID_DIR"
 

@@ -1,0 +1,69 @@
+#!/usr/bin/env tm-env-bash
+#
+# Runs tests for a given plugin or for the tool-manager itself.
+#
+# Usage: tm-test [plugin_name|tool-manager]
+#
+
+_tm::source::include_once .tm.script.sh .tm.plugin.sh .tm.plugins.sh
+
+_trap_error
+
+declare -A args
+_parse_args \
+    --file "${BASH_SOURCE[0]}" \
+    --opt-plugin "|remainder|short=p|desc=The plugin or 'tool-manager' to test. If empty, test the tool-manager" \
+    --opt-test "|short=t|desc=The name of the test to match on. Will have '*' pre/post appended" \
+    --result args \
+    -- "$@"
+
+main() {
+  local target="${args[plugin]}"
+  local test_dir=""
+
+  if [[ -z "$target" ]] || [[ "$target" == "tool-manager" ]]; then
+    test_dir="$TM_HOME/test"
+  else
+    local qname
+    qname="$(_tm::plugins::installed::get_by_name "$target")"
+    if [[ -z "$qname" ]]; then
+      _fail "Plugin '$target' not found."
+    fi
+    local -A plugin
+    _tm::parse::plugin plugin "$qname"
+    test_dir="${plugin[dir]}/test"
+  fi
+
+  if [[ ! -d "$test_dir" ]]; then
+    _info "No 'test' directory found for '$target' at '$test_dir'. Nothing to test."
+    exit 0
+  fi
+
+  _info "Running tests for '$target' in '$test_dir'"
+
+  local test_files
+  local find_name="*.sh"
+  if [[ -n "${args[test]}" ]]; then
+    find_name="*${args[test]}*.sh"
+    _info "Filtering tests with pattern: $find_name"
+  fi
+  mapfile -t test_files < <(find "$test_dir" -type f -name "$find_name")
+
+  if [[ ${#test_files[@]} -eq 0 ]]; then
+    _info "No test files (*.sh) found in '$test_dir'."
+    exit 0
+  fi
+
+  for test_file in "${test_files[@]}"; do
+    _info "--- Running tests in: $test_file ---"
+  
+    #TODO: Always run shellcheck first
+
+    "$test_file"
+    _info "--- Finished tests in: $test_file ---"
+  done
+
+  _info "All tests for '$target' completed."
+}
+
+main "$@"
