@@ -24,7 +24,7 @@ COLOR_RED='\033[0;31m'
 COLOR_RED_BOLD='\033[1;31m'
 COLOR_YELLOW='\033[0;33m'
 COLOR_NONE='\033[0m' # No Color
-BOLD=$(tput bold)
+BOLD=$(tput bold 2>/dev/null || echo '')
 
 TM_LOG_NAME="${TM_LOG_NAME:-$(basename ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]})}"
 if ([[ "$TM_LOG_NAME" == ".bashrc" ]] || [[ "$TM_LOG_NAME" == "bash" ]]); then

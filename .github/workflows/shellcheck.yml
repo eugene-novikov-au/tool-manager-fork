@@ -16,3 +16,5 @@ jobs:
         run: shellcheck bin/* bin-internal/* || true
       - name: Run tests
         run: bats tests/integration
+        env:
+          TERM: xterm

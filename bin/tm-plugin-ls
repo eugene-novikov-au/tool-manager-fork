@@ -361,7 +361,7 @@ _list_disabled_plugins() {
     local -A plugin
     local -a disabled_plugin_ids
     mapfile -t disabled_plugin_ids < <(_tm::plugins::find_all_disabled_plugin_ids)
-    _finest "installed plugin ids: ${disabled_plugin_ids[@]}"
+    _finest "installed plugin ids: ${disabled_plugin_ids[*]}"
     __list_plugins disabled_plugin_ids
 }
 
