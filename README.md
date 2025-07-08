@@ -253,5 +253,16 @@ see [OVERVIEW.md](./docs/OVERVIEW.md)
 Pull requests are welcome! Feel free to open issues for feature requests or bug reports.
 For larger contributions, please discuss the idea first to ensure it aligns with the project roadmap.
 
+To run the test suite locally:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y shellcheck bats
+
+shellcheck bin/*.sh bin-internal/*.sh
+bats tests
+```
+
+
 # License
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
