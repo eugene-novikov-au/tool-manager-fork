@@ -250,12 +250,14 @@ Your script can end in '.py' or not. It will appear in your path without the ext
 To completely remove Tool Manager and all installed plugins, run:
 
 ```bash
-tm-uninstall
+tm-uninstall [--force]
 ```
 
 The command executes `uninstall.sh` from your Tool Manager home
 directory. It removes the `~/.tool-manager` folder, cleans any lines added
 to `~/.bashrc` or `~/.profile` during installation, and unset all related environment variables.
+
+Use the `--force` option to skip all confirmation prompts during uninstallation.
 
 # Design
 

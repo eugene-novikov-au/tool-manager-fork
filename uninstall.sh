@@ -10,6 +10,21 @@ set -e
 
 log_prefix="[tool-manager uninstall]"
 
+# Parse command line arguments
+FORCE_MODE=false
+for arg in "$@"; do
+    case $arg in
+        --force)
+            FORCE_MODE=true
+            shift
+            ;;
+    esac
+done
+
+if [[ "$FORCE_MODE" == true ]]; then
+    echo "${log_prefix} Force mode enabled. All confirmations will be skipped."
+fi
+
 # Determine installation directory
 TM_HOME="${TM_HOME:-$HOME/.tool-manager}"
 HOME_BASHRC="$HOME/.bashrc"
@@ -33,9 +48,25 @@ fi
 # Source utility functions
 if [[ -f "$TM_HOME/lib-shared/tm/bash/lib.util.sh" ]]; then
     source "$TM_HOME/lib-shared/tm/bash/lib.util.sh"
+    # Override _confirm function if it exists in the library
+    if type _confirm &>/dev/null; then
+        original_confirm="_confirm"
+        _confirm() {
+            if [[ "$FORCE_MODE" == true ]]; then
+                return 0
+            else
+                $original_confirm "$@"
+            fi
+        }
+    fi
 else
     # Define a simple confirm function if the library is not available
     _confirm() {
+        # Skip confirmation if force mode is enabled
+        if [[ "$FORCE_MODE" == true ]]; then
+            return 0
+        fi
+
         local prompt="${1}"
         local yn=""
         while true; do
@@ -52,6 +83,7 @@ fi
 _remove_tm_lines() {
     local file="$1"
     if [[ -f "$file" ]]; then
+        echo "${log_prefix} Removing Tool Manager lines from $file"
         # Remove block added by the installer
         sed -i '' '/# Added by Tool Manager install script/,/fi$/d' "$file"
         # Remove any remaining references to the tm bashrc
@@ -118,7 +150,7 @@ elif [[ -d "$TM_HOME" ]]; then
 
         # Remove the main directory
         rm -rf "$TM_HOME"
-        echo "${log_prefix} Directory removed"
+        echo "${log_prefix} Install directory removed"
     else
         echo "${log_prefix} Uninstall cancelled by user"
         exit 0
