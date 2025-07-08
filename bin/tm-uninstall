@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# tm-uninstall - remove Tool Manager and all plugins
+#
+# Usage: tm-uninstall
+#
+# This command runs the uninstall.sh script located in the
+# Tool Manager home directory and removes all configuration.
+
+set -e
+
+"${TM_HOME:-$HOME/.tool-manager}"/uninstall.sh "$@"
+

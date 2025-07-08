@@ -43,7 +43,7 @@ fi
 # --- Clone repository ---
 if [[ "$git_clone" == "1" ]]; then 
   # Fetch tags and branches
-  echo "retreiving available versions..."
+  echo "Retrieving available versions..."
   git fetch --all --tags > /dev/null 2>&1
   available_tags=$(git tag --sort=-creatordate)
   available_branches="main\ndevelop"
@@ -56,7 +56,7 @@ if [[ "$git_clone" == "1" ]]; then
   default_version=${options_array[0]}
 
   # Display options to the user
-  PS3="Select a version (default: $default_version): "
+  PS3="Select a version: "
   select version in "${options_array[@]}"; do
     if [[ -n "$version" ]]; then
       break
@@ -66,12 +66,10 @@ if [[ "$git_clone" == "1" ]]; then
     fi
   done
 
-  # Checkout the selected version
-  echo "Checking out version: $version"
-  git checkout "$version" || { _err "Failed to checkout version '$version'. Aborting."; exit 1; }
-  
-  echo "${log_prefix}Cloning Tool Manager from '$tm_git_repo' to '$tm_home'..."
-  git clone "$tm_git_repo" "$tm_home" || { _err "Failed to clone repository from '$tm_git_repo' to '$tm_home'. Aborting."; exit 1; }
+  # Selected version will be cloned
+
+  echo "${log_prefix}Cloning Tool Manager from '$tm_git_repo' to '$tm_home' (version: $version)..."
+  git clone --branch "$version" "$tm_git_repo" "$tm_home" || { _err "Failed to clone repository from '$tm_git_repo' to '$tm_home' (version: $version). Aborting."; exit 1; }
   echo "${log_prefix}Clone successful."
 fi
 
@@ -93,3 +91,5 @@ fi
 EOF
   echo "${log_prefix}tool-manager (tm) installed and configured at '$tm_home'"
 fi
+
+source "$tm_bashrc"

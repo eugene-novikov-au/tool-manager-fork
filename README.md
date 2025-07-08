@@ -299,6 +299,18 @@ Support for node/deno/bash/java/kotlin etc dependencies is under development
 
 Your script can end in '.py' or not. It will appear in your path without the extension
 
+# Uninstall
+
+To completely remove Tool Manager and all installed plugins, run:
+
+```bash
+tm-uninstall
+```
+
+The command executes `uninstall.sh` from your Tool Manager home
+directory. It removes the `~/.tool-manager` folder, cleans any lines added
+to `~/.bashrc` or `~/.profile` during installation, and unset all related environment variables.
+
 # Design
 
 see [OVERVIEW.md](./docs/OVERVIEW.md)
