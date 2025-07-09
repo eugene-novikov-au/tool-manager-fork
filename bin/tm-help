@@ -16,6 +16,7 @@ tm-plugin-delete              # disable and delete a plugin. The config remains
 
 tm-edit-cfg                   # open up an editor to edit all the config
 tm-cfg-backup                 # push the current config to the configured config git repo
+tm-uninstall                  # remove tool-manager and all plugins
 
 
 
