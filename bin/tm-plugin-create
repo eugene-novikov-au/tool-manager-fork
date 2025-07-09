@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Creates a new Tool Manager plugin skeleton.
 # Prompts for plugin name, Git repository URL, and description if not
@@ -262,9 +262,9 @@ _tm::plugin::create::__example_script_template() {
     local file_path="$1"
     local plugin_name="$2"
     cat << EOF > "$file_path"
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 
-# If you use 'tm-env-bash' you have the '_include and _source and _info etc functions available
+# If you use 'env-tm-bash' you have the '_include and _source and _info etc functions available
 # if you use 'bash' you will need to include these via a normal 'source'
 #
 # This document will be used in tool-manager help about this script

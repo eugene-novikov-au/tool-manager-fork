@@ -30,7 +30,7 @@ for i in $(seq 1 $#); do # Loop through 1-based argument indices
 done
 
 if [[ "$script_index" -eq -1 ]]; then
-    _fail "Error: Could not determine the script path in tm-env-bash." >&2
+    _fail "Error: Could not determine the script path in env-tm-bash." >&2
 fi
 
 # Capture runner arguments (everything before the script path)
@@ -46,7 +46,7 @@ script_path="${!script_index}"
 #_debug "Script Path: $script_path"
 
 if [[ -z "$script_path" ]]; then
-  _fail "ERROR: Usage: tm-env-bash <script_path> [args...]"
+  _fail "ERROR: Usage: env-tm-bash <script_path> [args...]"
 fi
 
 if [[ ! -f "$script_path" ]]; then

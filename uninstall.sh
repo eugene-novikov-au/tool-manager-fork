@@ -48,20 +48,19 @@ fi
 # Source utility functions
 if [[ -f "$TM_HOME/lib-shared/tm/bash/lib.util.sh" ]]; then
     source "$TM_HOME/lib-shared/tm/bash/lib.util.sh"
-    # Override _confirm function if it exists in the library
-    if type _confirm &>/dev/null; then
-        original_confirm="_confirm"
-        _confirm() {
+    if type  _confirm &>/dev/null; then
+        _uninstall_confirm() {
             if [[ "$FORCE_MODE" == true ]]; then
                 return 0
             else
-                $original_confirm "$@"
+                _confirm "$@"
             fi
         }
     fi
-else
+fi
+if ! type _uninstall_confirm &>/dev/null; then
     # Define a simple confirm function if the library is not available
-    _confirm() {
+    _uninstall_confirm() {
         # Skip confirmation if force mode is enabled
         if [[ "$FORCE_MODE" == true ]]; then
             return 0
@@ -95,7 +94,7 @@ if [[ -z "$TM_HOME" || "$TM_HOME" == "/" ]]; then
     echo "${log_prefix} Error: TM_HOME is empty or root directory. Aborting uninstall."
     exit 1
 elif [[ -d "$TM_HOME" ]]; then
-    if _confirm "Are you sure you want to remove tool-manager? This will delete all of the code"; then
+    if _uninstall_confirm "Are you sure you want to remove tool-manager? This will delete all of the code"; then
         echo "${log_prefix} Removing '$TM_HOME'"
 
         # Remove the cache directory without asking questions
@@ -112,7 +111,7 @@ elif [[ -d "$TM_HOME" ]]; then
                 _rm -rf "$TM_BASE_CFG_DIR"
             else
                 # TODO: check if config has been recently backed up (no pending changes)
-                if _confirm "Do you also want to delete all the config?"; then
+                if _uninstall_confirm "Do you also want to delete all the config?"; then
                     # TODO: maybe run a config backup first
                     echo "${log_prefix} Removing config directory"
                     _rm -rf "$TM_BASE_CFG_DIR"
@@ -134,7 +133,7 @@ elif [[ -d "$TM_HOME" ]]; then
                 echo "${log_prefix} State directory is empty, removing it"
                 _rm -rf "$TM_BASE_STATE_DIR"
             else
-                if _confirm "Do you also want to delete the state directory?"; then
+                if _uninstall_confirm "Do you also want to delete the state directory?"; then
                     echo "${log_prefix} Removing state directory"
                     _rm -rf "$TM_BASE_STATE_DIR"
                 else

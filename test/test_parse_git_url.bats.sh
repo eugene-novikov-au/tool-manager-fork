@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bats
+#!/usr/bin/env env-tm-bats
 
 load '../lib-shared/tm/bash/lib.parse.sh'
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-python
+#!/usr/bin/env env-tm-python
 #
 # For testing performance. Run with 'time'
 #

@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-python
+#!/usr/bin/env env-tm-python
 
 # @require:venv     script      # none|script|plugin - tcl doesn't work in a uv env atm
 # @require:python   3.13

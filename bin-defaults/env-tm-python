@@ -25,7 +25,7 @@ for i in $(seq 1 $#); do # Loop through 1-based argument indices
 done
 
 if [[ "$script_index" -eq -1 ]]; then
-    _fail "Error: Could not determine the script path in tm-env-deno." >&2
+    _fail "Error: Could not determine the script path in env-tm-deno." >&2
 fi
 
 # Capture runner arguments (everything before the script path)
@@ -42,7 +42,7 @@ script_path="${!script_index}"
 _debug "Script Path: $script_path"
 
 if [[ -z "$script_path" ]]; then
-  _fail "Usage: tm-env-python <script_path> [args...]"
+  _fail "Usage: env-tm-python <script_path> [args...]"
 fi
 
 if [[ ! -f "$script_path" ]]; then
