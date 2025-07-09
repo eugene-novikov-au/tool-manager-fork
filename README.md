@@ -186,6 +186,12 @@ or for a given version
 curl -s  https://raw.githubusercontent.com/codemucker/tool-manager/refs/tags/0.0.1/install.sh | bash
 ```
 
+You can also pass a version directly to the installer using `--version`:
+
+```bash
+curl -s "https://raw.githubusercontent.com/codemucker/tool-manager/refs/heads/main/install.sh" | bash -s -- --version 0.0.1
+```
+
 alternatively, clone this repo to `$HOME/.tool-manager` (or wherever you like) , and add the following to your `$HOME/.bashrc`
 
 ```bash
