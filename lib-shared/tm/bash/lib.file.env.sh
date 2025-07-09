@@ -1,41 +1,34 @@
 
-# This script provides a set of Bash functions for reading and parsing
-# .env files
+# This script provides a set of Bash functions for reading and writing to .env files
 #
 
-# Ensure common utilities like _error are available
-#_tm::source::include_once @tm/lib.log.sh
-_tm::source::include_once @tm/lib.util.sh @tm/lib.args.sh
+# Ensure common utilities  are available
+_tm::source::include_once @tm/lib.util.sh
 
-# --- Function 1: _tm::file::ini::read ---
 # Reads an entire env file and populates the specified associative array.
-# Usage: _tm::file::env::read <output_array_name> [source_prefix] [target_prefix]  <env_file> <env_file> <env_file>..
+# Usage: _tm::file::env::read <output_array_name> <env_file1> <env_file2> <env_file3>..
 _tm::file::env::read() {
-    #echo "_tm::file::env::read $@"
     local -n target_array_ref="$1"
-    local source_prefix="$2"
-    local target_prefix="$3"
-    shift
-    shift
     shift
     local env_files="$@"
     
-
+    target_array_ref=() # clear the existing values
+    
     _debug "Reading env files '$env_files' into array"
-    _trace "Source prefix: '${source_prefix:-none}', Target prefix: '${target_prefix:-none}'"
 
     local line
     local key
     local value
-    local effective_key
 
     # Read the file line by line
     for file in $env_files; do
         if [[ ! -f "$file" ]] || [[ ! -r "$file" ]]; then
+            _debug "no env file '$file', or can't read, skipping"
             continue
         fi
+        _debug "reading file '$file'"
         while IFS= read -r line || [[ -n "$line" ]]; do
-            _trace "Processing line: '$line'"
+            #_finest "Processing line: '$line'"
 
             # Remove leading/trailing whitespace
             line="$(echo -e "${line}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
@@ -66,31 +59,14 @@ _tm::file::env::read() {
             value="${value%\'}"
             value="${value#\'}"
             
-            _trace "Parsed raw key: '$key', value: '$value'"
+            #_finest "Parsed key: '$key', value: '$value'"
 
-            # Handle source_prefix
-            if [[ -n "$source_prefix" ]]; then
-                if [[ "$key" == "$source_prefix"* ]]; then
-                    key="${key#"$source_prefix"}" # Remove prefix
-                    _trace "Applied source_prefix. New key: '$key'"
-                else
-                    _trace "Key '$key' does not match source_prefix '$source_prefix'. Skipping."
-                    continue # Skip if key doesn't match source_prefix
-                fi
-            fi
-
-            effective_key="$key"
-            # Handle target_prefix
-            if [[ -n "$target_prefix" ]]; then
-                effective_key="${target_prefix}${key}"
-                _trace "Applied target_prefix. Effective key: '$effective_key'"
-            fi
-            
-            target_array_ref["$effective_key"]="$value"
-            _is_debug && _debug "Set ${target_array_ref}['$effective_key'] = '$value'" || true
+            target_array_ref["$key"]="$value"
+            _is_trace && _trace "Set ['$key'] = '$value'" || true
         done < "$file"
     done
     _debug "Finished reading env file(s) '$env_files'."
+    _is_finest && _tm::util::array::print target_array_ref || true
     return
 }
 
@@ -251,91 +227,4 @@ _tm::file::env::set() {
 
     _debug "Successfully set key '$key_to_set' in '$env_file'."
     return 0
-}
-
-# --- Function _tm::file::env::get_key ---
-# Reads a single key from a given .env file and echoes its value.
-# Does not populate an array; directly outputs the value.
-#
-# Usage: _tm::file::env::get_key <env_file> <key_to_get>
-#   env_file: Path to the .env file.
-#   key_to_get: The specific key whose value is to be retrieved.
-#
-# Output:
-#   Echoes the value of the key if found.
-#   Echoes nothing if the key is not found or file is not readable.
-#
-# Returns:
-#   0 if the key is found and value is echoed.
-#   1 if the file is not found or not readable.
-#   2 if the key is not found in the file.
-#   3 if incorrect arguments are provided.
-_tm::file::env::get_key() {
-    local env_file="$1"
-    local key_to_get="$2"
-    
-    if [[ -z "$env_file" || -z "$key_to_get" ]]; then
-        _error "Usage: _tm::file::env::get_key <env_file> <key_to_get>"
-        return 3 # Incorrect arguments
-    fi
-
-    _trace "Attempting to get key '$key_to_get' from file '$env_file'"
-
-    if [[ ! -f "$env_file" ]]; then
-        _debug "File not found: $env_file"
-        return 1 # File not found
-    fi
-
-    if [[ ! -r "$env_file" ]]; then
-        _debug "File not readable: $env_file"
-        return 1 # File not readable
-    fi
-
-    local line
-    local current_key
-    local value
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        # Minimal processing for speed
-        # Trim leading whitespace (important for matching key at start of line)
-        line="${line#"${line%%[![:space:]]*}"}"
-
-        # Skip empty lines and full comments quickly
-        if [[ -z "$line" || "${line:0:1}" == "#" ]]; then
-            continue
-        fi
-
-        # Check if the line starts with the key followed by '='
-        # This is a more direct check than full parsing if we only need one key.
-        # Format: KEY=VALUE or KEY = VALUE etc.
-        # We need to be careful with keys that are substrings of other keys.
-        # So, check for KEY= or KEY =
-        if [[ "$line" == "${key_to_get}="* || "$line" == "${key_to_get} "* ]]; then
-            # Potential match, now properly extract key and value
-            local uncommented_line="${line%%#*}" # Remove inline comment
-            
-            # Trim trailing whitespace from uncommented part
-            uncommented_line="${uncommented_line%"${uncommented_line##*[![:space:]]}"}" 
-
-            current_key="${uncommented_line%%=*}"
-            # Trim trailing whitespace from extracted key
-            current_key="${current_key%"${current_key##*[![:space:]]}"}"
-
-            if [[ "$current_key" == "$key_to_get" ]]; then
-                value="${uncommented_line#*=}"
-                # Remove potential quotes around value
-                value="${value%\"}"
-                value="${value#\"}"
-                value="${value%\'}"
-                value="${value#\'}"
-                
-                echo "$value"
-                _trace "Key '$key_to_get' found. Value: '$value'"
-                return 0 # Key found
-            fi
-        fi
-    done < "$env_file"
-
-    _trace "Key '$key_to_get' not found in '$env_file'."
-    return 2 # Key not found
 }

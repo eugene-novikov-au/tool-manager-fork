@@ -1,4 +1,8 @@
-if command -v _tm::log::push_name &>/dev/null; then
+#
+# Library to provide logging (and stacktrace) related funtionality
+#
+
+if command -v _tm::log::set_opts &>/dev/null; then
   return
 fi
 
@@ -32,12 +36,16 @@ if ([[ "$TM_LOG_NAME" == ".bashrc" ]] || [[ "$TM_LOG_NAME" == "bash" ]]); then
 fi
 
 TM_LOG_CONSOLE="${TM_LOG_CONSOLE:-1}" # whether to log to console
+TM_LOG_SYSLOG="${TM_LOG_SYSLOG:-1}" # whether to log to the system logger
 TM_LOG_FILE="${TM_LOG_FILE:-}" # path to the file to log. Only log to file if set
+TM_LOG_FILE_MAX_BYTES="${TM_LOG_FILE_MAX_BYTES:-10000000}" # 10mb
+TM_LOG_FILE_ROTATE="${TM_LOG_FILE_ROTATE:-1}"
 TM_LOG="${TM_LOG:-info}" # all the various logging options
 
 __tm_log="${__tm_log:-unset}" # to detect log name changes
 __tm_log_names=()
 __tm_log_filters=()
+__tm_log_next_file_rotate_check=0
 
 _tm::log::init(){
   if [[ "$TM_LOG" != "$__tm_log" ]]; then
@@ -125,6 +133,18 @@ _tm::log::set_opts(){
       +console|console)
         LOG_CONSOLE=1
         ;;
+      '-syslog')
+        TM_LOG_SYSLOG=0
+        ;;
+      +syslog|syslog)
+        TM_LOG_SYSLOG=1
+        ;;
+      '-rotate')
+        TM_LOG_FILE_ROTATE=0
+        ;;
+      +rotate|rotate)
+        TM_LOG_FILE_ROTATE=1
+        ;;
       -file)
         LOG_FILE=''
         ;;
@@ -192,7 +212,10 @@ OUTPUT
   - -file : disable logging to file.
   - +console/console : enable console logging
   - -console : disable console logging
-
+  - +syslog/syslog : enable syslog logging
+  - -syslog : disable syslog logging
+  - +rotate/rotate : enable log file rotation. Use TM_LOG_FILE_MAX_BYTES
+  - -rotate : disable log file rotation.
 OTHER OPTIONS:  
   -stack : include the stacktrace to all the log calls
 
@@ -210,8 +233,10 @@ EOF
 
   local log_details=()
   if [[ $log_datestamp == true ]]; then
+    # date+time
     log_details+=("\$(date +'%Y-%m-%d.%H:%M:%S.%3N')")
   elif [[ $log_timestamp == true ]]; then
+    # just time
     log_details+=("\$(date +'%H:%M:%S.%3N')")
   elif [[ $log_epoch == true ]]; then
     log_details+=("\${EPOCHREALTIME}")
@@ -243,35 +268,35 @@ EOF
     _tm::log::__details(){ :; }
   fi
 
-  if [[ $level -le $LEV_FINEST  ]]; then
+  if [[ $level -le $LEV_FINEST ]]; then
     _finest(){ _tm::log::finest "$@"; }
     _is_finest(){ true; }
   else
     _finest(){ :; }
     _is_finest(){ false; }
   fi
-  if [[ $level -le $LEV_TRACE  ]]; then
+  if [[ $level -le $LEV_TRACE ]]; then
     _trace(){ _tm::log::trace "$@"; }
     _is_trace(){ true; }
   else
     _trace(){ :; }
     _is_trace(){ false; }
   fi
-  if [[ $level -le $LEV_DEBUG  ]]; then
+  if [[ $level -le $LEV_DEBUG ]]; then
     _debug(){ _tm::log::debug "$@" ; }
     _is_debug(){ true; }
   else
     _debug(){ :; }
     _is_debug(){ false; }
   fi
-  if [[ $level -le $LEV_INFO  ]]; then
+  if [[ $level -le $LEV_INFO ]]; then
     _info(){ _tm::log::info "$@"; }
     _is_info(){ true; }
   else
     _info(){ :; }
     _is_info(){ false; }
   fi
-  if [[ $level -le $LEV_WARN  ]]; then
+  if [[ $level -le $LEV_WARN ]]; then
     _warn(){ _tm::log::warn "$@"; }
     _is_warn(){ true; }
   else
@@ -507,8 +532,11 @@ _tm::log::__msg() {
   if [[ "${TM_LOG_CONSOLE:-}" == "1" ]]; then
     _tm::log::__to_console "$level_name" "$logger_details" "$color_details" "$color_text" "$*"
   fi
+  if [[ -n "${TM_LOG_SYSLOG:-}" ]]; then
+    _tm::log::__to_syslog "$level_name" "$logger_details" "$*"
+  fi
   if [[ -n "${TM_LOG_FILE:-}" ]]; then
-    _tm::log::__to_file "$level_name" "$logger_details" "$*"
+    _tm::log::__to_file "$level_name" "$TM_LOG_NAME" "$*"
   fi
 }
 
@@ -523,13 +551,65 @@ _tm::log::__to_console(){
   _tm::log::__stack
 }
 
+_tm::log::__to_syslog(){
+  local level_name="$1"
+  local log_name="$2"
+  shift 2
+
+  # TODO: only info and up?
+
+  logger "${level_name} [${log_name}] ${*}"
+}
+
 _tm::log::__to_file(){
   local level_name="$1"
   local logger_details="$2"
   shift 2
-
-   echo "${level_name} [${logger_details}] ${*}" >> "$TM_LOG_FILE" || true
+  if [[ -f "$TM_LOG_FILE" ]] && [[ "${EPOCHSECONDS}" -gt "${__tm_log_next_file_rotate_check:-0}" ]]; then
+    local file_size
+    local MAX_BYTES=
+    if [[ "$(uname)" == "Darwin" ]]; then
+      file_size="$(stat -f %z "$TM_LOG_FILE")"
+    else
+      file_size="$(stat -c %s "$TM_LOG_FILE")"
+    fi
+    if [[ "${file_size}" -gt "${TM_LOG_FILE_MAX_BYTES:-10000000}" ]]; then # 10mb
+      _tm::log::_rotate_log_file "${TM_LOG_FILE}"
+      __tm_log_next_file_rotate_check=$(($EPOCHSECONDS + 30)) # when to check next
+    fi
+  fi
+  echo "${level_name} [${logger_details}] ${*}" >> "$TM_LOG_FILE" || true
   _tm::log::__stack >> "$TM_LOG_FILE" || true
+}
+
+_tm::log::_rotate_log_file(){
+    local log_file="$1"
+    local counter=0
+    local max_counter=0
+
+    # Find all files that start with the base name and end with a dot followed by digits
+    for file in "${log_file}."*; do
+        if [[ "$file" =~ ^"${log_file}"\.[0-9]+$ ]]; then
+            # Extract the counter part (e.g., "1" from "app.log.1")
+            local counter_str="${file##*.}"
+            # Convert to integer
+            counter=$((10#$counter_str))
+            if (( counter > max_counter )); then
+                max_counter=$counter
+            fi
+        fi
+    done
+    # calculate the rotated file name
+    local log_file_dest
+    # If no numbered files were found, start with 1, otherwise increment the max
+    if (( max_counter == 0 )); then
+        log_file_dest="$(echo "${log_file}.1")"
+    else
+        log_file_dest="$(echo "${log_file}.$((max_counter + 1))")"
+    fi
+    #move the old log file (we copy then clear to more robustly handle failure)
+    cp "${log_file}" "${log_file_dest}" || >&2 echo "WRN: error rotating log file"
+    echo "" > "${log_file}"
 }
 
 
@@ -565,7 +645,7 @@ _tm::log::push_name(){
 }
 
 #
-# Append the given name to the end of the current log name, using a '/' separator
+# Append the given name to the end of the current log name, using a ':' separator
 #
 # Call '_tm::log::pop' to restore to the previous log name
 #
@@ -574,7 +654,7 @@ _tm::log::push_name(){
 #
 _tm::log::push_child(){
   if [[ "$1" != "$TM_LOG_NAME" ]]; then
-    local new_name="$TM_LOG_NAME/$1"
+    local new_name="$TM_LOG_NAME:$1"
     __tm_log_names+=("$TM_LOG_NAME")
     TM_LOG_NAME="$new_name"
   fi

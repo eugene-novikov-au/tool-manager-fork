@@ -1,39 +1,103 @@
+#
+# Library to provide various parsing util methods
+#
+
+if command -v _tm::parse::plugin &>/dev/null; then
+  return
+fi
 
 #
-# Parse github url. Support urls of the form 'git@github.com...' and 'http[s]://github.com....' The version can be set
-# via appending an '#<version>' to the end, e.g. '#main'
+# Parse git URL. Supports URLs for GitHub, GitLab, and Bitbucket.
+# URLs can be of the form 'git@host.com:...' or 'http[s]://host.com/....'.
+# The version can be set by appending '#<version>' or '@<version>' to the end, e.g., '#main'.
 #
 # Arguments
 #  $1 - associative array to put the results in
-#  $2 - the github url
+#  $2 - the git URL
 #
-# Populates the associative with the following keys:
-#   - `url`: The cleaned 'git@github.com....' url.
-#   - `web_url`: The cleaned 'https://github.com....' url.
-#   - `owner`: The repo owner.
-#   - `name`: The repo name.
+# Populates the associative array with the following keys:
+#   - `url`: The cleaned 'git@host.com:owner/name.git' URL.
+#   - `web_url`: The cleaned 'https://host.com/owner/name' URL.
+#   - `owner`: The repository owner (GitHub), namespace (GitLab), or workspace (Bitbucket).
+#   - `name`: The repository name.
+#   - `repo`: The repository name with '.git' suffix.
 #   - `version`: The version to checkout. Blank if not set or to use the default.
+#   - `host`: The detected git host (e.g., 'github.com', 'gitlab.com', 'bitbucket.org').
 #
-_tm::parse::github_url(){
-  local -n github_ref="$1"
-  local github_url="$2"
-  github_ref=() #clear the data
+_tm::parse::git_url(){
+  local -n repo_info="$1"
+  local git_url="$(echo "$2" | xargs)" # Trim leading/trailing whitespace
+  repo_info=() #clear the data
 
-
-  local path="$(echo "$github_url" | sed -E 's|.*github.com[:/]?||' | sed 's|.git||')"
-  local repo_name prefix owner version
-  IFS="/" read -r owner repo_name <<< "$path"
-  IFS="#" read -r repo_name version <<< "$repo_name" # maybe ends with a some_repo.git#<version>
-  if [[ -z "$version" ]]; then # maybe it ended with a 'some_repo.git#<version>'
-    IFS="#" read -r repo_name version <<< "$repo_name"
+  local host=""
+  local lower_git_url="${git_url,,}" # Convert to lowercase for host matching
+  if [[ "$lower_git_url" =~ "github.com" ]]; then
+    host="github.com"
+  elif [[ "$lower_git_url" =~ "gitlab.com" ]]; then
+    host="gitlab.com"
+  elif [[ "$lower_git_url" =~ "bitbucket.org" ]]; then
+    host="bitbucket.org"
+  else
+    _fail "Unsupported git host in URL: $git_url"
   fi
 
-  github_ref[url]="git@github.com:${owner}/${repo_name}.git"
-  github_ref[web_url]="https://github.com/${owner}/${repo_name}"
-  github_ref[owner]="${owner}"
-  github_ref[repo]="${repo_name}.git"
-  github_ref[name]="${repo_name}"
-  github_ref[version]="${version}"
+  # Use lower_git_url for sed to handle case-insensitivity
+  local path_with_version="$(echo "$lower_git_url" | sed -E "s|.*${host}[:/]?||")" # Remove host part, keep .git and version
+  local path_without_version=""
+  local repo_name version owner
+
+  # Extract version if present using regex
+  local temp_repo_name_part="${path_with_version}"
+  version="" # Initialize version to empty
+
+  # Extract version if present using regex
+  local temp_repo_name_part="${path_with_version}"
+  version="" # Initialize version to empty
+
+  if [[ "${temp_repo_name_part}" =~ ^(.*)[#@](.*)$ ]]; then
+    path_without_version="${BASH_REMATCH[1]}"
+    version="${BASH_REMATCH[2]}"
+  else
+    path_without_version="${temp_repo_name_part}"
+  fi
+
+  # Remove .git suffix from path_without_version if present
+  path_without_version="${path_without_version%.git}"
+
+  # Ensure path_without_version does not contain any version separators
+  path_without_version="${path_without_version%%[#@]*}"
+
+  # Extract repo_name and owner from the path without version
+  repo_name="${path_without_version##*/}"
+  if [[ "$path_without_version" == *"/"* ]]; then
+    owner="${path_without_version%/*}"
+  else
+    owner="" # No owner if no slash
+  fi
+
+  if [[ -z "$owner" ]]; then
+    _fail "Git URL must contain an owner/namespace/workspace: $git_url"
+  fi
+
+  if [[ -z "$repo_name" ]]; then
+    _fail "Git URL must contain a repository name: $git_url"
+  fi
+
+  # Construct the output URLs and fields
+  local git_clone_path=""
+  if [[ -n "$owner" ]]; then
+    git_clone_path="${owner}/${repo_name}"
+  else
+    git_clone_path="${repo_name}"
+  fi
+
+  repo_info[url]="git@${host}:${git_clone_path}.git"
+  repo_info[web_url]="https://${host}/${git_clone_path}"
+  repo_info[owner]="${owner}"
+  repo_info[repo]="${repo_name}.git"
+  repo_info[name]="${repo_name}"
+  repo_info[version]="${version}"
+  repo_info[host]="${host}"
 }
 
 
@@ -67,6 +131,7 @@ _tm::parse::github_url(){
 #   - `cfg_sh`: Path to the plugin's merged shell configuration file (to apply all the config)
 #   - `state_dir`: Path to the plugin's state dir (where it can save persistent state)
 #   - `cache_dir`: Path to the plugin's cache dir (where it can save cached data)
+#   - `packages_dir`: Path to the plugin's packaages dir (where it can install things to)
 #   - `tm`: Boolean, true if this is the tool-manager plugin itself.
 #
 # Usage:
@@ -129,18 +194,15 @@ _tm::parse::plugin_name(){
   # If after parsing, the 'name' is empty, it means the original 'prefix' was
   # actually the name, and there was no prefix.
   if [[ -z "$name" ]]; then
-    name="$prefix"
-    prefix=""
+    _fail "Invalid plugin name format. Missing name after prefix separator. From input name '${parse_name}'"
   fi
 
   # Check for vendor information (indicated by a slash '/').
   # If found, split into vendor and name.
   if [[ "$name" == *'/'* ]]; then
     IFS="/" read -r vendor name <<< "$name"
-    # If 'name' is empty after splitting, it means the 'vendor' was the actual name.
     if [[ -z "$name" ]]; then
-      name="$vendor"
-      vendor=""
+      _fail "Invalid plugin name format. Missing name after vendor slash. From input name '${parse_name}'"
     fi
   fi
 
@@ -148,10 +210,8 @@ _tm::parse::plugin_name(){
   # If found, split into name and version.
   if [[ "$name" == *'@'* ]]; then
     IFS="@" read -r name version <<< "$name"
-    # If 'name' is empty after splitting, it means the 'version' was the actual name.
     if [[ -z "$name" ]]; then
-      name="$version"
-      version="" # Reset version as it was actually the name
+      _fail "Invalid plugin name format. Missing name after version '@'. From input name '${parse_name}'"
     fi
   fi
 
@@ -159,16 +219,20 @@ _tm::parse::plugin_name(){
     _fail "Invalid plugin name format.Is empty. From input name'${parse_name}'"
   fi
 
+  # Validate name, vendor, and version formats
+  # Name: Must start with a lowercase letter or number, followed by lowercase letters, numbers, or hyphens.
   if [[ -n "$name" && ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     _fail "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${name}' from input '${parse_name}'"
   fi
 
-  if [[ -n "$vendor" && ! "$vendor" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
-    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${vendor}' from input '${parse_name}'"
+  # Vendor: Must start with a @ or lowercase letter or number, followed by lowercase letters, numbers, or hyphens.
+  if [[ -n "$vendor" && ! "$vendor" =~ ^[@a-z0-9][a-z0-9-]*$ ]]; then
+    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hyphens. Start with @/letter/number. Instead got '${vendor}' from input '${parse_name}'"
   fi
 
+  # Version: Must start with a lowercase letter or number, followed by lowercase letters, numbers, hyphens, or dots.
   if [[ -n "$version" && ! "$version" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
-    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hypens, dots. Start with letter/number. Instead got '${version}' from input '${parse_name}'"
+    _fail "Invalid plugin version format. Use lowercase letters, numbers, hyphens, dots. Start with letter/number. Instead got '${version}' from input '${parse_name}'"
   fi
 
   result_ref[vendor]="$vendor"
@@ -176,11 +240,10 @@ _tm::parse::plugin_name(){
   result_ref[version]="$version"
   result_ref[prefix]="$prefix"
 
+  # Call derived vars AFTER all validation checks
   _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "parsed to $(_tm::util::print_array result_ref)" || true
-
-  return 0
+  _is_finest && _finest "parsed to $(_tm::util::array::print result_ref)" || true
 }
 
 
@@ -216,21 +279,26 @@ _tm::parse::plugin_id(){
   local name="${id_parts[4]}"
   local version="${id_parts[5]:-}"
   local prefix="${id_parts[6]:-}"
+  result_ref[space]="$space" # Fix: Set space in result_ref
 
   if [[ -z "$name" ]]; then
     _fail "Invalid plugin name format.Is empty. From id '${parse_id}'"
   fi
 
+  # Validate name, vendor, and version formats
+  # Name: Must start with a lowercase letter or number, followed by lowercase letters, numbers, or hyphens.
   if [[ -n "$name" && ! "$name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
     _fail "Invalid plugin name format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${name}' from id '${parse_id}'"
   fi
 
-  if [[ -n "$vendor" && ! "$vendor" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+  # Vendor: Must start with a lowercase letter or number, followed by lowercase letters, numbers, hyphens or dots.
+  if [[ -n "$vendor" && ! "$vendor" =~ ^[a-z0-9][\.a-z0-9-]*$ ]]; then
     _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hyphens. Start with letter/number. Instead got '${vendor}' from id '${parse_id}'"
   fi
 
+  # Version: Must start with a lowercase letter or number, followed by lowercase letters, numbers, hyphens, or dots.
   if [[ -n "$version" && ! "$version" =~ ^[a-z0-9][a-z0-9.-]*$ ]]; then
-    _fail "Invalid plugin vendor format. Use lowercase letters, numbers, hypens, dots. Start with letter/number. Instead got '${version}' from id '${parse_id}'"
+    _fail "Invalid plugin version format. Use lowercase letters, numbers, hyphens, dots. Start with letter/number. Instead got '${version}' from id '${parse_id}'"
   fi
 
   result_ref[vendor]="$vendor"
@@ -240,7 +308,7 @@ _tm::parse::plugin_id(){
 
   _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "$(_tm::util::print_array result_ref)" || true
+  _is_finest && _finest "$(_tm::util::array::print result_ref)" || true
 }
 
 
@@ -260,16 +328,17 @@ _tm::parse::plugin_enabled_dir(){
   # the format is vendor__name__prefix, where prefix is optional
    IFS=$'\n' read -d '' -r vendor name prefix <<< "${dir_name//__/$'\n'}" || true
 
-  local version="${id_parts[4]:-}"
+  # The version is not part of the enabled directory name, so it should be empty
+  local version=""
 
   result_ref[vendor]="$vendor"
   result_ref[name]="$name"
-  result_ref[version]=""
+  result_ref[version]="$version"
   result_ref[prefix]="$prefix"
 
   _tm::parse::__set_plugin_derived_vars result_ref
 
-  _is_finest && _finest "$(_tm::util::print_array result_ref)" || true
+  _is_finest && _finest "$(_tm::util::array::print result_ref)" || true
 }
 
 #
@@ -285,6 +354,7 @@ _tm::parse::__set_plugin_derived_vars(){
   local prefix="${result_ref_derived[prefix]}"
   local vendor="${result_ref_derived[vendor]}"
   local space="${result_ref_derived[space]:-}"
+  local version="${result_ref_derived[version]:-}" # Added version here for key calculation
 
     # qname (qualified name)
   local qname=""
@@ -303,7 +373,7 @@ _tm::parse::__set_plugin_derived_vars(){
   # qpath (qualified file system path)
   local qpath
   if [[ "${name}" == "$__TM_NAME" ]] && [[ -z "${vendor:-}" ]]; then
-    result_ref_derived[tm]=true
+    result_ref_derived[is_tm]=true
     result_ref_derived[qname]="$__TM_NAME"
     result_ref_derived[key]="$__TM_NAME"
     result_ref_derived[enabled_dir]="$TM_HOME"
@@ -313,7 +383,7 @@ _tm::parse::__set_plugin_derived_vars(){
     result_ref_derived[qpath_flat]="tool-manager"
     qpath="$__TM_NAME"
   else
-    result_ref_derived[tm]=false
+    result_ref_derived[is_tm]=false
     qpath="${vendor:-${__TM_NO_VENDOR}}/${name}"
     if [[ -n "${prefix}" ]]; then
       qpath+="__${prefix}"
@@ -327,32 +397,33 @@ _tm::parse::__set_plugin_derived_vars(){
     result_ref_derived[enabled_conf]="$TM_PLUGINS_ENABLED_DIR/${qpath_flat}.conf"
     result_ref_derived[install_conf]="$TM_PLUGINS_INSTALLED_CONF_DIR/${qpath_flat}.conf"
     result_ref_derived[install_dir]="$TM_PLUGINS_INSTALL_DIR/${vendor:-${__TM_NO_VENDOR}}/${name}"
+
+    # a key which can be used for caching things
+    local key=""
+    if [[ -n "$vendor" ]]; then
+      key+="${vendor}__"
+    else
+      key+="${__TM_NO_VENDOR}__"
+    fi
+    key+="${name}"
+    if [[ -n ${version} ]]; then
+      key+="__v${version}"
+    else
+      key+="__vmain"
+    fi
+    if [[ -n "$prefix" ]]; then
+      key+="__${prefix}"
+    fi
+    result_ref_derived[key]="$key"
   fi
   result_ref_derived[qpath]="$qpath"
 
-    # a key which can be used for caching things
-  local key=""
-  if [[ -n "$vendor" ]]; then
-    key+="${vendor}__"
-  else
-    key+="${__TM_NO_VENDOR}__"
-  fi
-  key+="${name}"
-  if [[ -n ${version} ]]; then
-    key+="__v${version}"
-  else
-    key+="__vmain"
-  fi
-  if [[ -n "$prefix" ]]; then
-    key+="__${prefix}"
-  fi
-  result_ref_derived[key]="$key"
   result_ref_derived[id]="tm:plugin:$space:$vendor:$name:$version:$prefix"
+
   result_ref_derived[cfg_spec]="${result_ref_derived[install_dir]}/plugin.cfg.yaml"
   result_ref_derived[cfg_dir]="$TM_PLUGINS_CFG_DIR/${qpath}"
   result_ref_derived[cfg_sh]="$TM_PLUGINS_CFG_DIR/${qpath}/config.sh" # plugin specific main config file
   result_ref_derived[state_dir]="$TM_PLUGINS_STATE_DIR/${qpath}" # where the plugin should store persistant stae
   result_ref_derived[cache_dir]="$TM_PLUGINS_CACHE_DIR/${qpath}" # the plugins cache dir, for data that can be lost and regenerated
   result_ref_derived[packages_dir]="$TM_PLUGINS_PACKAGES_DIR/${qpath}" # where to install plugin specific deps/progs
-
 }

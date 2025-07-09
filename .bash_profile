@@ -1,8 +1,10 @@
 
 #
-# Tool Manager - Main .bashrc
+# Tool Manager - Main .bash_profile
 #
-# This script is sourced by the user's main ~/.bash_profile.
+# This script is sourced by the user's main ~/.bash_profile, which is typically only run once
+# per user login shell (aka, when the user logs in)
+#
 # It initializes the Tool Manager environment by:
 # 1. Sourcing the core bootstrap script (bin/.tm.boot.sh).
 # 2. Conditionally loading plugins and commands via _tm::boot::load

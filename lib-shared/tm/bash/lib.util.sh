@@ -335,46 +335,44 @@ _fail_if_not_installed(){
 
 }
 
+_print_array(){
+  _tm::util::array::print "$1"
+}
+
 # print normal or associative array
-_tm::util::print_array(){
+_tm::util::array::print(){
   local -n array_ref="$1"
   if [[ -z "${array_ref:-}" ]]; then
     return
   fi
 
-  echo -n "${array_ref:-}( "
+  >&2 echo -n "${array_ref:-}( "
   for key in "${!array_ref[@]}"; do
-    echo -n "['$key']='${array_ref["$key"]:-}' "
+    >&2 echo -n "['$key']='${array_ref["$key"]:-}' "
   done
-  echo ")"
+  >&2 echo ")"
 }
 
 #
-# Add the passed in path to the PATH if it's not already added
+# Get the first value from the array with one of the provided keys
+# Arguments:
+# $1 - the associative array by reference
+# $2... the keys to try. 
 #
-# $@.. - [PATH]s to add
+# If no key found, throws an exception
 #
-_tm::util::add_to_path() {  
-  if [[ -z "${1:-}" ]]; then
-    # no paths to add, skip all
+_tm::util::array::get_first(){
+  local -n array_ref="$1"
+  shift
+  if [[ -z "${array_ref:-}" ]]; then
     return
   fi
-  _debug "adding paths $*"
-  # TODO: handle different separator in different OS's?
-  IFS=':' read -ra current_paths <<< "$PATH"
-  local path_exists
-  for new_path in "$@"; do
-    path_exists=false
-    local path
-    for path in "${current_paths[@]}"; do
-      if [[ "$path" == "$new_path" ]]; then
-        path_exists=true
-        break
-      fi
-    done
-    if [[ "$path_exists" == false ]]; then
-      PATH="$new_path:$PATH"
+
+  for key in "$@"; do
+    if [[ -n "${array_ref["$key"]:-}" ]]; then
+      echo "${array_ref["$key"]}"
+      return
     fi
   done
-  export PATH
+   _fail "Coud not find any values with keys matching one of ($@)"
 }

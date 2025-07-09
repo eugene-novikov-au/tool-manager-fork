@@ -40,6 +40,7 @@ plugin_state_dir="$5"
 real_script="$6"
 shift 6 # the remaining are the user args
 
+# NOTE: keep these in sync with the _tm::plugin scripts
 export TM_PLUGIN_HOME="$plugin_dir" # could be the plugin dir or the enabled dir
 export TM_PLUGIN_ID="$plugin_id" # this include the fully qualified name, install dir, vendor, prefix etc
 export TM_PLUGIN_CFG_DIR="$plugin_cfg_dir"

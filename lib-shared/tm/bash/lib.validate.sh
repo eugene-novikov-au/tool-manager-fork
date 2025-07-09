@@ -1,4 +1,9 @@
-
+#
+# Library to provide generic validation routines
+#
+if command -v _tm::validate::key_value &>/dev/null; then
+  return
+fi
 
 #
 # Validate a given key/value pair
@@ -106,7 +111,7 @@ _tm::validate::__init(){
       [alphanumeric]="^[a-zA-Z0-9]+$|be alphanumeric" \
       [letters]="^[a-zA-Z]+$|contain only letters" \
       [numbers]="^[0-9]+$|only numbers" \
-      [plugin-vendor]="^[a-zA-Z0-9][\.a-zA-Z0-9\-]*[a-zA-Z0-9]$|start with alphanumeric, then alphanumeric, letters, dashes, dots" \
+      [plugin-vendor]="^[@a-zA-Z0-9][\.a-zA-Z0-9\-]*[a-zA-Z0-9]$|start with @ or alphanumeric, then alphanumeric, letters, dashes, dots" \
       [plugin-name]="|" \
       [plugin-prefix]="^[a-zA-Z0-9-]+$|be alphanumeric or dashes" \
       [space-key]="^[a-zA-Z0-9][\.a-zA-Z0-9-]+[a-zA-Z0-9]$|be alphanumeric, dashes, or dots. Must start with a alphanumeric" \

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env tm-env-bash
 
 #
 # Run a bats script in a tool-manager env. This will ensure the tool manager is initialised, and the basics source/include/log functions
@@ -9,7 +9,10 @@
 #
 # _fail is a utility function sourced from .bashrc_script that prints an error message to stderr and exits with a non-zero status.
 #
-
+# @require:tpkg @bats/bats-core
+# @require:tpkg @bats/bats-support
+# @require:tpkg @bats/bats-assert
+#
 source "$TM_HOME/.bashrc_script" || _fail "Failed to source TM_HOME/.bashrc_script"
 source "$TM_BIN/.tm.venv.sh"
 
@@ -57,16 +60,42 @@ if [[ $((script_index + 1)) -le $# ]]; then
     script_cmd_args=("${@:$((script_index + 1))}")
 fi
 
-# Setup bats-core if not already installed
-BATS_INSTALL_DIR="$TM_PACKAGES_DIR/bats-core"
 if ! command -v bats &> /dev/null; then
-    if [ ! -d "$BATS_INSTALL_DIR" ]; then
-        _info "bats-core not found. Cloning from git..."
-        mkdir -p "$(dirname "$BATS_INSTALL_DIR")"
-        git clone https://github.com/bats-core/bats-core.git "$BATS_INSTALL_DIR" &> /dev/null
+    BATS_CORE_INSTALL_DIR="$TM_PACKAGES_DIR/bats-core"
+    # tm-install tpkg:@bats/bats-core
+    # tm-install tpkg:@bats/bats-support
+    # tm-install tpkg:@bats/bats-assert
+
+    if [ ! -d "$BATS_CORE_INSTALL_DIR" ]; then
+        _info "bats (bats-core) not found. Cloning from git..."
+        mkdir -p "$(dirname "$BATS_CORE_INSTALL_DIR")"
+        git clone https://github.com/bats-core/bats-core "$BATS_CORE_INSTALL_DIR" &> /dev/null
         _info "installed bats-core"
     fi
-    export PATH="$BATS_INSTALL_DIR/bin:$PATH"
+    #_tm::path::add_path "${BATS_CORE_INSTALL_DIR}/bin"
+    export PATH="$PATH:${BATS_CORE_INSTALL_DIR}/bin"
+fi
+
+if ! command -v bats &> /dev/null; then
+    BATS_SUPPORT_INSTALL_DIR="$TM_PACKAGES_DIR/bats-support"
+    if [ ! -d "$BATS_SUPPORT_INSTALL_DIR" ]; then
+        _info "bats-support not found. Cloning from git..."
+        mkdir -p "$(dirname "$BATS_SUPPORT_INSTALL_DIR")"
+        git clone https://github.com/ztombol/bats-support.git "$BATS_SUPPORT_INSTALL_DIR" &> /dev/null
+        _info "installed bats-support"
+    fi
+    source "${BATS_SUPPORT_INSTALL_DIR}/load.bash"
+fi
+
+if ! command -v assert_failure &> /dev/null; then
+    BATS_ASSERT_INSTALL_DIR="$TM_PACKAGES_DIR/bats-assert"
+    if [ ! -d "$BATS_ASSERT_INSTALL_DIR" ]; then
+        _info "bats-assert not found. Cloning from git..."
+        mkdir -p "$(dirname "$BATS_ASSERT_INSTALL_DIR")"
+        git clone https://github.com/ztombol/bats-assert.git "$BATS_ASSERT_INSTALL_DIR" &> /dev/null
+        _info "installed bats-assert"
+    fi
+    source "${BATS_ASSERT_INSTALL_DIR}/load.bash"
 fi
 
 # we source it so we get better stack trace errors, and so we have better control of the env it runs in

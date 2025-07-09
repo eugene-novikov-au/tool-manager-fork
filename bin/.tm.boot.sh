@@ -34,7 +34,9 @@ readonly TM_BIN_DEFAULTS="$TM_HOME/bin-defaults" # scripts which are provided by
 
 source "$TM_LIB_BASH/lib.log.sh" # ensure the logging is loaded first
 source "$TM_LIB_BASH/lib.source.sh" # then the '_tm::source' functions are available
-source "$TM_LIB_BASH/lib.util.sh"
+_source_once "$TM_LIB_BASH/lib.util.sh" 
+_source_once "$TM_LIB_BASH/lib.path.sh"
+_source_once "$TM_LIB_BASH/lib.event.sh"
 
 #
 # _tm::boot::reload
@@ -56,6 +58,8 @@ _tm::boot::reload() {
   _tm::log::push_name "$__TM_NAME"
   _tm::source::include_once @tm/lib.common.sh .tm.plugin.sh .tm.plugins.sh .tm.common.sh .tm.venv.directives.sh
 
+  _tm::event::fire "tm.boot.reload.start"
+
   # reload all
   # note that order is very important here, as we are clearing things, we need to be
   # careful the functions are called in the right order again to resetup the env
@@ -64,6 +68,7 @@ _tm::boot::reload() {
   #_tm::boot::init
   _tm::plugins::regenerate_all_wrapper_scripts
   _tm::boot::load
+  _tm::event::fire "tm.boot.reload.finish"
   _info "...$__TM_NAME reloaded"
   _tm::log::pop
 }
@@ -87,7 +92,9 @@ _tm::boot::load(){
   export TM_PLUGINS_LOADED="1"
   # lazy load the deps
   _tm::source::include_once @tm/lib.common.sh .tm.plugin.sh .tm.plugins.sh .tm.common.sh .tm.venv.directives.sh
+  _tm::event::fire "tm.boot.load.start"
   _tm::plugins::load_all_enabled || _warn "Error loading tool-manager (tm) and plugins. Some features may be unavailable."
+  _tm::event::fire "tm.boot.load.finish"
 }
 
 # Clears cached script execution status variables (matching `__TM_CACHE_*`).
@@ -132,7 +139,10 @@ _tm::boot::init() {
   TM_CFG_DIR="${TM_BASE_CFG_DIR}/${__TM_NAME}"
   TM_PACKAGES_DIR="${TM_BASE_PACKAGES_DIR}/${__TM_NAME}" # where to put installed packages
 
+  TM_EVENT_LOG_DIR="${TM_BASE_CACHE_DIR}/${__TM_NAME}/events" # where to put installed packages
+
   TM_PLUGINS_PID_DIR="$TM_CACHE_DIR/plugins/pid"  # Directory for storing Process ID (PID) files of background plugin services.
+  TM_PLUGINS_SERVICES_DIR="$TM_CACHE_DIR/plugins/services"  # Directory for storing links to enabled services.
   # --- Plugin Structure Paths ---
   TM_PLUGINS_BIN_DIR="$TM_CACHE_DIR/plugins/bin" # Directory where wrapper scripts for plugin commands are generated. This dir is added to PATH.
   TM_PLUGINS_VENV_DIR="$TM_CACHE_DIR/tm-venv" # where plugin virtual environments are placed (pip/uv/conda etc)
@@ -163,6 +173,7 @@ _tm::boot::init() {
   # Ensure all necessary operational directories exist.
   mkdir -p "$TM_STATE_DIR" \
             "$TM_CACHE_DIR" \
+            "$TM_EVENT_LOG_DIR" \
             "$TM_PLUGINS_INSTALL_DIR" \
             "$TM_PLUGINS_ENABLED_DIR" \
             "$TM_PLUGINS_BIN_DIR" \
@@ -171,10 +182,37 @@ _tm::boot::init() {
             "$TM_PLUGINS_PID_DIR"
 
   # the tool-manager bins dirs.
-  _tm::util::add_to_path "$TM_BIN" "$TM_PLUGINS_BIN_DIR" "$TM_BIN_DEFAULTS"
+  _tm::path::add_to_path "$TM_BIN" "$TM_PLUGINS_BIN_DIR" "$TM_BIN_DEFAULTS"
+  
+  if _is_trace; then
+    _tm::event::on '**' _tm::boot:__event_callback
+  fi
 
   _debug "TM initialized. TM_HOME: $TM_HOME, Plugin install dir: $TM_PLUGINS_INSTALL_DIR"
+  _tm::event::fire "tm.boot.init.finish"
   _tm::log::pop
+}
+
+#
+# Callback for the events
+#
+# Arguments
+# $1 - the event name
+# $2 - the event id
+# $3 - the event timestamp (epoche, ms precision)
+# $4.. - the event args
+#
+_tm::boot:__event_callback(){
+  local event_name="$1"
+  local event_id="$2"
+  local event_ts="$3"
+  shift 3
+
+  local msg="${event_name}\t${event_id}\t${event_ts}\t${@}"
+  # log to file. TODO, make configurable
+  #echo -e "${msg}" >> "${TM_EVENT_LOG_DIR}/events.log" 
+
+  _is_trace && _trace "event: '${msg}'" || true
 }
 
 _tm::trap::error(){
