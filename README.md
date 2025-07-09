@@ -322,7 +322,8 @@ to `~/.bashrc` or `~/.profile` during installation, and unset all related enviro
 see [OVERVIEW.md](./docs/OVERVIEW.md)
 
 # Contributing
-Pull requests are welcome! Feel free to open issues for feature requests or bug reports.
+Pull requests are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setup, coding style, and the pull request workflow.
+Feel free to open issues for feature requests or bug reports.
 For larger contributions, please discuss the idea first to ensure it aligns with the project roadmap.
 
 # License
