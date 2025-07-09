@@ -32,7 +32,7 @@ fi
 main(){
   local -A plugin
 
-  if [[ -z "$name" ]] && [[ -n "${args[is_tm]}" ]] then
+  if [[ -z "$name" ]] && [[ -n "${args[tm]}" ]] then
       name="$__TM_NAME"
   fi
   if [[ "$name" == "$__TM_NAME" ]] || [[ -z "$name" ]] then
