@@ -101,7 +101,7 @@ elif [[ -d "$TM_HOME" ]]; then
         # Remove the cache directory without asking questions
         if [[ -d "$TM_BASE_CACHE_DIR" ]]; then
             echo "${log_prefix} Removing cache directory '$TM_BASE_CACHE_DIR'"
-            rm -rf "$TM_BASE_CACHE_DIR"
+            _rm -rf "$TM_BASE_CACHE_DIR"
         fi
 
         # Check for config directory
@@ -109,13 +109,13 @@ elif [[ -d "$TM_HOME" ]]; then
             # Check if the config directory is empty
             if [ -z "$(ls -A "$TM_BASE_CFG_DIR" 2>/dev/null)" ]; then
                 echo "${log_prefix} Config directory is empty, removing it"
-                rm -rf "$TM_BASE_CFG_DIR"
+                _rm -rf "$TM_BASE_CFG_DIR"
             else
                 # TODO: check if config has been recently backed up (no pending changes)
                 if _confirm "Do you also want to delete all the config?"; then
                     # TODO: maybe run a config backup first
                     echo "${log_prefix} Removing config directory"
-                    rm -rf "$TM_BASE_CFG_DIR"
+                    _rm -rf "$TM_BASE_CFG_DIR"
                 else
                     echo "${log_prefix} Keeping config directory"
                     # Move config to a backup location
@@ -132,11 +132,11 @@ elif [[ -d "$TM_HOME" ]]; then
             # Check if the state directory is empty
             if [ -z "$(ls -A "$TM_BASE_STATE_DIR" 2>/dev/null)" ]; then
                 echo "${log_prefix} State directory is empty, removing it"
-                rm -rf "$TM_BASE_STATE_DIR"
+                _rm -rf "$TM_BASE_STATE_DIR"
             else
                 if _confirm "Do you also want to delete the state directory?"; then
                     echo "${log_prefix} Removing state directory"
-                    rm -rf "$TM_BASE_STATE_DIR"
+                    _rm -rf "$TM_BASE_STATE_DIR"
                 else
                     echo "${log_prefix} Keeping state directory"
                     # Move state to a backup location
@@ -149,7 +149,7 @@ elif [[ -d "$TM_HOME" ]]; then
         fi
 
         # Remove the main directory
-        rm -rf "$TM_HOME"
+        _rm -rf "$TM_HOME"
         echo "${log_prefix} Install directory removed"
     else
         echo "${log_prefix} Uninstall cancelled by user"

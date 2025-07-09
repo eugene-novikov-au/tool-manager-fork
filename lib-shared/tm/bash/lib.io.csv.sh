@@ -6,7 +6,7 @@
 # $1 - csv string
 # $2 - array reference
 #
-_tm::file::csv::to_array() {
+_tm::io::csv::to_array() {
     local csv_string="$1"
     local array_name="$2"
     local pair key value

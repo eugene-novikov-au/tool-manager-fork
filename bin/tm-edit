@@ -32,7 +32,7 @@ fi
 main(){
   local -A plugin
 
-  if [[ -z "$name" ]] && [[ -n "${args[tm]}" ]] then
+  if [[ -z "$name" ]] && [[ -n "${args[is_tm]}" ]] then
       name="$__TM_NAME"
   fi
   if [[ "$name" == "$__TM_NAME" ]] || [[ -z "$name" ]] then
@@ -120,6 +120,10 @@ cat << EOF > "${output_file}"
       "name": "ROOT/CACHE",
       "path": "${TM_BASE_CACHE_DIR}"
     },
+    {
+      "name": "ROOT/PACKAGES",
+      "path": "${TM_BASE_PACKAGES_DIR}"
+    }
   ],
   "settings": {
     "search.useIgnoreFiles": false
@@ -158,6 +162,10 @@ cat << EOF > "${output_file}"
     {
       "name": "ROOT/STATE",
       "path": "${TM_BASE_STATE_DIR}"
+    },
+    {
+      "name": "ROOT/PACKAGES",
+      "path": "${TM_BASE_PACKAGES_DIR}"
     }
   ],
   "settings": {

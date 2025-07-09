@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#
+# Stop a given service
+#
+
+tm-service --command stop "$@"

@@ -1,10 +1,15 @@
 
-# This script provides a set of Bash functions for reading and parsing
+#
+# Library to provides a set of functions for reading and parsing
 # INI-style configuration files. It is used by the Tool Manager to
 # process plugin definitions from files like 'plugins.conf'.
 # Functions support reading entire INI files, specific sections,
 # listing section names, and checking for section existence.
 #
+
+if command -v _tm::file::ini::read &>/dev/null; then
+  return
+fi
 
 # Ensure common utilities like _error are available
 _tm::source::include_once @tm/lib.log.sh @tm/lib.util.sh
@@ -104,15 +109,39 @@ _tm::file::ini::read_sections() {
 # --- Function 3: _tm::file::ini::read_section ---
 # Reads a specific section from an INI file and populates the specified associative array.
 # Usage: _tm::file::ini::read_section <output_array_name> <config_file> <section_name> 
+#
+# Arguments:
+# $1 - (required) the associative array to store the results in
+# $2 - (required) the file to read
+# $3 - (required) the name of the section to read
+# $4 - (optional) options. Currently support only 'multiline' (or empty)
+#           if 'multiline' is enabled, duplicate keys results in values being added using a newline
+#
 _tm::file::ini::read_section() {
-    if [[ "$#" -ne 3 ]]; then
-        _error "$FUNCNAME: Incorrect number of arguments. Usage: $FUNCNAME: <config_ini_file> <section_name> <output_array_name> "
+    if [[ "$#" -lt 3 ]]; then
+        _error "$FUNCNAME: Incorrect number of arguments. Usage: $FUNCNAME: <output_array_name> <config_ini_file> <section_name> <options>"
         return 1
     fi
 
     local -n section_array_ref="$1"
     local ini_file="$2"
     local target_section_name="$3"
+    local options="${4:-}"
+
+    _is_trace && _trace "Looking for section '${target_section_name}' in file '${ini_file}' " || true
+
+    local opt_multi_line=0
+    case "${options}" in
+        multiline)
+            opt_multi_line=1
+            ;;
+        '')
+            : # nothing
+            ;;
+        *)
+            _warn "option '${options}' is not supported. Ignoring"
+            ;;   
+    esac
 
     if [[ ! -f "$ini_file" || ! -r "$ini_file" ]]; then
         _error "$FUNCNAME: ini file '$ini_file' not found or not readable."
@@ -138,6 +167,7 @@ _tm::file::ini::read_section() {
             current_section="$(_tm::file::ini::__trim_string "${BASH_REMATCH[1]}")"
             if [[ "$current_section" == "$target_section_name" ]]; then
                 in_target_section=1
+                _finest "matched section '${target_section_name}' in file '${ini_file}'"
             elif [[ "$in_target_section" -eq 1 ]]; then
                 # We've passed the target section
                 break 
@@ -148,7 +178,11 @@ _tm::file::ini::read_section() {
         if [[ "$in_target_section" -eq 1 && "$line" =~ ^([^=]+)=(.*)$ ]]; then # Key-value pair
             key="$(_tm::file::ini::__trim_string "${BASH_REMATCH[1]}")"
             value="$(_tm::file::ini::__trim_string "${BASH_REMATCH[2]}")"
-            section_array_ref["$key"]="$value"
+            if [[ "${opt_multi_line}" == '0' ]] || [[ -z "${section_array_ref["$key"]:-}" ]]; then # new value
+                section_array_ref["$key"]="$value"
+            else # append to existing value. Allows for multi line support (just put multiple values with the same key on new lines)
+                section_array_ref["$key"]+="\n$value"
+            fi
         fi
     done < "$ini_file"
     return 0

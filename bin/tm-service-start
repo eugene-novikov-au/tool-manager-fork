@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#
+# Start a given service
+#
+
+tm-service --command start "$@"

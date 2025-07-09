@@ -36,7 +36,7 @@ main(){
 
   if [[ "${args[all]}" == "1" ]]; then
       _info "Disabling all plugins by removing '$TM_PLUGINS_ENABLED_DIR'"
-      if rm -fR "$TM_PLUGINS_ENABLED_DIR"; then
+      if _rm -fR "$TM_PLUGINS_ENABLED_DIR"; then
           _info "Successfully removed all enabled plugins."
       else
           _error "Failed to remove all enabled plugins in '$TM_PLUGINS_ENABLED_DIR'."

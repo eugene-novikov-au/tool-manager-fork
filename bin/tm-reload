@@ -29,7 +29,7 @@ auto_yes="${args[yes]}"
 
 if [[ "${args[clear]}" == '1' ]]; then
   _info "Clearing cache dir '${TM_CACHE_DIR}'"
-  rm -fR "${TM_CACHE_DIR}"
+  _rm -fR "${TM_CACHE_DIR}"
 fi
 IFS=' ' read -r -a plugin_names <<< "${args[plugins]:-}"
 if [[ ${#plugin_names[@]} -gt 0 ]]; then   # reload just the given plugin(s)

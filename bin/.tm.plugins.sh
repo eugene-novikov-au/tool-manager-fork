@@ -325,6 +325,8 @@ _tm::plugins::uninstall() {
 
   local qname="${plugin_to_disable[qname]}"
   local plugin_dir="${plugin_to_disable[install_dir]}"
+  local plugin_id="${plugin_to_disable[id]}"
+  
   if [[ -d "${plugin_dir}/.git" ]]; then
     _info "plugin git status:"
     _pushd "$plugin_dir"
@@ -333,6 +335,8 @@ _tm::plugins::uninstall() {
   fi
   local yn=''
   if _confirm "Really uninstall plugin ${qname} in ${plugin_dir}?"; then
+      _tm::event::fire "tm.plugin.uninstall.start" "${plugin_id}"
+
       if _tm::plugin::disable plugin_to_disable; then
           _info "Plugin '${qname}' disabled successfully."
       else
@@ -344,9 +348,11 @@ _tm::plugins::uninstall() {
       fi
       if rm -fR "$plugin_dir"; then
           _info "Plugin directory '${plugin_dir}' removed successfully."
+          _tm::event::fire "tm.plugin.uninstall.finish" "${plugin_id}"
           return 0
       else
           _error "Failed to remove plugin directory '${plugin_dir}'."
+          _tm::event::fire "tm.plugin.uninstall.error" "${plugin_id}"
           return 1
       fi
   else
@@ -481,7 +487,7 @@ _tm::plugins::install_from_registry(){
       local plugin_cfg_repo="${plugin_details[repo]:-}"
       local plugin_cfg_commit="${plugin_details[commit]:-}" # Commit from INI is default
     else
-      _error "could not find plugin details in '$plugin_conf_file'"
+      _error "Could not find plugin details in '$plugin_conf_file'"
       return $_false
     fi
 
@@ -649,7 +655,7 @@ _tm::plugins::foreach_available_callback() {
     for conf_file in "${plugin_files[@]}"; do
         _debug "Processing config file: $conf_file"
         if [[ ! -f "$conf_file" || ! -r "$conf_file" ]]; then
-            _warn "config file not found or not readable: '$conf_file'. Skipping."
+            _warn "Config file not found or not readable: '$conf_file'. Skipping."
             continue
         fi
 
