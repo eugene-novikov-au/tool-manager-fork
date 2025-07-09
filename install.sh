@@ -18,6 +18,30 @@ log_prefix="[tool-manager install] "
 tm_git_repo="git@github.com:codemucker/tool-manager.git"
 tm_home="$HOME/.tool-manager"
 git_clone=1
+specified_version=""
+
+# --- Parse Arguments ---
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --version)
+      shift
+      specified_version="$1"
+      if [[ -z "$specified_version" ]]; then
+        _err "--version requires an argument"
+        exit 1
+      fi
+      shift
+      ;;
+    --version=*)
+      specified_version="${1#*=}"
+      shift
+      ;;
+    *)
+      _err "Unknown argument: $1"
+      exit 1
+      ;;
+  esac
+done
 
 # --- Bash Version Check ---
 if [[ ! "$(echo "${BASH_VERSION:-0}" | grep -e '^[5-9]\..*' )" ]]; then
@@ -41,30 +65,34 @@ if [[ -f "$tm_bashrc" ]]; then
 fi
 
 # --- Clone repository ---
-if [[ "$git_clone" == "1" ]]; then 
-  # Fetch tags and branches
-  echo "Retrieving available versions..."
-  git fetch --all --tags > /dev/null 2>&1
-  available_tags=$(git tag --sort=-creatordate)
-  available_branches="main\ndevelop"
+if [[ "$git_clone" == "1" ]]; then
+  if [[ -n "$specified_version" ]]; then
+    version="$specified_version"
+  else
+    # Fetch tags and branches
+    echo "Retrieving available versions..."
+    git fetch --all --tags > /dev/null 2>&1
+    available_tags=$(git tag --sort=-creatordate)
+    available_branches="main\ndevelop"
 
-  # Combine tags and branches, limit to top 9 tags & branches
-  combined_options="$available_tags\n$available_branches"
-  options_array=($(echo -e "$combined_options" | head -n 9))
+    # Combine tags and branches, limit to top 9 tags & branches
+    combined_options="$available_tags\n$available_branches"
+    options_array=($(echo -e "$combined_options" | head -n 9))
 
-  # Set default version to the latest tag
-  default_version=${options_array[0]}
+    # Set default version to the latest tag
+    default_version=${options_array[0]}
 
-  # Display options to the user
-  PS3="Select a version: "
-  select version in "${options_array[@]}"; do
-    if [[ -n "$version" ]]; then
-      break
-    else
-      version=$default_version
-      break
-    fi
-  done
+    # Display options to the user
+    PS3="Select a version: "
+    select version in "${options_array[@]}"; do
+      if [[ -n "$version" ]]; then
+        break
+      else
+        version=$default_version
+        break
+      fi
+    done
+  fi
 
   # Selected version will be cloned
 

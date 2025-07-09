@@ -186,6 +186,12 @@ or for a given version
 curl -s  https://raw.githubusercontent.com/codemucker/tool-manager/refs/tags/0.0.1/install.sh | bash
 ```
 
+You can also pass a version directly to the installer using `--version`:
+
+```bash
+curl -s "https://raw.githubusercontent.com/codemucker/tool-manager/refs/heads/main/install.sh" | bash -s -- --version 0.0.1
+```
+
 alternatively, clone this repo to `$HOME/.tool-manager` (or wherever you like) , and add the following to your `$HOME/.bashrc`
 
 ```bash
@@ -304,19 +310,22 @@ Your script can end in '.py' or not. It will appear in your path without the ext
 To completely remove Tool Manager and all installed plugins, run:
 
 ```bash
-tm-uninstall
+tm-uninstall [--force]
 ```
 
 The command executes `uninstall.sh` from your Tool Manager home
 directory. It removes the `~/.tool-manager` folder, cleans any lines added
 to `~/.bashrc` or `~/.profile` during installation, and unset all related environment variables.
 
+Use the `--force` option to skip all confirmation prompts during uninstallation.
+
 # Design
 
 see [OVERVIEW.md](./docs/OVERVIEW.md)
 
 # Contributing
-Pull requests are welcome! Feel free to open issues for feature requests or bug reports.
+Pull requests are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setup, coding style, and the pull request workflow.
+Feel free to open issues for feature requests or bug reports.
 For larger contributions, please discuss the idea first to ensure it aligns with the project roadmap.
 
 # License
