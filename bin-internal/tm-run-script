@@ -75,5 +75,5 @@ fi
 
 # execute as is, we don't run in bash interactive mode by default, as users might just want simple, unadultered bash scripts. It's their choice as to 
 # what they want to include. We make it easy, as all they have to do is call one of the above exported functions, and the tool manager is loaded.
-# If users wan the full experience, they can run theirscripts using shebang: '#!/usr/bin/env tm-env-bash'
+# If users wan the full experience, they can run theirscripts using shebang: '#!/usr/bin/env env-tm-bash'
 "$real_script" "$@"

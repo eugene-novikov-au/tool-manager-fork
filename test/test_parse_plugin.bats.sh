@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bats
+#!/usr/bin/env env-tm-bats
 
 load '../lib-shared/tm/bash/lib.parse.sh'
 
@@ -18,7 +18,7 @@ _is_finest() {
 }
 
 # Define these variables as they are used in lib.parse.sh
-# Assuming common default values if not explicitly set by tm-env-bats
+# Assuming common default values if not explicitly set by env-tm-bats
 __TM_SEP_PREFIX_NAME=":"
 __TM_SEP_PREFIX_DIR="__"
 __TM_NO_VENDOR="no-vendor"

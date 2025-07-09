@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-shellspec
+#!/usr/bin/env env-tm-shellspec
 
 Describe 'lib.sh' # example group
   Describe 'string concat'

@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 
 # Purpose: Backs up the configuration files to a remote git repository.
 # Args: None

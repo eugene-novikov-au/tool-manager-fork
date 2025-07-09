@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-kotlin
+#!/usr/bin/env env-tm-kotlin
 
 // @require:kotlin              2.1.0
 // @require:kotlin:platform     jvm

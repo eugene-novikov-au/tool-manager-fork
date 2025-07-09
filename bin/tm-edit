@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Opens an editor in the specified plugin's installation directory,
 # or in the Tool Manager's home directory if no plugin is specified.

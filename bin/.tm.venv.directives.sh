@@ -42,18 +42,18 @@ _tm::venv::extract_directives(){
       fi
       if [[ -z "$venv_provider" ]] && [[ "$directive" == "hashbang="*  ]]; then
         if [[ "$directive" == "hashbang=bash" ]] \
-          || [[ "$directive" == "hashbang=tm-env-bash" ]] \
+          || [[ "$directive" == "hashbang=env-tm-bash" ]] \
           || [[ "$directive" == "hashbang=python" ]] \
-          || [[ "$directive" == "hashbang=tm-env-python" ]]; then
+          || [[ "$directive" == "hashbang=env-tm-python" ]]; then
           venv_provider='venv:provider=python'
         elif [[ "$directive" == "hashbang=java" ]] \
-          || [[ "$directive" == "hashbang=tm-env-java" ]]; then
+          || [[ "$directive" == "hashbang=env-tm-java" ]]; then
           venv_provider='venv:provider=java'
         elif [[ "$directive" == "hashbang=kotlin" ]] \
-          || [[ "$directive" == "hashbang=tm-env-kotlin" ]]; then
+          || [[ "$directive" == "hashbang=env-tm-kotlin" ]]; then
           venv_provider='venv:provider=kotlin'
         elif [[ "$directive" == "hashbang=node" ]] \
-          || [[ "$directive" == "hashbang=tm-env-node" ]]; then
+          || [[ "$directive" == "hashbang=env-tm-node" ]]; then
           venv_provider='venv:provider=node'
         fi
       fi

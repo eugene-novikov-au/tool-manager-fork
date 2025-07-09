@@ -56,7 +56,7 @@ Tool Manager helps by addressing several common pain points:
   above the humble 'source' command. While this works, you still have to deal with path issues depending on where your script was called from, or end up with a bunch of annoying boilerplate at the top of each script file. There is also the issue or importing a file multiple times if your scripts get complicated and start referencing each other. The tool-manager solves this via:
 
 ```bash
-  #!/usr/bin/env tm-env-bash
+  #!/usr/bin/env env-tm-bash
   _include_once @tm/lib.args.sh .my.common.sh @some-vendor/some-plugin/lib.foo.sh
 ````
 
@@ -293,7 +293,7 @@ There is support for automatic python env provisioning, using either a python ve
 to your python scripts:
 
 ```python
-#!/usr/bin/env tm-env-python        # note the shebang line. Required for now, but later we might not need it
+#!/usr/bin/env env-tm-python        # note the shebang line. Required for now, but later we might not need it
 
 # @require:venv     script          # none|script|plugin. 'Script' means one env just for this script, 'plugin' for a shared env for this plugin
 # @require:python   3.12            # version of python to use. Notice how comments after directives are allowed

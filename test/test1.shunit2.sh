@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-shunit2
+#!/usr/bin/env env-tm-shunit2
 
 
 testEquality() {

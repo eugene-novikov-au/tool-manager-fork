@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Edit the given plugin, or if none-given, edit the tool-manager,
 # using a preferred IDE command.

@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Runs tests for a given plugin or for the tool-manager itself.
 #

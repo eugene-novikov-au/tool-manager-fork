@@ -21,7 +21,7 @@ Thank you for considering contributing! This document outlines how to set up the
 
 ## Coding Style
 
-- Scripts are written for Bash and begin with `#!/usr/bin/env bash` or `#!/usr/bin/env tm-env-bash`.
+- Scripts are written for Bash and begin with `#!/usr/bin/env bash` or `#!/usr/bin/env env-tm-bash`.
 - Use `set -Eeuo pipefail` for safer execution where appropriate.
 - Indent with four spaces and avoid tabs.
 - Keep functions small and well commented.

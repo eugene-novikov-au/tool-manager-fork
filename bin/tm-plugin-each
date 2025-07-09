@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Iterates over selected Tool Manager plugin directories and executes a
 # specified command within each directory that is a Git repository.

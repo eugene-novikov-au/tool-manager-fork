@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Disables one or more Tool Manager plugins.
 #
