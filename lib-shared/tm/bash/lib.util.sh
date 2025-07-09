@@ -376,3 +376,61 @@ _tm::util::array::get_first(){
   done
    _fail "Coud not find any values with keys matching one of ($@)"
 }
+
+# Safe remove function that checks if a directory is not root and not empty
+#
+# Args:
+#   $1 - Path to remove
+#   $@ - Additional arguments to pass to rm command
+#
+# Behavior:
+#   - Checks if path is not root directory
+#   - Checks if path is not empty (for directories)
+#   - Removes the path if checks pass
+#
+# Usage:
+#   _rm /path/to/remove
+#   _rm -f /path/to/file
+#   _rm -rf /path/to/directory
+#
+_rm() {
+  local path=""
+  local args=()
+
+  # Parse arguments to separate path from rm options
+  for arg in "$@"; do
+    if [[ "$arg" == -* ]]; then
+      # This is an option flag
+      args+=("$arg")
+    else
+      # This is the path
+      path="$arg"
+    fi
+  done
+
+  # If no path was found, return error
+  if [[ -z "$path" ]]; then
+    _err "No path specified for removal"
+    return 1
+  fi
+
+  # Check if path is root directory
+  if [[ "$path" == "/" || "$path" == "~" || "$path" == "$HOME" || -z "$path" ]]; then
+    _err "Cannot remove root or home directory: $path"
+    return 1
+  fi
+
+  # For directories, check if empty (only when using recursive removal)
+  if [[ -d "$path" && " ${args[*]} " == *" -r"* || " ${args[*]} " == *" -R"* ]]; then
+    # Check if directory exists and is not empty
+    if [[ -d "$path" && "$(ls -A "$path" 2>/dev/null)" ]]; then
+      _debug "Removing non-empty directory: $path"
+    else
+      _debug "Directory is empty or doesn't exist: $path"
+    fi
+  fi
+
+  # Execute the rm command with all arguments
+  rm "${args[@]}" "$path"
+  return $?
+}

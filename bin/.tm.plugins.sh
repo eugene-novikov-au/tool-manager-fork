@@ -487,7 +487,7 @@ _tm::plugins::install_from_registry(){
       local plugin_cfg_repo="${plugin_details[repo]:-}"
       local plugin_cfg_commit="${plugin_details[commit]:-}" # Commit from INI is default
     else
-      _error "could not find plugin details in '$plugin_conf_file'"
+      _error "Could not find plugin details in '$plugin_conf_file'"
       return $_false
     fi
 
@@ -655,7 +655,7 @@ _tm::plugins::foreach_available_callback() {
     for conf_file in "${plugin_files[@]}"; do
         _debug "Processing config file: $conf_file"
         if [[ ! -f "$conf_file" || ! -r "$conf_file" ]]; then
-            _warn "config file not found or not readable: '$conf_file'. Skipping."
+            _warn "Config file not found or not readable: '$conf_file'. Skipping."
             continue
         fi
 
