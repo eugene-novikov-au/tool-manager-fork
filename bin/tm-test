@@ -56,8 +56,10 @@ main() {
   for shellcheck_dir in "${shellcheck_dirs[@]}"; do
     if [[ -d "${shellcheck_dir}" ]]; then
       echo "shellcheck: '$shellcheck_dir'"
-      #find all text file with a shebang line with 'bash' or 'env-tm-bash' and only pass those files to shellcheck. ai!
-      shellcheck "$shellcheck_dir/"*
+      mapfile -t files_to_check < <(find "${shellcheck_dir}" -maxdepth 1 -type f -exec grep -lE '^#!.*(bash|env-tm-bash)' {} +)
+      if [[ ${#files_to_check[@]} -gt 0 ]]; then
+        shellcheck "${files_to_check[@]}"
+      fi
     fi
   done
   echo "shellcheck done"
