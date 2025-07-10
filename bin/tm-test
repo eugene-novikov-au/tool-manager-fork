@@ -1,4 +1,5 @@
 #!/usr/bin/env env-tm-bash
+# shellcheck shell=bash
 #
 # Runs tests for a given plugin or for the tool-manager itself.
 #
@@ -19,17 +20,22 @@ _parse_args \
     -- "$@"
 
 main() {
+  __ensure_shellcheck_installed
+
   local parallel="${args[parallel]}"
   local target="${args[plugin]}"
   local target_name=""
   local test_dir=""
+  local -a shellcheck_dirs=()
 
   if [[ -z "$target" ]] || [[ "$target" == "tool-manager" ]]; then
     test_dir="$TM_HOME/test"
     target_name="tool-manager"
+    shellcheck_dirs+=("$TM_HOME/bin/" "$TM_HOME/bin-defaults/" "$TM_HOME/bin-internal/" "$test_dir/")
   elif [[ "$target" =~ "."* ]] || [[ "$target" =~ "/"* ]] ; then
     test_dir="$target"
     target_name=""
+    shellcheck_dirs+=("$test_dir/")
   else
     local qname
     qname="$(_tm::plugins::installed::get_by_name "$target")"
@@ -38,13 +44,23 @@ main() {
     fi
     local -A plugin
     _tm::parse::plugin plugin "$qname"
-    test_dir="${plugin[install_dir]}/test"
+    local plugin_home="${plugin[install_dir]}"
+    test_dir="${plugin_home}/test"
     if [[ ! -d "$test_dir" ]]; then
       test_dir="${plugin[install_dir]}/tests"
     fi
     target_name="${qname}"
+    shellcheck_dirs+=("${plugin_home}/bin/" "${plugin_home}/bin-internal/" "$test_dir/")
   fi
-
+  echo "first checking scripts using shellcheck..."
+  for shellcheck_dir in "${shellcheck_dirs[@]}"; do
+    if [[ -d "${shellcheck_dir}" ]]; then
+      echo "shellcheck: '$shellcheck_dir'"
+      #find all text file with a shebang line with 'bash' or 'env-tm-bash' and only pass those files to shellcheck. ai!
+      shellcheck "$shellcheck_dir/"*
+    fi
+  done
+  echo "shellcheck done"
   if [[ ! -d "$test_dir" ]]; then
     _info "No 'test' directory found for '$target' at '$test_dir'. Nothing to test."
     exit 0
@@ -93,7 +109,7 @@ main() {
   fi
 }
 
-__install_shellcheck(){
+__ensure_shellcheck_installed(){
   if ! command -v shellcheck &> /dev/null; then
     _info "shellcheck not found. Attempting to install..."
     if command -v apt-get &> /dev/null; then
