@@ -1,6 +1,6 @@
 #!/usr/bin/env env-tm-bats
 
-load '../lib-shared/tm/bash/lib.parse.sh'
+load '../../lib-shared/tm/bash/lib.parse.sh'
 
 # Mock _fail to prevent script exit on expected failures
 _fail() {

@@ -1,6 +1,6 @@
 #!/usr/bin/env env-tm-bats
 
-load '../lib-shared/tm/bash/lib.event.sh'
+load '../../lib-shared/tm/bash/lib.event.sh'
 
 setup() {
   : #set -x

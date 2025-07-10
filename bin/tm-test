@@ -5,7 +5,7 @@
 # Usage: tm-test [plugin_name|tool-manager]
 #
 
-_tm::source::include_once .tm.script.sh .tm.plugin.sh .tm.plugins.sh
+_tm::source::include_once .tm.script.sh .tm.plugin.sh .tm.plugins.sh @tm/lib.test.bats.sh
 
 _trap_error
 
@@ -23,7 +23,8 @@ main() {
   local target="${args[plugin]}"
   local target_name=""
   local test_dir=""
-  local -a shellcheck_dirs=()
+
+  _tm::test::bats::install
 
   if [[ -z "$target" ]] || [[ "$target" == "tool-manager" ]]; then
     test_dir="$TM_HOME/tests"
@@ -59,24 +60,19 @@ main() {
   fi
 
   local test_files
-  local find_pattern_bats="*.bats"
-  local find_pattern_bats_sh="*.bats.sh"
-  if [[ -n "${args[test]}" ]]; then
-    find_pattern_bats="*${args[test]}*.bats"
-    find_pattern_bats_sh="*${args[test]}*.bats.sh"
-    _info "Filtering tests with pattern: *${args[test]}*"
-  fi
-  mapfile -t test_files < <(find "$test_dir" -type f \( -name "$find_pattern_bats" -o -name "$find_pattern_bats_sh" \))
-  if [[ ${#test_files[@]} -eq 0 ]]; then
+  mapfile -t test_files_sh < <(find "$test_dir" -type f -name "*.sh" )
+  mapfile -t test_files_bats < <(find "$test_dir" -type f  -name "*.bats" )
+  if [[ ${#test_files_sh[@]} -eq 0 ]] && [[ ${#test_files_bats[@]} -eq 0 ]]; then
     _info "No test files (*.bats, *.bats.sh) found in '$test_dir'."
     exit 0
   fi
   local failures=0
-  for test_file in "${test_files[@]}"; do
+  #echo "found test files: ${test_files[*]}"
+  for test_file in "${test_files_sh[@]}"; do
     if [[ "${parallel}" == "1" ]]; then
       (
         _info "--- Running tests in: $test_file ---"
-        "$test_file" || failures=1
+        ( "$test_file" || failures=1 ) &
         _info "--- Finished tests in: $test_file ---"
       ) &
     else
@@ -85,12 +81,25 @@ main() {
       _info "--- Finished tests in: $test_file ---"
     fi
   done
+  for test_file in "${test_files_bats[@]}"; do
+    if [[ "${parallel}" == "1" ]]; then
+      (
+        _info "--- Running tests in: $test_file ---"
+        ( bats "$test_file" || failures=1 ) &
+        _info "--- Finished tests in: $test_file ---"
+      ) &
+    else
+      _info "--- Running tests in: $test_file ---"
+      bats "$test_file" || failures=1
+      _info "--- Finished tests in: $test_file ---"
+    fi
+  done
 
   if [[ "${parallel}" == "1" ]]; then
     _info "waiting for parallel tests to complete..."
     wait
   fi
-  _info "All tests for '$target' completed."
+  _info "All tests for '$target_name' completed."
   if [[ "${failures}" == "1" ]]; then
     _fail "There were test failures!"
   fi

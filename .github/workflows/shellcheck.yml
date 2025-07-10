@@ -13,8 +13,8 @@ jobs:
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y shellcheck bats
       - name: ShellCheck
-        run: shellcheck bin/* bin-internal/* || true
+        run: tm-test-shellcheck
       - name: Run tests
-        run: bats tests/integration
+        run: tm-tests
         env:
           TERM: xterm
