@@ -61,15 +61,7 @@ main() {
   fi
 
   local test_files
-  local find_name_bats="*.bats"
-  local find_name_bats_sh="*.bats.sh"
-  if [[ -n "${args[test]}" ]]; then
-    find_name_bats="*${args[test]}*.bats"
-    find_name_bats_sh="*${args[test]}*.bats.sh"
-    _info "Filtering tests with patterns: $find_name_bats, $find_name_bats_sh"
-  fi
-  mapfile -t test_files < <(find "$test_dir" -type f \( -name "$find_name_bats" -o -name "$find_name_bats_sh" \))
-
+  mapfile -t test_files < <(find "$test_dir" -type f \( -name "*.bats" -o -name "*.bats.sh" \))
   if [[ ${#test_files[@]} -eq 0 ]]; then
     _info "No test files (*.bats or *.bats.sh) found in '$test_dir'."
     exit 0
