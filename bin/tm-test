@@ -63,7 +63,7 @@ main() {
   local test_files
   mapfile -t test_files < <(find "$test_dir" -type f \( -name "*.bats" -o -name "*.bats.sh" \))
   if [[ ${#test_files[@]} -eq 0 ]]; then
-    _info "No test files (*.bats or *.bats.sh) found in '$test_dir'."
+    _info "No test files (*.bats, *.bats.sh) found in '$test_dir'."
     exit 0
   fi
   local failures=0
