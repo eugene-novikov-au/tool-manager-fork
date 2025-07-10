@@ -19,8 +19,6 @@ _parse_args \
     -- "$@"
 
 main() {
-  __ensure_shellcheck_installed
-
   local parallel="${args[parallel]}"
   local target="${args[plugin]}"
   local target_name=""
