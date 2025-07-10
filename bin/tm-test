@@ -93,4 +93,10 @@ main() {
   fi
 }
 
+__install_shellcheck(){
+  if ! command -v shellcheck &> /dev/null; then
+    #install shellcheck using the current oses preferred package manager ai!
+  fi
+}
+
 main "$@"
