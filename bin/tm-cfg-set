@@ -36,7 +36,7 @@ plugin_name="${args[plugin]}"
 declare -A plugin=()
 if [[ -n "$plugin_name" ]]; then
   _tm::parse::plugin_name plugin "$plugin_name"
-elif [[ "${args[is_tm]}" ]]; then
+elif [[ "${args[tm]}" ]]; then
     _tm::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 elif [[ "${args[this]}" ]]; then
     if [[ -z "${TM_PLUGIN_ID:-}" ]]; then
@@ -46,7 +46,7 @@ elif [[ "${args[this]}" ]]; then
 else
     _tm::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 fi
-value="${args['*']}"
+value="${args[value]}"
 
 _tm::cfg::set_value "${plugin[qname]}" "${args[key]}" "${args[value]}"
 if [[ "$?" -ne "0" ]]; then

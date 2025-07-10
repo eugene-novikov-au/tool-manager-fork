@@ -43,6 +43,7 @@ _tm::source::include_once @tm/lib.validate.sh
 #
 #                                    Additional validators can be added by calling the validation lib '_tm::validate::add_validator <validator-name> <validator-regex>'
 #
+#   --allow-unknown          : (optional) if set, allow unknown args. Useful if you only want to capture some of the options, and the pass the rest through to some other program
 #   --result                 : (required) Name of the associative array to populate (passed by reference)
 #   --help <function/string> : (optional) function to run for help, or if a string, echo as is. If empty not enabled
 #   --help-tip               : (flag) if set, then always print a small help tip. Default is false
@@ -98,6 +99,8 @@ _tm::args::parse() {
     local remainder_key=''
     local ignore_spec_errors=0
     local user_args=''
+    local allow_unknown=0
+    
 
     #
     # Parses an option spec string given in "key=value;key2=value2" format.
@@ -439,6 +442,10 @@ _tm::args::parse() {
     # parse the options (Args spec) for this parser. Terminate this part when we see a '--' on it's own
     while [[ $# -gt 0 && "$process_args" -eq 0 ]]; do
        case "$1" in 
+        '--allow-unknown')
+          allow_unknown="1"
+          shift
+          ;;
         '--result')
           result_name="$2"
           shift
@@ -578,6 +585,8 @@ _tm::args::parse() {
               fi            
               shift
               continue
+            elif [[ "${allow_unknown}" == "1" ]]; then
+              : # ignore args
             else
               # user supplied args -> error
               if [[ "$help_on_error" == "1" ]]; then

@@ -260,15 +260,15 @@ _tm::cfg::set_value(){
     local prefix="${parts[prefix]}"
     local qpath="${parts[qpath]}"
     local qname="${parts[qname]}"
-
-    local plugin_dir="$TM_PLUGINS_INSTALL_DIR/$plugin_name"
+    local plugin_dir="${parts[install_dir]}"
+    local plugin_custom_cfg_file="${parts[cfg_sh]}"
+  
     if [[ ! "$plugin_name" == "$__TM_NAME" ]] && [[ ! -d "$plugin_dir" ]]; then
         _fail "No plugin '$qname' installed. Expected dir '$plugin_dir'"
     fi
 
     cfg_key="${cfg_key^^}" # uppercase config keys
-
-    local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${qpath}/.env"
+  
     _info "  Setting value in '$plugin_custom_cfg_file'"
     local current_value="${!cfg_key:-}"
     if [[ -f "$plugin_custom_cfg_file" ]]; then
