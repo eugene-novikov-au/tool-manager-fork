@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 
 # Parses a text file and extracts all '@require' directives
 #
@@ -27,12 +27,13 @@ main(){
     mapfile -t directives < <(_tm::venv::extract_directives "${args[file]}")
 
     local -A supported_directives=(\
-        [hashbang]='the script runner (bash, tm-env-bash, python, ...)' \
+        [hashbang]='the script runner (bash, env-tm-bash, python, ...)' \
         [venv]='the venv to use (none|plugin|script)' \
         [venv:type]='venv provider (python, uv, docker, vm...)' \
         [python]='the python version to use' \
         [config]='a required config key' \
         [pip]='pip requirement' \
+        [tpkg]='tool-manager package' \        
     )
     if [[ "${validate}" == "1" ]]; then
         local failed=0

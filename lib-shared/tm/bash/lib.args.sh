@@ -1,7 +1,12 @@
+# 
+# Library to provide argument parsing and validation functionality
+#
 
-if command -v _tm::args::parse &>/dev/null; then
+if command -v _tm::args::parse &>/dev/null; then # already loaded
   return
 fi
+
+_tm::source::include_once @tm/lib.validate.sh
 
 #
 # Parses command-line arguments according to a specified options string and populates an associative array.
@@ -10,47 +15,64 @@ fi
 #   _parse_args <options_string> <array_name>  <helpf_func> <args...>
 #
 # Parameters:
-#   --opt-<key> name/value pairs: '|name=value|name2=value2'. First chars is the value separator (non alpha-numeric, e.g '|' or ';' etc)
+#   --ignore-errors   : (optional) if set, ignore any parse args errors due to invalid option specs. It will still validate user input. Only affects options given after this option. Default 0
+#                       This can be useful if your scripts might encounter older versions of tool-manager
+#   --opt-<key> name/value pairs: '|name=value|name2=value2'.  The option specification. Used to tell the args parser what the user supplied options can be
+#                     First char is the value separator (non alpha-numeric, e.g '|' or ';' etc). Recommended to use '|'. This caters for 'special chars' in any of the values which
+#                     might clash with the separator if it were fixed. By forcing  it's use,it's clear
+#
+#                     e.g. ';short=x;desc=The value for 'x' can be a|b'
+#
+#                     Option spec:
 #                    - short         (optional) short option (e.g., "p"). Can be provided multiple times
 #                    - long          (optional) long option (e.g., "plain"). Defaults to the '<key>' if no short option provided. Can be provided multiple times
 #                    - flag          (optional) (flag) if no value to be taken, false by default (0)
 #                    - multi         (optional) (flag) if multiple values are supported, false by default (0)
 #                    - multi-sep     (optional) the multi value value sep. Useful if there are whitespaces in the values. Default is a space
 #                    - required      (optional) (flag) if option is required, false by default (0)
-#                    - remainder     (optional) (flag) if set, then all the remaining args are set on this variable. No options are read after. Only one option a can have this
+#                    - remainder     (optional) (flag) if set, then all the remaining args are set on this variable. No options are read after. Only one option can have this set
 #                    - greedy        (optional) (flag) if this is a 'remainder' option, and this flag is set, then collect _all_ the args and options after this value. If not set, allow options afterwards. Default is false (0)
 #                    - desc          (optional) help text
 #                    - example       (optional) example text
-#                    - default       (optional) default value. Default is an empty string
-#                    - allowed       (optional) allowed values. First char is the value separator if non alpha-numeric. Default is ','
+#                    - default       (optional) default value. The default is an empty string
+#                    - allowed       (optional) allowed values. First char is the value separator if non alpha-numeric. Default is ','. E.g. ,foo,bar or |foo|bar
 #                    - validators|validator    (optional) comma separated validators
-#                                                     (+alphanumeric,+numbers,+letters,+nowhitespace,+noslash,+re:<pattern>,plugin-vendor,plugin-name,plugin-prefix).
-#                                                     If prefixed with  a '+', must pass (default), if prefixed with a '-', must fail validator
-#             If there are semi colons in any of the values, you can specify a different separator, by setting the first char to the separator (non alphanumeric)
-#                      e.g. '|short=x|desc=The value for 'x', with a semicolon; This is also part of the the desc now'
-#   
-#   --result                  : (required) Name of the associative array to populate (passed by reference)
+#                                    (+alphanumeric,+numbers,+letters,+nowhitespace,+noslash,+re:<pattern>,plugin-vendor,plugin-name,plugin-prefix).
+#
+#                                    If prefixed with  a '+' (or no prefix), must pass (default), if prefixed with a '-', must fail validator
+#
+#                                    Additional validators can be added by calling the validation lib '_tm::validate::add_validator <validator-name> <validator-regex>'
+#
+#   --allow-unknown          : (optional) if set, allow unknown args. Useful if you only want to capture some of the options, and the pass the rest through to some other program
+#   --result                 : (required) Name of the associative array to populate (passed by reference)
 #   --help <function/string> : (optional) function to run for help, or if a string, echo as is. If empty not enabled
 #   --help-tip               : (flag) if set, then always print a small help tip. Default is false
-#   --help-on-error          : (flag) if set, then print the help on error. Default is false
-#   --    (separator to differentiate between the parser options and the caller args. User supplied args must come after this)
-#   <args...>        Command-line arguments to parse
+#   --help-on-error          : (flag) if set, then print the help on validation error. Default is false
+#   --                       : Important! the separator to differentiate between the parser options and the caller args. User supplied args must come after this
+#   <user supplied args...>  : User supplied command-line arguments to parse (usign the above provided option specs as the rules)
 #
 # Example:
-#   declare -A my_array
-#   _parse_args --help _help --opt-plain "short=p,long=plain,required,flag,desc=some-help" --opt-env '|short=e|long=env|desc=set an environment variable, to ...' --opt-* 'short=c' --result my_array -- "$@"
+#   declare -A args
+#   _parse_args --help _help \
+#               --opt-plain   ",short=p,long=plain,required,flag,desc=some-help" \
+#               --opt-env     '|short=e|long=environment|desc=set an environment variable \   # can change the name of 'long' env argument, else would default to 'env'
+#               --opt-plugin  '|remainder|short=p|desc=the plugin \                           # this captures any non named args
+#               ...more options ...
+#               --result args \   # the associative array to put the parse results in
+#               -- "$@"           # note the '--' to indicate the start of user supplied args
 #
 # Notes:
-#   - The associative array is populated with the option name
-#   - For required options, missing values trigger an error.
-#   - Flag options (no value) are set to "1" in the array.
+#   - The associative array is populated with the option name.
+#   - The associative array is first cleared.
+#   - For required options, missing values trigger an error (unless a default is supplied).
+#   - Flag options (no value) are set to "0" in the array, or 1 when available. 
+#   - When a non flag option is set with no value, the value is set to empty.
 #
 _parse_args() {
   _tm::args::parse "$@"
 }
 
 _tm::args::parse() {
-
     if _is_finest; then
       _finest "args: '$*'"
     fi
@@ -75,9 +97,20 @@ _tm::args::parse() {
     local -A allowed_by_key=() # allowed values for a given key
     local -A validators_by_key=() # list of validators to apply to a value, by key
     local remainder_key=''
+    local ignore_spec_errors=0
+    local user_args=''
+    local allow_unknown=0
+    
+
     #
     # Parses an option spec string given in "key=value;key2=value2" format.
     #
+    # Arguments
+    # $1 - the key to use for the option
+    # $2 - the provided option spec string
+    # $3 - the associative array to put the parse results in
+    #
+    local __parse_option_spec
     __parse_option_spec(){
       local option_key="$1"
       local option_spec="$2"
@@ -183,39 +216,42 @@ _tm::args::parse() {
               value) # the name of the help option 'value'
                   ref_array[value]="$value"
                   ;;
-              validators) # the validation options
+              validators|validator) # the validation options
                   ref_array[validators]="$value"
                   ;;
-               validator) # the validation options
-                  ref_array[validators]="$value"
+              ignore-errors)
+                  ignore_spec_errors=1    
                   ;;
               *)
-                  # Silently ignore unknown keys, or add a _warn if debugging is needed
+                if [[ "${ignore_spec_errors}" == "1" ]]; then
+                  IFS= _warn "Unknown command args spec option '$key', for option '$option_key', in option spec '$option_spec'"
+                else
+                  # fail on unknown keys
                   IFS= _fail "Unknown command args spec option '$key', for option '$option_key', in option spec '$option_spec'"
-                  ;;
+                fi
+                ;;
           esac
       done
 
       IFS="$old_ifs"
     } # end parse options spec line
 
-
-    __println(){
-      >&2 echo "$@"
-    }
-
-    __print(){
-      >&2 echo "$@"
-    }
     #
     # Prints the help/usage message based on parsed option specs.
     #
     # No args
     #
-    __print_options() {
+    local __print_help
+    __print_help() {
         local bold=$(tput bold)
         local normal=$(tput sgr0)
-        
+        # show the args passed if it's not just the help. THsi is helpful in case commands are called from within another program
+        # and there is a failure
+        if [[ ! "${user_args}" == '--help' ]] && [[ ! "${user_args}" == '-h' ]]; then
+          __println "${bold}PROVIDED ARGS${normal}"
+          __println "  ${user_args}"
+          __println
+        fi
         __println "${bold}USAGE${normal}"
         local script=''
         if [[ -n "$calling_script" ]] && [[ -f "$calling_script" ]]; then
@@ -276,52 +312,13 @@ _tm::args::parse() {
             fi
         done | sort
     } # end print options
-
-    __parse_allowed_values(){
-      local allowed="$1"
-      local -n array_ref="$2"
-      local old_ifs="$IFS"
-      IFS=',' # by default, allowed values are separated by a comma (ensure it's different to the spec options sep)
-      local first_char="${allowed:0:1}"
-      if [[ "$first_char" =~ [^[:alnum:]] ]]; then # Use Bash pattern match
-        # not alphanumeric, so the symbol to use for the separator
-        IFS="$first_char"
-      fi
-      read -ra array_ref <<< "$allowed"
-      IFS="$old_ifs"
-    }
-
-    __validate_arg(){
-      local key="$1"
-      local value="$2"
-
-      # check the value is valid if enabled
-      local allowed="${allowed_by_key["$key"]:-}"
-      if [[ -n "$allowed" ]]; then
-        local allowed_values=()
-        __parse_allowed_values "$allowed" allowed_values
-        local valid=0
-        for valid_val in "${allowed_values[@]}"; do
-          if [[ "$valid_val" == "$value" ]]; then
-            valid=1
-            break
-          fi
-        done
-        if [[ $valid == 0 ]]; then
-          _fail "invalid value '$value' for '$key'. Valid values are: $allowed"
-        fi
-      fi
-
-
-      # run any provided validators
-      local validators_csv="${validators_by_key["$key"]}"
-      _tm::validate::key_value "${key}" "${value}" "${validators_csv}"
-    }
+    
     #
     # Print a single option
     #
     # $1 - the option spec array
     #
+    local __print_option
     __print_option() {
     # grab a reference to the parsed option spec
         local -n print_spec="$1"
@@ -383,6 +380,58 @@ _tm::args::parse() {
         fi
     } # end print option
 
+    local __println
+    __println(){
+      >&2 echo "$@"
+    }
+
+    local __print
+    __print(){
+      >&2 echo "$@"
+    }
+
+    local __validate_arg
+    __validate_arg(){
+      local key="$1"
+      local value="$2"
+
+      # check the value is valid if enabled
+      local allowed="${allowed_by_key["$key"]:-}"
+      if [[ -n "$allowed" ]]; then
+        local allowed_values=()
+        __parse_allowed_values "$allowed" allowed_values
+        local valid=0
+        for valid_val in "${allowed_values[@]}"; do
+          if [[ "$valid_val" == "$value" ]]; then
+            valid=1
+            break
+          fi
+        done
+        if [[ $valid == 0 ]]; then
+          _fail "invalid value '$value' for '$key'. Valid values are: $allowed"
+        fi
+      fi
+
+
+      # run any provided validators
+      local validators_csv="${validators_by_key["$key"]}"
+      _tm::validate::key_value "${key}" "${value}" "${validators_csv}"
+    }
+
+    local __parse_allowed_values
+    __parse_allowed_values(){
+      local allowed="$1"
+      local -n array_ref="$2"
+      local old_ifs="$IFS"
+      IFS=',' # by default, allowed values are separated by a comma (ensure it's different to the spec options sep)
+      local first_char="${allowed:0:1}"
+      if [[ "$first_char" =~ [^[:alnum:]] ]]; then # Use Bash pattern match
+        # not alphanumeric, so the symbol to use for the separator
+        IFS="$first_char"
+      fi
+      read -ra array_ref <<< "$allowed"
+      IFS="$old_ifs"
+    }
 
     local remaining_args=()
     local collect_remaining=0
@@ -393,6 +442,10 @@ _tm::args::parse() {
     # parse the options (Args spec) for this parser. Terminate this part when we see a '--' on it's own
     while [[ $# -gt 0 && "$process_args" -eq 0 ]]; do
        case "$1" in 
+        '--allow-unknown')
+          allow_unknown="1"
+          shift
+          ;;
         '--result')
           result_name="$2"
           shift
@@ -480,7 +533,7 @@ _tm::args::parse() {
     done
 
     # Now parse the user command-line arguments
-    local user_args="$@"
+    user_args="$@" # also capture for the help
     if [[ -n "$user_args" ]]; then # handle the empty case, of no args
       while [[ $# -gt 0 ]]; do
           local arg_full="$1"
@@ -494,7 +547,7 @@ _tm::args::parse() {
           else # we are still parsing user provided args here
             # Check for --help or -h in args
             if [[ "$arg" == "-h" ]] || [[ "$arg" == "--help" ]]; then
-              __print_options
+              __print_help
               exit 1
             fi
 
@@ -532,11 +585,13 @@ _tm::args::parse() {
               fi            
               shift
               continue
+            elif [[ "${allow_unknown}" == "1" ]]; then
+              : # ignore args
             else
               # user supplied args -> error
               if [[ "$help_on_error" == "1" ]]; then
                 _error "Unknown option: '$1' for args '$user_args'"
-                __print_options
+                __print_help
                 _fail "Unknown option: '$1' for args '$user_args'"
               else
                 _error "Unknown option: '$1' for args '$user_args'"
@@ -633,44 +688,3 @@ _tm::args::print_help_from_file_comment() {
   fi
 }
 
-#
-# Convert the given args to an escaped string
-#
-# $1 - the array of args to convert to a string
-#
-_tm::args::__args_to_escaped_string(){
-  # this function is publicly available
-    local escaped_cmd=""
-    for arg in "$@"; do
-        # Call the escape_arg function for each argument
-        escaped_cmd+=" $(_tm::args::__args_escape_arg "$arg")"
-    done
-    echo "$escaped_cmd"
-}
-
-_tm::args::__args_escape_arg() {
-    local arg="$1"
-    # handle cases where
-    local quote=''
-    local escape=''
-    
-    if [[ "$arg" =~ [[:space:]]|[[:punct:]] ]]; then
-      quote="'"
-    fi
-    if [[ "$arg" =~ '"' ]]; then
-        quote+="'"
-    fi
-    if [[ "$arg" =~ "'" ]]; then
-        quote+='"'
-    fi  
-    if [[ -n "$quote" ]]; then
-        if [[ "$quote" == "\"'" ]]; then
-          # Use printf %q to get a shell-quoted version of the string
-          printf "\'%q\'" "$arg"
-        else
-          echo "$quote$arg$quote"
-        fi
-    else
-        echo "$arg"
-    fi
-}

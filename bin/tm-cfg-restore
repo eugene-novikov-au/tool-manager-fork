@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 
 # Purpose: Restores the TM configuration from a backup git repository.
 # Args:

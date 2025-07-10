@@ -87,7 +87,7 @@ _tm::space::file::read_array(){
       _error "No space file '${space_file}'"
       false
     fi
-    _tm::file::env::read space_details_ref '' '' "$space_file"
+    _tm::file::env::read space_details_ref "$space_file"
 
     space_details_ref[id]="${space_details_ref[guid]}"
     space_details_ref[space_file]="${space_file}"

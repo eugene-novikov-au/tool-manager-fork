@@ -112,7 +112,7 @@ _tm::cfg::__process() {
     local value
     local default_value="${args[default]}"
     local note="${args[note]}"
-    
+
     IFS=' ' read -ra keys <<< "${args[keys]}"
     _trace "checking keys: '${keys[*]}'"
     for key in "${keys[@]}"; do
@@ -151,7 +151,7 @@ _tm::cfg::__process() {
               _fail "No cfg with key '$key' set for plugin '${plugin[qpath]}', no default supplied, and the '--no-prompt' option is set"
             fi
         fi
-        
+
         if tty -s; then
             #in interactive mode
             :
@@ -160,7 +160,7 @@ _tm::cfg::__process() {
         fi
         _tm::cfg::__prompt_for_key "${plugin[qname]}" "${plugin[qpath]}" "$plugin_custom_cfg_file" "$key" "$default_value" "$note"
         # ensure the new key is rad by the caller
-       
+
         if [[ $is_get == 1 ]]; then
           echo "${!key:-}"
         fi
@@ -176,7 +176,7 @@ _tm::cfg::__prompt_for_key() {
     local cfg_key="$4"
     local default_value="$5"
     local note="${6:-}"
-    
+
     # Prompt to stderr to avoid contaminating stdout [8]
     _tm::log::println "Environment variable '$cfg_key' not set for plugin '$qname'"
     _tm::log::println "  Setting value in '$cfg_file' (qpath '$qpath')"
@@ -214,7 +214,7 @@ _tm::cfg::plugin::get_config_files() {
 
     local -A parts=()
     _tm::parse::plugin_name parts "$qualified_name"
-    
+
     local conf_files=()
     _tm::cfg::_tm::cfg::__add_config_files_to conf_files "${parts[install_dir]}" "${parts[qpath]}"
     echo "${conf_files[@]}"
@@ -260,15 +260,15 @@ _tm::cfg::set_value(){
     local prefix="${parts[prefix]}"
     local qpath="${parts[qpath]}"
     local qname="${parts[qname]}"
-    
-    local plugin_dir="$TM_PLUGINS_INSTALL_DIR/$plugin_name"
+    local plugin_dir="${parts[install_dir]}"
+    local plugin_custom_cfg_file="${parts[cfg_sh]}"
+  
     if [[ ! "$plugin_name" == "$__TM_NAME" ]] && [[ ! -d "$plugin_dir" ]]; then
         _fail "No plugin '$qname' installed. Expected dir '$plugin_dir'"
     fi
-    
+
     cfg_key="${cfg_key^^}" # uppercase config keys
-    
-    local plugin_custom_cfg_file="$TM_PLUGINS_CFG_DIR/${qpath}/.env"
+  
     _info "  Setting value in '$plugin_custom_cfg_file'"
     local current_value="${!cfg_key:-}"
     if [[ -f "$plugin_custom_cfg_file" ]]; then
@@ -292,7 +292,7 @@ _tm::cfg::set_value(){
             read -e -r -i "$current_value" key_value </dev/tty
         fi
     done
-    
+
     # write the config to disk
     _tm::cfg::__set_key_value_in_file "$plugin_custom_cfg_file" "$cfg_key" "$key_value"
     _info "  updated: $plugin_custom_cfg_file"
@@ -361,13 +361,13 @@ _tm::cfg::__load_cfg(){
     local plugin_id="$1"
     local -A plugin=()
     _tm::parse::plugin_id plugin "$plugin_id"
-     
+
     local qpath="${plugin[key]}"
     local plugin_config_yaml="${plugin[install_dir]}/plugin.config.yaml"
-    
+
     local conf_files=() # config files bashrc is generated from
     _tm::cfg::_tm::cfg::__add_config_files_to conf_files "${plugin[install_dir]}" "${plugin[qpath]}"
-    
+
     local hash="$(_tm::cfg::__generate_hash_for "${conf_files[@]}" "${plugin_config_yaml}" )"
 
     local base_config_dir="$TM_CACHE_DIR/merged-config"
@@ -392,7 +392,7 @@ _tm::cfg::__load_cfg(){
       # remove the old merged config files
       for file in "${previous_bashrcs[@]}"; do
       _trace "removing previous merged config:'$file'"
-        rm -f "$file" || _warn "Couldn't delete old merged config '$file', ignoring"
+        _rm -f "$file" || _warn "Couldn't delete old merged config '$file', ignoring"
       done
 
       source "$merged_bashrc_file"
@@ -536,6 +536,6 @@ _tm::cfg::env::__generate_merged_sh_file() {
     done
 
   ) > "${output_file}" # Redirect all stdout from the subshell to the bashrc file
-  
+
   _debug "successfully generated '$output_file'"
 }

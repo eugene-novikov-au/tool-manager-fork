@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-node
+#!/usr/bin/env env-tm-node
 
 // @require: express
 // @require: lodash

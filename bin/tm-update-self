@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Updates the Tool Manager core installation by running 'git pull --ff-only'
 # in the $TM_HOME directory.

@@ -1,0 +1,4 @@
+--sandbox
+--require spec_helper
+--format progress
+--profile

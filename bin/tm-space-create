@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Create a new space
 #
@@ -35,8 +35,8 @@ main(){
 
   if [[ -f "$space_file" ]]; then
       if _confirm "space already exists ('$space_file'), delete existing?"; then
-        rm -f "$space_file"
-        rm -fR "$space_dir" || true
+        _rm -f "$space_file"
+        _rm -fR "$space_dir" || true
       else
         exit 1
       fi

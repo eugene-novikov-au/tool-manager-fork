@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Enables one or more Tool Manager plugins by their qualified name.
 # After enabling, 'tm-reload' is automatically called.

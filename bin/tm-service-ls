@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#
+# List all the services
+#
+
+tm-service --command ls "$@"

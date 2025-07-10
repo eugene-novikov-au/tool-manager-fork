@@ -1,4 +1,4 @@
-#!/usr/bin/env tm-env-bash
+#!/usr/bin/env env-tm-bash
 #
 # Purpose: Set a configuration option for the core Tool Manager.
 # Args:
@@ -46,7 +46,7 @@ elif [[ "${args[this]}" ]]; then
 else
     _tm::parse::plugin_id plugin "$__TM_PLUGIN_ID"
 fi
-value="${args['*']}"
+value="${args[value]}"
 
 _tm::cfg::set_value "${plugin[qname]}" "${args[key]}" "${args[value]}"
 if [[ "$?" -ne "0" ]]; then
